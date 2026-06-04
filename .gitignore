@@ -1,0 +1,31 @@
+# Environment Variables
+.env
+.env.local
+.env.production
+.env.development
+
+# Node Packages
+node_modules/
+
+# Production Build
+dist/
+
+# Editor Settings
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Testing coverage
+coverage/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log

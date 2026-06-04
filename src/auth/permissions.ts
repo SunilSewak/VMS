@@ -1,0 +1,60 @@
+export const ROLES = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  ADMIN: 'ADMIN',
+  SALES_HEAD: 'SALES_HEAD',
+  FINANCE: 'FINANCE',
+  VIEWER: 'VIEWER'
+} as const;
+
+export type AppRole = typeof ROLES[keyof typeof ROLES];
+
+export const PERMISSIONS = {
+  CREATE_REQUEST: 'create:request',
+  VIEW_REQUEST: 'view:request',
+  APPROVE_REQUEST: 'approve:request',
+  MANAGE_HOTELS: 'manage:hotels',
+  MANAGE_QUOTATIONS: 'manage:quotations',
+  MANAGE_BOOKINGS: 'manage:bookings',
+  MANAGE_FINANCE: 'manage:finance',
+  VIEW_REPORTS: 'view:reports',
+  MANAGE_USERS: 'manage:users'
+} as const;
+
+export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
+
+export const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
+  SUPER_ADMIN: Object.values(PERMISSIONS),
+  ADMIN: [
+    PERMISSIONS.CREATE_REQUEST,
+    PERMISSIONS.VIEW_REQUEST,
+    PERMISSIONS.APPROVE_REQUEST,
+    PERMISSIONS.MANAGE_HOTELS,
+    PERMISSIONS.MANAGE_QUOTATIONS,
+    PERMISSIONS.MANAGE_BOOKINGS,
+    PERMISSIONS.MANAGE_FINANCE,
+    PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.MANAGE_USERS
+  ],
+  SALES_HEAD: [
+    PERMISSIONS.CREATE_REQUEST,
+    PERMISSIONS.VIEW_REQUEST,
+    PERMISSIONS.APPROVE_REQUEST,
+    PERMISSIONS.MANAGE_HOTELS,
+    PERMISSIONS.MANAGE_QUOTATIONS,
+    PERMISSIONS.MANAGE_BOOKINGS,
+    PERMISSIONS.VIEW_REPORTS
+  ],
+  FINANCE: [
+    PERMISSIONS.VIEW_REQUEST,
+    PERMISSIONS.MANAGE_FINANCE,
+    PERMISSIONS.VIEW_REPORTS
+  ],
+  VIEWER: [
+    PERMISSIONS.VIEW_REQUEST,
+    PERMISSIONS.VIEW_REPORTS
+  ]
+};
+
+export function hasPermission(role: AppRole, permission: Permission): boolean {
+  return ROLE_PERMISSIONS[role]?.includes(permission) || false;
+}
