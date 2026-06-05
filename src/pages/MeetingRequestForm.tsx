@@ -223,7 +223,7 @@ export function MeetingRequestForm() {
               >
                 <option value="">Select Division</option>
                 {divisions.map((div) => (
-                  <option key={div.id} value={div.id}>{div.name}</option>
+                  <option key={div.id} value={div.id}>{div.division_name}</option>
                 ))}
               </select>
             </div>
@@ -240,7 +240,7 @@ export function MeetingRequestForm() {
               >
                 <option value="">Select Meeting Type</option>
                 {meetingTypes.map((type) => (
-                  <option key={type.id} value={type.id}>{type.name}</option>
+                  <option key={type.id} value={type.id}>{type.meeting_type_name}</option>
                 ))}
               </select>
             </div>
@@ -265,7 +265,7 @@ export function MeetingRequestForm() {
               >
                 <option value="">Select City</option>
                 {cities.map((city) => (
-                  <option key={city.id} value={city.id}>{city.name} ({city.state})</option>
+                  <option key={city.id} value={city.id}>{city.city_name} ({city.state})</option>
                 ))}
               </select>
             </div>

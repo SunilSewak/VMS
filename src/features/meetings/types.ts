@@ -32,26 +32,26 @@ export interface MeetingRequest {
   created_by?: string;
 
   // Joined fields for display
-  divisions?: { name: string };
-  meeting_types?: { name: string };
-  cities?: { name: string };
+  divisions?: { division_name: string };
+  meeting_types?: { meeting_type_name: string };
+  cities?: { city_name: string };
 }
 
 export interface Division {
   id: string;
-  name: string;
+  division_name: string;
   active: boolean;
 }
 
 export interface City {
   id: string;
-  name: string;
+  city_name: string;
   state: string;
   tier?: string;
 }
 
 export interface MeetingType {
   id: string;
-  name: string;
+  meeting_type_name: string;
   active: boolean;
 }

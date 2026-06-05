@@ -8,7 +8,7 @@ export async function getDivisions(): Promise<Division[]> {
   const { data, error } = await (supabase as any)
     .from('divisions')
     .select('*')
-    .order('name', { ascending: true });
+    .order('division_name', { ascending: true });
 
   if (error) throw new Error(error.message);
   return data || [];
@@ -19,7 +19,7 @@ export async function getCities(): Promise<City[]> {
   const { data, error } = await (supabase as any)
     .from('cities')
     .select('*')
-    .order('name', { ascending: true });
+    .order('city_name', { ascending: true });
 
   if (error) throw new Error(error.message);
   return data || [];
@@ -30,7 +30,7 @@ export async function getMeetingTypes(): Promise<MeetingType[]> {
   const { data, error } = await (supabase as any)
     .from('meeting_types')
     .select('*')
-    .order('name', { ascending: true });
+    .order('meeting_type_name', { ascending: true });
 
   if (error) throw new Error(error.message);
   return data || [];
@@ -42,9 +42,9 @@ export async function getMeetingRequests(user: UserProfile): Promise<MeetingRequ
     .from('meeting_requests')
     .select(`
       *,
-      divisions ( name ),
-      meeting_types ( name ),
-      cities ( name )
+      divisions ( division_name ),
+      meeting_types ( meeting_type_name ),
+      cities ( city_name )
     `);
 
   // Role-based access logic:
@@ -66,9 +66,9 @@ export async function getMeetingRequestById(id: string): Promise<MeetingRequest>
     .from('meeting_requests')
     .select(`
       *,
-      divisions ( name ),
-      meeting_types ( name ),
-      cities ( name )
+      divisions ( division_name ),
+      meeting_types ( meeting_type_name ),
+      cities ( city_name )
     `)
     .eq('id', id)
     .single();
@@ -104,9 +104,9 @@ export async function createMeetingRequest(
     .insert([payload])
     .select(`
       *,
-      divisions ( name ),
-      meeting_types ( name ),
-      cities ( name )
+      divisions ( division_name ),
+      meeting_types ( meeting_type_name ),
+      cities ( city_name )
     `)
     .single();
 
@@ -131,9 +131,9 @@ export async function updateMeetingRequest(
     .eq('id', id)
     .select(`
       *,
-      divisions ( name ),
-      meeting_types ( name ),
-      cities ( name )
+      divisions ( division_name ),
+      meeting_types ( meeting_type_name ),
+      cities ( city_name )
     `)
     .single();
 

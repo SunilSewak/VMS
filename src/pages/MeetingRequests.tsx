@@ -64,13 +64,13 @@ export function MeetingRequests() {
     },
     {
       header: 'Division',
-      accessor: (row) => row.divisions?.name || row.division_id,
+      accessor: (row) => row.divisions?.division_name || row.division_id,
       priority: 'tablet-desktop',
       mobileLabel: 'Division'
     },
     {
       header: 'City',
-      accessor: (row) => row.cities?.name || row.city_id,
+      accessor: (row) => row.cities?.city_name || row.city_id,
       priority: 'tablet-desktop',
       mobileLabel: 'City'
     },
