@@ -1,7 +1,12 @@
 export const ROUTES = {
   dashboard: "/dashboard",
   requests: "/requests",
+  meetingRequests: "/meeting-requests",
+  meetingRequestNew: "/meeting-requests/new",
+  meetingRequestView: "/meeting-requests/:id",
+  meetingRequestEdit: "/meeting-requests/:id/edit",
   hotels: "/hotels",
+  venueExplorer: "/venue-explorer",
   quotations: "/quotations",
   approvals: "/approvals",
   bookings: "/bookings",

@@ -5,7 +5,10 @@ import { AppLayout } from './layouts/AppLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { VenueRequests } from './pages/VenueRequests';
+import { MeetingRequests } from './pages/MeetingRequests';
+import { MeetingRequestForm } from './pages/MeetingRequestForm';
 import { Hotels } from './pages/Hotels';
+import { VenueExplorer } from './pages/VenueExplorer';
 import { Quotations } from './pages/Quotations';
 import { Approvals } from './pages/Approvals';
 import { Bookings } from './pages/Bookings';
@@ -54,10 +57,50 @@ export default function App() {
               </ProtectedRoute>
             } />
 
+            <Route path={ROUTES.meetingRequests} element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <MeetingRequests />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path={ROUTES.meetingRequestNew} element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <MeetingRequestForm />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path={ROUTES.meetingRequestView} element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <MeetingRequestForm />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path={ROUTES.meetingRequestEdit} element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <MeetingRequestForm />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+
             <Route path={ROUTES.hotels} element={
               <ProtectedRoute>
                 <AppLayout>
                   <Hotels />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path={ROUTES.venueExplorer} element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <VenueExplorer />
                 </AppLayout>
               </ProtectedRoute>
             } />

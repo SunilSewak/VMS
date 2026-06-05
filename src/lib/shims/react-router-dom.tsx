@@ -41,7 +41,34 @@ export function useLocation() {
 }
 
 export function useParams() {
+  const ctx = useContext(RouterContext);
+  const path = ctx ? ctx.path : '/';
+  const segments = path.split('/');
+  if (segments[1] === 'meeting-requests') {
+    const id = segments[2];
+    if (id && id !== 'new') {
+      return { id };
+    }
+  }
   return {} as Record<string, string>;
+}
+
+function matchPath(pattern: string, path: string): boolean {
+  if (pattern === path) return true;
+  const patternSegments = pattern.split('/');
+  const pathSegments = path.split('/');
+  if (patternSegments.length !== pathSegments.length) return false;
+  for (let i = 0; i < patternSegments.length; i++) {
+    const patternSeg = patternSegments[i];
+    const pathSeg = pathSegments[i];
+    if (patternSeg.startsWith(':')) {
+      continue;
+    }
+    if (patternSeg !== pathSeg) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function Routes({ children }: { children: React.ReactNode }) {
@@ -54,7 +81,7 @@ export function Routes({ children }: { children: React.ReactNode }) {
       const { path, index } = child.props as any;
       if (index && currentPath === '/') {
         match = child;
-      } else if (path === currentPath || (path && currentPath.startsWith(path) && path !== '/')) {
+      } else if (path && matchPath(path, currentPath)) {
         match = child;
       }
     }

@@ -1,9 +1,63 @@
 import { Plus } from 'lucide-react';
+import { ResponsiveDataTable, ColumnDefinition } from '../components/ResponsiveDataTable';
+
+interface RequestRow {
+  id: string;
+  eventName: string;
+  department: string;
+  dateRange: string;
+  status: 'APPROVED' | 'PENDING' | 'DRAFT';
+}
+
+const mockRequests: RequestRow[] = [
+  { id: 'REQ-2026-001', eventName: 'Ajanta Sales Summit', department: 'Marketing', dateRange: '12 Oct - 15 Oct 2026', status: 'APPROVED' },
+  { id: 'REQ-2026-002', eventName: 'Q2 Finance Review', department: 'Finance', dateRange: '24 Nov - 25 Nov 2026', status: 'PENDING' },
+  { id: 'REQ-2026-003', eventName: 'Annual Board Meeting', department: 'Executive', dateRange: '10 Dec 2026', status: 'DRAFT' }
+];
 
 export function VenueRequests() {
+  const columns: ColumnDefinition<RequestRow>[] = [
+    {
+      header: 'Request ID',
+      accessor: (row) => <strong style={{ color: 'var(--primary)' }}>{row.id}</strong>,
+      priority: 'always',
+      mobileLabel: 'Request ID'
+    },
+    {
+      header: 'Event Name',
+      accessor: (row) => row.eventName,
+      priority: 'always',
+      mobileLabel: 'Event Name'
+    },
+    {
+      header: 'Department',
+      accessor: (row) => row.department,
+      priority: 'tablet-desktop',
+      mobileLabel: 'Department'
+    },
+    {
+      header: 'Date Range',
+      accessor: (row) => row.dateRange,
+      priority: 'tablet-desktop',
+      mobileLabel: 'Date Range'
+    },
+    {
+      header: 'Status',
+      accessor: (row) => {
+        let badgeType: 'success' | 'warning' | 'info' = 'info';
+        if (row.status === 'APPROVED') badgeType = 'success';
+        else if (row.status === 'PENDING') badgeType = 'warning';
+        
+        return <span className={`badge badge-${badgeType}`}>{row.status}</span>;
+      },
+      priority: 'always',
+      mobileLabel: 'Status'
+    }
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
         <div>
           <h3 style={{ fontSize: 'var(--font-xl)', fontWeight: '700', marginBottom: 'var(--space-1)' }}>
             Venue Requests
@@ -12,78 +66,24 @@ export function VenueRequests() {
             Submit, track, and manage all venue and event hosting requests.
           </p>
         </div>
-        <button style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-          padding: 'var(--space-2) var(--space-4)',
-          backgroundColor: 'var(--primary)',
-          color: 'var(--text-on-primary)',
-          borderRadius: 'var(--radius-md)',
-          fontWeight: '600',
-          fontSize: 'var(--font-sm)'
-        }}>
+        <button className="btn btn-primary">
           <Plus size={16} />
           <span>New Request</span>
         </button>
       </div>
 
-      <div style={{
-        backgroundColor: 'var(--surface)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-sm)',
-        overflow: 'hidden'
-      }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: 'var(--space-4) var(--space-6)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h4 style={{ fontSize: 'var(--font-base)', fontWeight: '600' }}>Recent Requests</h4>
-          <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Showing 2 requests</span>
+          <h4 style={{ fontSize: 'var(--font-base)', fontWeight: '600', margin: 0 }}>Recent Requests</h4>
+          <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Showing {mockRequests.length} requests</span>
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ backgroundColor: 'var(--background)', borderBottom: '1px solid var(--border)' }}>
-              <th style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-xs)', fontWeight: '700', color: 'var(--text-muted)' }}>REQUEST ID</th>
-              <th style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-xs)', fontWeight: '700', color: 'var(--text-muted)' }}>EVENT NAME</th>
-              <th style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-xs)', fontWeight: '700', color: 'var(--text-muted)' }}>DEPARTMENT</th>
-              <th style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-xs)', fontWeight: '700', color: 'var(--text-muted)' }}>DATE RANGE</th>
-              <th style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-xs)', fontWeight: '700', color: 'var(--text-muted)' }}>STATUS</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              <td style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-sm)', fontWeight: '600' }}>REQ-2026-001</td>
-              <td style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-sm)' }}>Ajanta Sales Summit</td>
-              <td style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-sm)' }}>Marketing</td>
-              <td style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-sm)' }}>12 Oct - 15 Oct 2026</td>
-              <td style={{ padding: 'var(--space-4) var(--space-6)' }}>
-                <span style={{
-                  padding: 'var(--space-1) var(--space-2)',
-                  borderRadius: 'var(--radius-full)',
-                  fontSize: '10px',
-                  fontWeight: '700',
-                  backgroundColor: 'var(--status-success-bg)',
-                  color: 'var(--status-success)'
-                }}>APPROVED</span>
-              </td>
-            </tr>
-            <tr>
-              <td style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-sm)', fontWeight: '600' }}>REQ-2026-002</td>
-              <td style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-sm)' }}>Q2 Finance Review</td>
-              <td style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-sm)' }}>Finance</td>
-              <td style={{ padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--font-sm)' }}>24 Nov - 25 Nov 2026</td>
-              <td style={{ padding: 'var(--space-4) var(--space-6)' }}>
-                <span style={{
-                  padding: 'var(--space-1) var(--space-2)',
-                  borderRadius: 'var(--radius-full)',
-                  fontSize: '10px',
-                  fontWeight: '700',
-                  backgroundColor: 'var(--status-warning-bg)',
-                  color: 'var(--status-warning)'
-                }}>PENDING</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div style={{ padding: 'var(--space-4)' }}>
+          <ResponsiveDataTable 
+            columns={columns} 
+            data={mockRequests} 
+            keyExtractor={(row) => row.id} 
+          />
+        </div>
       </div>
     </div>
   );
