@@ -11,6 +11,7 @@ export async function getDivisions(): Promise<Division[]> {
     .order('division_name', { ascending: true });
 
   if (error) throw new Error(error.message);
+  console.log('Supabase Divisions data:', data);
   return data || [];
 }
 
@@ -22,6 +23,7 @@ export async function getCities(): Promise<City[]> {
     .order('city_name', { ascending: true });
 
   if (error) throw new Error(error.message);
+  console.log('Supabase Cities data:', data);
   return data || [];
 }
 
@@ -33,6 +35,7 @@ export async function getMeetingTypes(): Promise<MeetingType[]> {
     .order('meeting_type_name', { ascending: true });
 
   if (error) throw new Error(error.message);
+  console.log('Supabase Meeting Types data:', data);
   return data || [];
 }
 

@@ -31,6 +31,9 @@ export interface MeetingRequest {
   created_at: string;
   created_by?: string;
 
+  // Custom city fallback (when city not in known list)
+  target_city_name?: string | null;
+
   // Joined fields for display
   divisions?: { division_name: string };
   meeting_types?: { meeting_type_name: string };

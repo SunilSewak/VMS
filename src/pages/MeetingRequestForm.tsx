@@ -7,6 +7,7 @@ import { createMeetingRequest, updateMeetingRequest } from '../features/meetings
 import { DEFAULT_FORM_VALUES, SEATING_STYLES } from '../features/meetings/constants';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../routes/routeRegistry';
+import { CityCombobox, CitySelection } from '../components/CityCombobox';
 
 export function MeetingRequestForm() {
   const { id } = useParams();
@@ -28,6 +29,10 @@ export function MeetingRequestForm() {
 
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [citySelection, setCitySelection] = useState<CitySelection>({
+    city_id: null,
+    target_city_name: null
+  });
 
   // Sync loaded draft request into form values
   useEffect(() => {
@@ -50,6 +55,11 @@ export function MeetingRequestForm() {
         food_requirements: request.food_requirements || '',
         transfer_requirements: request.transfer_requirements || ''
       });
+      // Sync city selection state
+      setCitySelection({
+        city_id: request.city_id || null,
+        target_city_name: request.target_city_name || null
+      });
     }
   }, [request, isEdit, isView]);
 
@@ -67,17 +77,25 @@ export function MeetingRequestForm() {
       }
       if (!formValues.division_id) throw new Error('Division is required');
       if (!formValues.meeting_type_id) throw new Error('Meeting Type is required');
-      if (!formValues.city_id) throw new Error('City is required');
+      if (!citySelection.city_id && !citySelection.target_city_name) {
+        throw new Error('City is required — select a known city or type a custom city name');
+      }
       if (!formValues.start_date) throw new Error('Start Date is required');
       if (!formValues.end_date) throw new Error('End Date is required');
       if (new Date(formValues.start_date) > new Date(formValues.end_date)) {
         throw new Error('Start Date cannot be after End Date');
       }
 
+      // Merge city selection (city_id for known cities, target_city_name for custom)
+      const payload = {
+        ...formValues,
+        city_id: citySelection.city_id || null,
+        target_city_name: citySelection.target_city_name || null
+      };
       if (isCreate) {
-        await createMeetingRequest(formValues, user, status);
+        await createMeetingRequest(payload, user, status);
       } else if (id) {
-        await updateMeetingRequest(id, formValues, status);
+        await updateMeetingRequest(id, payload, status);
       }
 
       navigate(ROUTES.meetingRequests);
@@ -257,17 +275,12 @@ export function MeetingRequestForm() {
               <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>
                 Target City <span style={{ color: 'var(--status-danger)' }}>*</span>
               </label>
-              <select
-                className="form-control"
-                {...register('city_id')}
+              <CityCombobox
+                cities={cities}
+                value={citySelection}
+                onChange={setCitySelection}
                 disabled={isFormDisabled}
-                style={{ width: '100%' }}
-              >
-                <option value="">Select City</option>
-                {cities.map((city) => (
-                  <option key={city.id} value={city.id}>{city.city_name} ({city.state})</option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
