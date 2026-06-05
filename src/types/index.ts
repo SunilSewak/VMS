@@ -31,4 +31,5 @@ export interface UserProfile extends BaseEntity {
   role: AppRole;
   department?: string;
   avatar_url?: string;
+  division_id?: string; // User's assigned division for auto-population
 }
