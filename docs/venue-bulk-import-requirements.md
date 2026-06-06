@@ -456,3 +456,102 @@ The following features are explicitly out of scope for this version:
 - [x] Venue status support added
 
 **Ready for Design:** Yes - Awaiting approval
+---
+
+### 1.13 Additional Design Constraints
+
+#### 1.13.1 Import Philosophy
+> **Import = Create + Update**  
+> **Import ≠ Delete**
+
+No Excel upload should ever delete:
+- Hotels
+- Halls  
+- Cities
+
+**Deletion must remain a separate administrative action.**
+
+#### 1.13.2 Duplicate Handling
+
+**Hotel uniqueness:**
+- **Key:** Hotel Name + City
+- **Behavior:** If hotel exists, reuse and update. If not, create.
+
+**Hall uniqueness:**
+- **Key:** Hotel + Hall Name
+- **Behavior:** If hall exists, update capacities. If not, create.
+
+**Same Hotel + Same Hall within same file:**
+- System must flag duplicate rows during Dry Run
+- Import should NOT silently overwrite data
+- Error message: "Duplicate row detected: Hotel [name], Hall [hall_name]"
+- User must fix duplicates before proceeding
+
+#### 1.13.3 Import History Retention
+- **Policy:** Import history should be retained indefinitely
+- **No automatic purging** in v1
+- **Archival strategy:** To be determined for future versions
+
+#### 1.13.4 Error Report Format
+Error reports should be downloadable in Excel format and include:
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| Row Number | Excel row number (1-based, excluding header) | 25 |
+| Field | Column name that failed validation | Hall Name |
+| Error | Type of validation error | Missing value |
+| Value | The value that caused error | blank |
+
+**Example:**
+```
+Row 25 | Hall Name | Missing value | blank
+Row 41 | Email | Invalid format | not-an-email
+Row 62 | Hall Name | Duplicate within hotel | Regency Ballroom (duplicate)
+```
+
+This makes correction and re-upload much easier.
+
+#### 1.13.5 Future Commercial Readiness
+The hotel master created by import should already support:
+
+| Field | Purpose | Status |
+|-------|---------|--------|
+| status | Support commercial workflows | Required |
+| largest_hall_capacity | Venue Explorer uses this | Auto-calculated |
+| residential_capacity | Delegate counting | Optional |
+
+Even if some future modules do not yet use them, this prevents schema changes later.
+
+---
+
+### 1.14 Approvals
+
+✅ **Phase 1 Requirements Approved**
+
+Proceed to: **Phase 2 – Design**
+
+Design should include:
+- UI Screen Layout
+- Navigation Placement
+- Database Changes
+- Supabase Storage Requirements
+- Import Processing Flow
+- Validation Engine Design
+- Import History Design
+- Error Report Generation Design
+- Implementation Task Breakdown
+
+After Design is complete, stop and wait for approval before Implementation Planning.
+
+## Status: ✅ Requirements Complete & Approved
+
+**Next Phase:** Phase 2 - Design
+
+**Design Approval Checklist:**
+- [x] Import Philosophy: Create + Update only, no Delete
+- [x] Duplicate Handling: Flag duplicates in Dry Run
+- [x] Import History: Retain indefinitely, no auto-purge
+- [x] Error Report: Excel format with Row Number, Field, Error, Value
+- [x] Future Commercial Readiness: status, largest_hall_capacity, residential_capacity
+
+**Ready for Design:** Yes
