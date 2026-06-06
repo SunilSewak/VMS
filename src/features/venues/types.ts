@@ -62,16 +62,20 @@ export interface VenueShortlist {
 }
 
 // UI-level composed type for display in Venue Cards
-export interface VenueCardData {
+export interface VenueCardViewModel {
   id: string;
-  hotel_name: string;
-  category_name: string;
-  city_name: string;
+  hotelId: string;
+  hotelName: string;
+  categoryName: string;
+  cityName: string;
   address: string;
-  primaryPhotoUrl: string | null;
-  maxCapacity: number;
+  primaryImage: string | null;
+  largestHallCapacity: number;
   hallCount: number;
+  shortlisted?: boolean;
 }
+
+export type VenueCardData = VenueCardViewModel;
 
 export interface VenueSearchFilters {
   searchQuery: string;

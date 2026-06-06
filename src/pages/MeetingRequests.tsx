@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Eye, Edit2, Trash2, Send, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Plus, Eye, Edit2, Trash2, Send, Search, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ResponsiveDataTable, ColumnDefinition } from '../components/ResponsiveDataTable';
 import { useMeetingRequests } from '../features/meetings/hooks';
@@ -153,6 +153,15 @@ export function MeetingRequests() {
                 </button>
               </>
             )}
+            <button
+              onClick={() => navigate(`${ROUTES.venueExplorer}?requestId=${row.id}`)}
+              className="btn btn-secondary"
+              style={{ padding: 'var(--space-1) var(--space-2)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              title="Find venues for this request"
+            >
+              <Search size={12} />
+              <span className="hide-mobile" style={{ fontSize: '11px' }}>Find Venues</span>
+            </button>
           </div>
         );
       },

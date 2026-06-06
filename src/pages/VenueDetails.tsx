@@ -61,7 +61,7 @@ export function VenueDetails() {
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)' }}>
           {error ?? 'The venue you are looking for could not be loaded.'}
         </p>
-        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+        <button className="btn btn-secondary" onClick={() => navigate(-1 as unknown as string)}>
           ← Go Back
         </button>
       </div>
@@ -74,7 +74,7 @@ export function VenueDetails() {
       {/* ─── BACK NAV ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(-1 as unknown as string)}
           style={{
             display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
             color: 'var(--text-muted)', fontSize: 'var(--font-sm)', fontWeight: '600',

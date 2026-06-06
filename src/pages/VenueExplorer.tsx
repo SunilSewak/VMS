@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
   MapPin,
   Users,
-  SlidersHorizontal,
   Bookmark,
   Scale,
   Eye,
@@ -15,6 +14,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useVenues, useVenueFilters, useShortlist } from '../features/venues/hooks';
+import { useMeetingRequest } from '../features/meetings/hooks';
 import { useAuth } from '../contexts/AuthContext';
 import type { VenueCardData, VenueSearchFilters } from '../features/venues/types';
 
@@ -34,25 +34,32 @@ export function VenueExplorer() {
   const requestId = searchParams.get('requestId');
   const { user } = useAuth();
 
-  // Search-first state: results only shown after user searches
-  const [hasSearched, setHasSearched] = useState(false);
+  // Search and filter state. The page loads venue cards immediately while the hero search remains prominent.
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
   const [selectedCityId, setSelectedCityId] = useState('all');
   const [selectedCategoryCode, setSelectedCategoryCode] = useState('all');
   const [selectedCapacityIdx, setSelectedCapacityIdx] = useState(0);
 
-  // Comparison drawer state
   const [compareList, setCompareList] = useState<VenueCardData[]>([]);
-  const [showCompareDrawer, setShowCompareDrawer] = useState(false);
   const [showCompareMatrix, setShowCompareMatrix] = useState(false);
 
-  // Filter panel toggle (mobile) - reserved for future responsive use
-  const [_showFilters, _setShowFilters] = useState(false);
+  const getCapacityIndex = (pax: number) => {
+    if (pax <= 100) return 1;
+    if (pax <= 250) return 2;
+    if (pax <= 500) return 3;
+    if (pax > 500) return 4;
+    return 0;
+  };
+
+  // Meeting request context for the planning panel
+  const { request } = useMeetingRequest(requestId ?? undefined);
 
   const selectedCapacity = CAPACITY_OPTIONS[selectedCapacityIdx];
 
   const filters: VenueSearchFilters = {
-    searchQuery: hasSearched ? searchQuery : '',
+    searchQuery,
     cityId: selectedCityId,
     categoryCode: selectedCategoryCode,
     capacityMin: selectedCapacity.min,
@@ -60,11 +67,26 @@ export function VenueExplorer() {
     requestId: requestId ?? undefined,
   };
 
-  const { venues, loading: venuesLoading, error: venuesError } = useVenues(
-    hasSearched ? filters : { searchQuery: '', cityId: 'all', categoryCode: 'all' }
-  );
+  const { venues, loading: venuesLoading, error: venuesError } = useVenues(filters);
   const { cities, categories, loading: filtersLoading } = useVenueFilters();
   const { shortlistedIds, toggleShortlist } = useShortlist(requestId, user?.id ?? null);
+
+  useEffect(() => {
+    if (!requestId || !request || hasSearched) return;
+
+    if (request.city_id) {
+      setSelectedCityId(request.city_id);
+    }
+
+    setSelectedCapacityIdx(getCapacityIndex(request.expected_pax));
+    setSearchInput(request.cities?.city_name ?? request.target_city_name ?? '');
+    setSearchQuery(request.cities?.city_name ?? request.target_city_name ?? '');
+    setHasSearched(true);
+  }, [requestId, request, hasSearched]);
+
+  const recommendedVenues = [...venues]
+    .sort((a, b) => b.largestHallCapacity - a.largestHallCapacity)
+    .slice(0, 3);
 
   // Toggle compare
   const toggleCompare = (venue: VenueCardData) => {
@@ -72,13 +94,12 @@ export function VenueExplorer() {
       const exists = prev.find((v) => v.id === venue.id);
       if (exists) return prev.filter((v) => v.id !== venue.id);
       if (prev.length >= 4) return prev; // max 4
-      const next = [...prev, venue];
-      if (next.length >= 2) setShowCompareDrawer(true);
-      return next;
+      return [...prev, venue];
     });
   };
 
   const handleSearch = () => {
+    setSearchQuery(searchInput.trim());
     setHasSearched(true);
   };
 
@@ -153,8 +174,8 @@ export function VenueExplorer() {
                 type="text"
                 id="venue-search-input"
                 placeholder="Search hotel name, city or address..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 style={{
                   width: '100%',
@@ -237,373 +258,277 @@ export function VenueExplorer() {
         </div>
       </div>
 
-      {/* ─── MAIN CONTENT ─── */}
-      {!hasSearched ? (
-        /* Pre-search: Discovery cards */
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 'var(--space-6)', alignItems: 'start' }}>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '700', color: 'var(--text-main)' }}>
-            Popular Destinations
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 'var(--space-3)' }}>
-            {[
-              { city: 'Mumbai', img: 'https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=400&q=80', count: '2 hotels' },
-              { city: 'Goa', img: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400&q=80', count: '1 hotel' },
-              { city: 'Pune', img: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=400&q=80', count: '1 hotel' },
-              { city: 'Bengaluru', img: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=400&q=80', count: '1 hotel' },
-              { city: 'Delhi', img: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=400&q=80', count: '1 hotel' },
-            ].map(({ city, img, count }) => (
-              <button
-                key={city}
-                onClick={() => {
-                  setSearchQuery(city);
-                  setHasSearched(true);
-                }}
-                style={{
-                  position: 'relative',
-                  height: '120px',
-                  borderRadius: 'var(--radius-lg)',
-                  overflow: 'hidden',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <img src={img} alt={city} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 100%)',
-                  display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                  padding: 'var(--space-3)',
-                  textAlign: 'left',
-                }}>
-                  <span style={{ color: '#fff', fontWeight: '700', fontSize: 'var(--font-size-md)' }}>{city}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>{count}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        /* Post-search: Filters + Results */
-        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
-
-          {/* ─── FILTERS SIDEBAR ─── */}
-          <div className="card" style={{ padding: 'var(--space-5)', position: 'sticky', top: '80px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-5)', paddingBottom: 'var(--space-3)', borderBottom: '1px solid var(--border)' }}>
-              <SlidersHorizontal size={16} style={{ color: 'var(--primary)' }} />
-              <h3 style={{ fontSize: 'var(--font-sm)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                Filters
-              </h3>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-
-              {/* Category */}
-              <div>
-                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: '700', color: 'var(--text-muted)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Category
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                  {[{ code: 'all', name: 'All Categories' }, ...categories.map((c) => ({ code: c.category_code, name: c.category_name }))].map(({ code, name }) => (
-                    <button
-                      key={code}
-                      onClick={() => setSelectedCategoryCode(code)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-                        padding: 'var(--space-2) var(--space-3)',
-                        borderRadius: 'var(--radius-md)',
-                        border: `1.5px solid ${selectedCategoryCode === code ? 'var(--primary)' : 'transparent'}`,
-                        background: selectedCategoryCode === code ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'var(--surface-2)',
-                        color: selectedCategoryCode === code ? 'var(--primary)' : 'var(--text-main)',
-                        fontWeight: selectedCategoryCode === code ? '700' : '500',
-                        fontSize: 'var(--font-sm)',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        textAlign: 'left',
-                        width: '100%',
-                        fontFamily: 'var(--font-family)',
-                      }}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* City */}
-              <div>
-                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: '700', color: 'var(--text-muted)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  City
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                  {[{ id: 'all', city_name: 'All Cities' }, ...cities].map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => setSelectedCityId(c.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-                        padding: 'var(--space-2) var(--space-3)',
-                        borderRadius: 'var(--radius-md)',
-                        border: `1.5px solid ${selectedCityId === c.id ? 'var(--primary)' : 'transparent'}`,
-                        background: selectedCityId === c.id ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'var(--surface-2)',
-                        color: selectedCityId === c.id ? 'var(--primary)' : 'var(--text-main)',
-                        fontWeight: selectedCityId === c.id ? '700' : '500',
-                        fontSize: 'var(--font-sm)',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        textAlign: 'left',
-                        width: '100%',
-                        fontFamily: 'var(--font-family)',
-                      }}
-                    >
-                      <MapPin size={13} /> {c.city_name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Hall Capacity */}
-              <div>
-                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: '700', color: 'var(--text-muted)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Hall Capacity
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                  {CAPACITY_OPTIONS.map((opt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedCapacityIdx(i)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-                        padding: 'var(--space-2) var(--space-3)',
-                        borderRadius: 'var(--radius-md)',
-                        border: `1.5px solid ${selectedCapacityIdx === i ? 'var(--primary)' : 'transparent'}`,
-                        background: selectedCapacityIdx === i ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'var(--surface-2)',
-                        color: selectedCapacityIdx === i ? 'var(--primary)' : 'var(--text-main)',
-                        fontWeight: selectedCapacityIdx === i ? '700' : '500',
-                        fontSize: 'var(--font-sm)',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        textAlign: 'left',
-                        width: '100%',
-                        fontFamily: 'var(--font-family)',
-                      }}
-                    >
-                      <Users size={13} /> {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* ─── RESULTS AREA ─── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            {/* Results header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 'var(--space-4)', alignItems: 'center' }}>
+            <div>
               <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
-                {venuesLoading
-                  ? 'Searching venues…'
-                  : `${venues.length} venue${venues.length !== 1 ? 's' : ''} found`}
+                {hasSearched && venues.length > 0
+                  ? `${venues.length} venue${venues.length !== 1 ? 's' : ''} available`
+                  : 'Search across Ajanta-approved venues'}
               </span>
-              {compareList.length > 0 && (
-                <button
-                  onClick={() => setShowCompareDrawer(true)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-                    padding: 'var(--space-2) var(--space-4)',
-                    background: 'var(--primary)',
-                    color: '#fff',
-                    borderRadius: 'var(--radius-full)',
-                    fontWeight: '700',
-                    fontSize: 'var(--font-sm)',
-                    fontFamily: 'var(--font-family)',
-                    cursor: 'pointer',
-                    animation: 'fadeIn 0.2s',
-                  }}
-                >
-                  <Scale size={16} />
-                  Compare ({compareList.length})
-                </button>
-              )}
+              <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: '800', marginTop: 'var(--space-2)', color: 'var(--text-main)' }}>
+                {!hasSearched
+                  ? 'Ready to discover corporate venues'
+                  : venues.length > 0
+                    ? 'Search results'
+                    : 'No venues match the current search criteria'}
+              </h2>
             </div>
+          </div>
 
-            {/* Loading state */}
-            {venuesLoading && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="card animate-pulse" style={{ height: '200px', background: 'var(--surface-2)' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)' }}>
+            <div className="card" style={{ padding: 'var(--space-5)', background: 'var(--surface)', borderRadius: 'var(--radius-xl)' }}>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>Capacity band</p>
+              <strong style={{ fontSize: 'var(--font-size-lg)' }}>{selectedCapacity.label}</strong>
+            </div>
+            <div className="card" style={{ padding: 'var(--space-5)', background: 'var(--surface)', borderRadius: 'var(--radius-xl)' }}>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>Destination</p>
+              <strong style={{ fontSize: 'var(--font-size-lg)' }}>{searchQuery || (selectedCityId === 'all' ? 'Any city' : cities.find((c) => c.id === selectedCityId)?.city_name ?? 'Selected')}</strong>
+            </div>
+            <div className="card" style={{ padding: 'var(--space-5)', background: 'var(--surface)', borderRadius: 'var(--radius-xl)' }}>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>Category</p>
+              <strong style={{ fontSize: 'var(--font-size-lg)' }}>{selectedCategoryCode === 'all' ? 'All venues' : categories.find((c) => c.category_code === selectedCategoryCode)?.category_name ?? 'Selected'}</strong>
+            </div>
+          </div>
+
+          {recommendedVenues.length > 0 && (
+            <div className="card" style={{ padding: 'var(--space-5)', borderRadius: 'var(--radius-xl)', background: 'var(--surface)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+                <div>
+                  <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
+                    Recommended Venues
+                  </p>
+                  <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '800' }}>Top venues by capacity</h3>
+                </div>
+                <span style={{ padding: '10px 14px', borderRadius: '999px', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 'var(--font-sm)', fontWeight: '700' }}>
+                  Best fit for {selectedCapacity.label}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-3)' }}>
+                {recommendedVenues.map((venue) => (
+                  <div key={venue.id} className="card" style={{ padding: 'var(--space-4)', background: '#fff', borderRadius: 'var(--radius-lg)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
+                      <div>
+                        <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>{venue.cityName}</p>
+                        <strong style={{ fontSize: 'var(--font-size-md)', display: 'block' }}>{venue.hotelName}</strong>
+                      </div>
+                      <span style={{ color: 'var(--primary)', fontWeight: '700' }}>{venue.largestHallCapacity} pax</span>
+                    </div>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-3)' }}>{venue.categoryName}</p>
+                    <button
+                      onClick={() => navigate(`/venue-explorer/${venue.id}${requestId ? `?requestId=${requestId}` : ''}`)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-lg)',
+                        border: '1px solid var(--primary)',
+                        background: 'transparent',
+                        color: 'var(--primary)',
+                        cursor: 'pointer',
+                        fontWeight: '700',
+                      }}
+                    >
+                      View details
+                    </button>
+                  </div>
                 ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Error state */}
-            {venuesError && !venuesLoading && (
-              <div className="card" style={{ padding: 'var(--space-8)', textAlign: 'center' }}>
-                <AlertCircle size={40} style={{ color: 'var(--status-error)', marginBottom: 'var(--space-3)' }} />
-                <h4 style={{ fontWeight: '600', marginBottom: 'var(--space-2)' }}>Could not load venues</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>{venuesError}</p>
-              </div>
-            )}
+          {venuesLoading ? (
+            <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+              {[1, 2, 3].map((index) => (
+                <div key={index} className="card animate-pulse" style={{ height: '360px', background: 'var(--surface-2)' }} />
+              ))}
+            </div>
+          ) : venuesError ? (
+            <div className="card" style={{ padding: 'var(--space-8)', textAlign: 'center' }}>
+              <AlertCircle size={40} style={{ color: 'var(--status-error)', marginBottom: 'var(--space-3)' }} />
+              <h4 style={{ fontWeight: '600', marginBottom: 'var(--space-2)' }}>Could not load venues</h4>
+              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>{venuesError}</p>
+            </div>
+          ) : !hasSearched && venues.length === 0 ? (
+            <div className="card" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
+              <Building2 size={48} style={{ color: 'var(--text-light)', marginBottom: 'var(--space-4)' }} />
+              <h4 style={{ fontWeight: '700', marginBottom: 'var(--space-2)' }}>No venue master data available yet.</h4>
+              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)' }}>
+                Please import or seed venue data to begin discovery.
+              </p>
+            </div>
+          ) : venues.length === 0 ? (
+            <div className="card" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
+              <Building2 size={48} style={{ color: 'var(--text-light)', marginBottom: 'var(--space-4)' }} />
+              <h4 style={{ fontWeight: '700', marginBottom: 'var(--space-2)' }}>No venues match the current search criteria.</h4>
+              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto' }}>
+                Try one of these options to broaden your search.
+              </p>
+              <ul style={{ textAlign: 'left', display: 'inline-block', marginBottom: 'var(--space-4)', color: 'var(--text-muted)', fontSize: 'var(--font-sm)', lineHeight: '1.8' }}>
+                <li>Change the destination</li>
+                <li>Adjust the capacity range</li>
+                <li>Pick a different category</li>
+                <li>Reset filters and start fresh</li>
+              </ul>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchQuery('');
+                  setSelectedCityId('all');
+                  setSelectedCategoryCode('all');
+                  setSelectedCapacityIdx(0);
+                  setHasSearched(false);
+                }}
+              >
+                Reset filters
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-4)' }}>
+              {venues.map((venue) => {
+                const isShortlisted = shortlistedIds.includes(venue.id);
+                const isInCompare = compareList.some((v) => v.id === venue.id);
 
-            {/* Empty state */}
-            {!venuesLoading && !venuesError && venues.length === 0 && (
-              <div className="card" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
-                <Building2 size={48} style={{ color: 'var(--text-light)', marginBottom: 'var(--space-4)' }} />
-                <h4 style={{ fontWeight: '700', marginBottom: 'var(--space-2)' }}>No Venues Found</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)' }}>
-                  Try adjusting your search or filters above.
+                return (
+                  <VenueCard
+                    key={venue.id}
+                    venue={venue}
+                    isShortlisted={isShortlisted}
+                    isInCompare={isInCompare}
+                    hasRequestContext={!!requestId}
+                    onShortlist={() => toggleShortlist(venue.id)}
+                    onCompare={() => toggleCompare(venue)}
+                    onView={() => navigate(`/venue-explorer/${venue.id}${requestId ? `?requestId=${requestId}` : ''}`)}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <aside className="card" style={{ padding: 'var(--space-5)', position: 'sticky', top: '80px', minHeight: '320px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <Building2 size={24} style={{ color: 'var(--primary)' }} />
+              <div>
+                <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Planning Context
                 </p>
+                <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '800' }}>
+                  {request?.meeting_name ?? 'Meeting request not linked'}
+                </h3>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>City</span>
+                <strong>{request?.cities?.city_name ?? request?.target_city_name ?? 'Any'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Expected PAX</span>
+                <strong>{request?.expected_pax ?? '—'}</strong>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)', display: 'grid', gap: 'var(--space-3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Matching Venues</span>
+                <strong>{venues.length}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Compared Venues</span>
+                <strong>{compareList.length}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Shortlisted Venues</span>
+                <strong>{shortlistedIds.length}</strong>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <button
+                onClick={() => setShowCompareMatrix(true)}
+                disabled={compareList.length < 2}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    padding: '14px 16px',
+                    borderRadius: 'var(--radius-xl)',
+                    border: 'none',
+                    background: compareList.length < 2 ? 'var(--border)' : 'var(--primary)',
+                    color: compareList.length < 2 ? 'var(--text-muted)' : '#fff',
+                    cursor: compareList.length < 2 ? 'not-allowed' : 'pointer',
+                    fontWeight: '700',
+                  }}
+                >
+                  Open Comparison
+                </button>
                 <button
-                  className="btn btn-secondary"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedCityId('all');
                     setSelectedCategoryCode('all');
                     setSelectedCapacityIdx(0);
-                    setHasSearched(true);
+                    setHasSearched(false);
+                  }}
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: 'var(--radius-xl)',
+                    border: '1px solid var(--border)',
+                    background: 'transparent',
+                    color: 'var(--text-main)',
+                    fontWeight: '700',
+                    cursor: 'pointer',
                   }}
                 >
-                  Clear All Filters
+                  Start a new search
                 </button>
               </div>
-            )}
-
-            {/* Venue Cards */}
-            {!venuesLoading && !venuesError && venues.map((venue) => {
-              const isShortlisted = shortlistedIds.includes(venue.id);
-              const isInCompare = compareList.some((v) => v.id === venue.id);
-
-              return (
-                <VenueCard
-                  key={venue.id}
-                  venue={venue}
-                  isShortlisted={isShortlisted}
-                  isInCompare={isInCompare}
-                  hasRequestContext={!!requestId}
-                  onShortlist={() => toggleShortlist(venue.id)}
-                  onCompare={() => toggleCompare(venue)}
-                  onView={() => navigate(`/venue-explorer/${venue.id}${requestId ? `?requestId=${requestId}` : ''}`)}
-                />
-              );
-            })}
-          </div>
+            </div>
+          </aside>
         </div>
-      )}
 
-      {/* ─── COMPARE DRAWER ─── */}
-      {showCompareDrawer && compareList.length > 0 && (
-        <>
-          {/* Backdrop */}
-          <div
-            style={{
-              position: 'fixed', inset: 0,
-              background: 'rgba(0,0,0,0.4)',
-              zIndex: 900,
-              backdropFilter: 'blur(2px)',
-              animation: 'fadeIn 0.2s',
-            }}
-            onClick={() => setShowCompareDrawer(false)}
-          />
-          {/* Drawer */}
-          <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: 'var(--surface)',
-            borderTop: '1px solid var(--border)',
-            borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
-            zIndex: 901,
-            padding: 'var(--space-6)',
-            boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
-            animation: 'slideUp 0.3s ease',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
-              <div>
-                <h3 style={{ fontWeight: '700', fontSize: 'var(--font-size-lg)' }}>Compare Venues</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Select 2–4 venues to compare side by side</p>
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-                {compareList.length >= 2 && (
-                  <button
-                    onClick={() => { setShowCompareDrawer(false); setShowCompareMatrix(true); }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-                      padding: 'var(--space-3) var(--space-5)',
-                      background: 'var(--primary)',
-                      color: '#fff',
-                      borderRadius: 'var(--radius-lg)',
-                      fontWeight: '700',
-                      fontFamily: 'var(--font-family)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Scale size={16} /> Open Comparison
-                  </button>
-                )}
-                <button onClick={() => setShowCompareDrawer(false)} style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-              {compareList.map((v) => (
-                <div key={v.id} style={{
-                  position: 'relative',
-                  background: 'var(--surface-2)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: 'var(--space-4)',
-                  width: '200px',
-                  border: '1.5px solid var(--primary)',
-                }}>
-                  <button
-                    onClick={() => toggleCompare(v)}
-                    style={{ position: 'absolute', top: '8px', right: '8px', color: 'var(--text-muted)', cursor: 'pointer' }}
-                  >
-                    <X size={14} />
-                  </button>
-                  <div style={{
-                    height: '80px',
-                    borderRadius: 'var(--radius-md)',
-                    overflow: 'hidden',
-                    marginBottom: 'var(--space-3)',
-                    background: 'var(--border)',
-                  }}>
-                    <img
-                      src={v.primaryPhotoUrl ?? PLACEHOLDER_IMAGE}
-                      alt={v.hotel_name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMAGE; }}
-                    />
-                  </div>
-                  <p style={{ fontWeight: '700', fontSize: 'var(--font-sm)', marginBottom: '4px' }}>{v.hotel_name}</p>
-                  <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>{v.city_name}</p>
-                  <p style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '600', marginTop: '4px' }}>
-                    {v.maxCapacity > 0 ? `Up to ${v.maxCapacity} pax` : 'Capacity TBD'}
-                  </p>
-                </div>
+      {compareList.length > 0 && (
+        <div style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0,
+          zIndex: 950,
+          background: 'rgba(255,255,255,0.98)',
+          borderTop: '1px solid var(--border)',
+          boxShadow: '0 -8px 30px rgba(0,0,0,0.08)',
+          padding: 'var(--space-4) var(--space-6)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-4)',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>Comparing ({compareList.length})</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+              {compareList.map((venue) => (
+                <span key={venue.id} style={{ padding: '10px 14px', borderRadius: '999px', background: 'var(--surface)', color: 'var(--text-main)', fontWeight: '700', fontSize: 'var(--font-sm)' }}>
+                  {venue.hotelName}
+                </span>
               ))}
-              {compareList.length < 4 && (
-                <div style={{
-                  width: '200px',
-                  height: '158px',
-                  border: '2px dashed var(--border)',
-                  borderRadius: 'var(--radius-lg)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--text-light)',
-                  gap: 'var(--space-2)',
-                  fontSize: 'var(--font-sm)',
-                }}>
-                  <Building2 size={24} />
-                  Add venue
-                </div>
-              )}
             </div>
           </div>
-        </>
+          <button
+            onClick={() => setShowCompareMatrix(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '14px 24px',
+              borderRadius: 'var(--radius-xl)',
+              border: 'none',
+              background: 'var(--primary)',
+              color: '#fff',
+              fontWeight: '800',
+              cursor: 'pointer',
+            }}
+          >
+            <Scale size={16} /> Open Comparison
+          </button>
+        </div>
       )}
 
       {/* ─── COMPARE MATRIX MODAL ─── */}
@@ -643,23 +568,23 @@ export function VenueExplorer() {
                   <div key={v.id} style={{ textAlign: 'center' }}>
                     <div style={{ height: '100px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 'var(--space-2)' }}>
                       <img
-                        src={v.primaryPhotoUrl ?? PLACEHOLDER_IMAGE}
-                        alt={v.hotel_name}
+                        src={v.primaryImage ?? PLACEHOLDER_IMAGE}
+                        alt={v.hotelName}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMAGE; }}
                       />
                     </div>
-                    <p style={{ fontWeight: '700', fontSize: 'var(--font-sm)', color: 'var(--primary)' }}>{v.hotel_name}</p>
+                    <p style={{ fontWeight: '700', fontSize: 'var(--font-sm)', color: 'var(--primary)' }}>{v.hotelName}</p>
                   </div>
                 ))}
               </div>
 
               {/* Comparison Rows */}
               {[
-                { label: 'City', getValue: (v: VenueCardData) => v.city_name },
-                { label: 'Category', getValue: (v: VenueCardData) => v.category_name },
+                { label: 'City', getValue: (v: VenueCardData) => v.cityName },
+                { label: 'Category', getValue: (v: VenueCardData) => v.categoryName },
                 { label: 'Address', getValue: (v: VenueCardData) => v.address },
-                { label: 'Max Hall Capacity', getValue: (v: VenueCardData) => v.maxCapacity > 0 ? `${v.maxCapacity} pax` : '—' },
+                { label: 'Max Hall Capacity', getValue: (v: VenueCardData) => v.largestHallCapacity > 0 ? `${v.largestHallCapacity} pax` : '—' },
                 { label: 'No. of Halls', getValue: (v: VenueCardData) => `${v.hallCount} hall${v.hallCount !== 1 ? 's' : ''}` },
               ].map(({ label, getValue }, rowIdx) => (
                 <div
@@ -681,7 +606,7 @@ export function VenueExplorer() {
                     const val = getValue(v);
                     // Highlight best capacity
                     const isBestCapacity = label === 'Max Hall Capacity' &&
-                      v.maxCapacity === Math.max(...compareList.map((x) => x.maxCapacity));
+                      v.largestHallCapacity === Math.max(...compareList.map((x) => x.largestHallCapacity));
                     return (
                       <div key={v.id} style={{
                         textAlign: 'center',
@@ -745,8 +670,8 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
       {/* ─── IMAGE SECTION (40%) ─── */}
       <div style={{ position: 'relative', minHeight: '200px', background: 'var(--surface-2)' }}>
         <img
-          src={imgError ? PLACEHOLDER_IMAGE : (venue.primaryPhotoUrl ?? PLACEHOLDER_IMAGE)}
-          alt={venue.hotel_name}
+          src={imgError ? PLACEHOLDER_IMAGE : (venue.primaryImage ?? PLACEHOLDER_IMAGE)}
+          alt={venue.hotelName}
           onError={() => setImgError(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
@@ -768,7 +693,7 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
           fontWeight: '700',
           letterSpacing: '0.04em',
         }}>
-          {venue.category_name}
+          {venue.categoryName}
         </div>
 
         {/* Shortlist button */}
@@ -801,11 +726,11 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
         <div>
           {/* Name + City */}
           <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '800', color: 'var(--text-main)', marginBottom: 'var(--space-1)', lineHeight: 1.3 }}>
-            {venue.hotel_name}
+            {venue.hotelName}
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)' }}>
             <MapPin size={14} />
-            <span>{venue.city_name}{venue.address && venue.address !== '—' ? ` · ${venue.address}` : ''}</span>
+            <span>{venue.cityName}{venue.address && venue.address !== '—' ? ` · ${venue.address}` : ''}</span>
           </div>
 
           {/* Key Stats */}
@@ -813,7 +738,7 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
             <StatBadge
               icon={<Users size={14} />}
               label="Max Capacity"
-              value={venue.maxCapacity > 0 ? `${venue.maxCapacity} pax` : '—'}
+              value={venue.largestHallCapacity > 0 ? `${venue.largestHallCapacity} pax` : '—'}
               highlight
             />
             <StatBadge

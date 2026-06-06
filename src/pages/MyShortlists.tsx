@@ -3,7 +3,6 @@ import {
   MapPin,
   Bookmark,
   Building2,
-  Users,
   AlertCircle,
   ExternalLink,
   Clock,

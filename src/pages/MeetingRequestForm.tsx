@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm } from '../lib/shims/react-hook-form';
 import {
-  ArrowLeft, Save, Send, Edit3, AlertCircle, RefreshCw,
+  ArrowLeft, Save, Send, Edit3, Search, AlertCircle, RefreshCw,
   ClipboardList, MapPin, Users, Wrench, Home, Building2, Check,
   Award, Briefcase, Calendar, Sparkles, Star, Hotel,
   Layers, GraduationCap, CheckCircle2, TrendingUp, Cpu, BedDouble
@@ -790,6 +790,16 @@ export function MeetingRequestForm() {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {request && !isCreate && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`${ROUTES.venueExplorer}?requestId=${id}`)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+            >
+              <Search size={15} />
+              <span>Find Matching Venues</span>
+            </button>
+          )}
           {isView && request?.status === 'DRAFT' && (
             <button
               className="btn btn-primary"

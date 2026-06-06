@@ -1,5 +1,12 @@
 import { supabase } from '../../lib/supabase';
-import type { Hotel, VenueCardData, VenueSearchFilters, VenueShortlist, HotelCategory, City } from './types';
+import type {
+  Hotel,
+  VenueCardViewModel,
+  VenueSearchFilters,
+  VenueShortlist,
+  HotelCategory,
+  City,
+} from './types';
 
 // Fetch all cities for filter dropdowns
 export async function fetchCities(): Promise<City[]> {
@@ -23,7 +30,7 @@ export async function fetchCategories(): Promise<HotelCategory[]> {
 
 // Search venues with filters — returns card-ready data
 // Joins: hotel_categories, cities, venue_photos (primary), halls (for MAX capacity)
-export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCardData[]> {
+export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCardViewModel[]> {
   let query = supabase
     .from('hotels')
     .select(`
@@ -61,8 +68,8 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
 
   const hotels = (data ?? []) as Hotel[];
 
-  // Transform into VenueCardData
-  let results: VenueCardData[] = hotels.map((h) => {
+  // Transform into VenueCardViewModel
+  let results: VenueCardViewModel[] = hotels.map((h) => {
     const halls = h.halls ?? [];
     const photos = h.venue_photos ?? [];
     const primaryPhoto = photos
@@ -71,13 +78,15 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
 
     return {
       id: h.id,
-      hotel_name: h.hotel_name,
-      category_name: h.hotel_categories?.category_name ?? '—',
-      city_name: h.cities?.city_name ?? '—',
+      hotelId: h.id,
+      hotelName: h.hotel_name,
+      categoryName: h.hotel_categories?.category_name ?? '—',
+      cityName: h.cities?.city_name ?? '—',
       address: h.address ?? '—',
-      primaryPhotoUrl: primaryPhoto?.storage_path ?? null,
-      maxCapacity: halls.length > 0 ? Math.max(...halls.map((hall) => hall.capacity)) : 0,
+      primaryImage: primaryPhoto?.storage_path ?? null,
+      largestHallCapacity: halls.length > 0 ? Math.max(...halls.map((hall) => hall.capacity)) : 0,
       hallCount: halls.length,
+      shortlisted: false,
     };
   });
 
@@ -86,18 +95,18 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
     const q = filters.searchQuery.toLowerCase();
     results = results.filter(
       (v) =>
-        v.hotel_name.toLowerCase().includes(q) ||
-        v.city_name.toLowerCase().includes(q) ||
+        v.hotelName.toLowerCase().includes(q) ||
+        v.cityName.toLowerCase().includes(q) ||
         v.address.toLowerCase().includes(q)
     );
   }
 
   // Client-side capacity filter
   if (filters.capacityMin !== undefined) {
-    results = results.filter((v) => v.maxCapacity >= (filters.capacityMin ?? 0));
+    results = results.filter((v) => v.largestHallCapacity >= (filters.capacityMin ?? 0));
   }
   if (filters.capacityMax !== undefined) {
-    results = results.filter((v) => v.maxCapacity <= (filters.capacityMax ?? Infinity));
+    results = results.filter((v) => v.largestHallCapacity <= (filters.capacityMax ?? Infinity));
   }
 
   return results;
