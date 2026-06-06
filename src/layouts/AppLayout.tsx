@@ -33,19 +33,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Filtered menu items based on logged in user's role
   const menuItems = user ? getNavigationForRole(user.role) : [];
-  
-  // Debug logging for navigation
-  useEffect(() => {
-    if (user) {
-      console.log('🧭 === NAVIGATION DEBUG ===');
-      console.log('👤 Current user:', user);
-      console.log('🎭 User role:', user.role);
-      console.log('🔍 Is SUPER_ADMIN?', user.role === 'SUPER_ADMIN');
-      console.log('📋 ALL_MODULES available in system:', getNavigationForRole('SUPER_ADMIN').map(m => m.name));
-      console.log('👁️ VISIBLE_MODULES for user:', menuItems.map(m => m.name));
-      console.log('🧭 === NAVIGATION DEBUG END ===');
-    }
-  }, [user, menuItems]);
 
   return (
     <div className="app-container">
