@@ -103,6 +103,13 @@ export const navigationConfig: NavigationItem[] = [
     path: ROUTES.users,
     iconName: 'Users',
     roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
+  },
+  // Venue Import (for bulk hotel and hall onboarding)
+  {
+    name: 'Venue Import',
+    path: ROUTES.venueImport,
+    iconName: 'FileArchive',
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
   }
 ];
 

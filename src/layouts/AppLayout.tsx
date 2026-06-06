@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
-import { getNavigationForRole } from '../config/navigation';
+import { getNavigationGroupsForRole } from '../config/navigationGroups';
+import { NavigationDropdown } from '../components/NavigationDropdown';
 import { CommandSearch } from '../components/CommandSearch';
 import * as LucideIcons from 'lucide-react';
 
@@ -32,7 +33,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Filtered menu items based on logged in user's role
-  const menuItems = user ? getNavigationForRole(user.role) : [];
+  const navigationGroups = user ? getNavigationGroupsForRole(user.role) : [];
 
   return (
     <div className="app-container">
@@ -291,30 +292,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           padding: '0 var(--space-4)'
         }}>
           <div style={{ display: 'flex', gap: 'var(--space-1)', height: '100%' }}>
-            {menuItems.map((item) => {
-              const isActive = location.pathname === item.path.split('?')[0];
+            {navigationGroups.map((group) => {
+              // Check if group has active submenu
+              const isGroupActive = location.pathname.split('?')[0].startsWith(group.submenus[0]?.path.split('?')[0] || '');
               return (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-2)',
-                    padding: '0 var(--space-4)',
-                    color: isActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
-                    backgroundColor: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontSize: 'var(--font-size-md)',
-                    transition: 'all var(--transition-fast)',
-                    borderBottom: isActive ? '3px solid var(--secondary)' : '3px solid transparent',
-                    height: '100%',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  {renderIcon(item.iconName)}
-                  <span>{item.name}</span>
-                </Link>
+                <NavigationDropdown
+                  key={group.id}
+                  group={group}
+                  isActive={isGroupActive}
+                />
               );
             })}
           </div>
@@ -367,31 +353,65 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </button>
             </div>
 
-            {/* Navigation links */}
-            <nav style={{ flex: 1, padding: 'var(--space-4) var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-              {menuItems.map((item) => {
-                const isActive = location.pathname === item.path.split('?')[0];
+            {/* Navigation links - Grouped by Business Process */}
+            <nav style={{ flex: 1, padding: 'var(--space-4) var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              {navigationGroups.map((group) => {
+                const groupHasAccess = group.roles.includes(user?.role || 'VIEWER');
+                if (!groupHasAccess || group.submenus.length === 0) return null;
+
                 return (
-                  <Link
-                    key={item.name}
-                    to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--space-3)',
-                      padding: 'var(--space-3) var(--space-4)',
-                      borderRadius: 'var(--radius-md)',
-                      color: isActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
-                      backgroundColor: isActive ? 'var(--primary)' : 'transparent',
-                      fontWeight: 'var(--font-weight-semibold)',
-                      fontSize: 'var(--font-size-md)',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                  >
-                    {renderIcon(item.iconName)}
-                    <span>{item.name}</span>
-                  </Link>
+                  <div key={group.id}>
+                    {/* Group Header */}
+                    <Link
+                      to={group.submenus[0]?.path || '#'}
+                      onClick={() => setMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-3)',
+                        padding: 'var(--space-3) var(--space-4)',
+                        borderRadius: 'var(--radius-md)',
+                        color: '#38bdf8',
+                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                        fontWeight: '600',
+                        fontSize: 'var(--font-size-sm)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}
+                    >
+                      {renderIcon(group.iconName)}
+                      <span>{group.name}</span>
+                    </Link>
+
+                    {/* Group Submenus */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', paddingLeft: 'var(--space-5)', marginTop: 'var(--space-1)' }}>
+                      {group.submenus.map((submenu) => {
+                        const isActive = location.pathname === submenu.path.split('?')[0];
+                        return (
+                          <Link
+                            key={submenu.name}
+                            to={submenu.path}
+                            onClick={() => setMobileMenuOpen(false)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 'var(--space-3)',
+                              padding: 'var(--space-2) var(--space-4)',
+                              borderRadius: 'var(--radius-md)',
+                              color: isActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
+                              backgroundColor: isActive ? 'var(--primary)' : 'transparent',
+                              fontWeight: isActive ? '500' : '400',
+                              fontSize: 'var(--font-size-sm)',
+                              transition: 'all var(--transition-fast)'
+                            }}
+                          >
+                            {renderIcon(submenu.iconName)}
+                            <span>{submenu.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </nav>

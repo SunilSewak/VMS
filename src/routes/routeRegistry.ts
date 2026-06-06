@@ -16,6 +16,7 @@ export const ROUTES = {
   finance: "/finance",
   reports: "/reports",
   users: "/settings/users",
+  venueImport: "/admin/venue-import",
   login: "/login"
 } as const;
 

@@ -18,8 +18,10 @@ import { Bookings } from './pages/Bookings';
 import { Finance } from './pages/Finance';
 import { Reports } from './pages/Reports';
 import { UserSettings } from './pages/UserSettings';
+import { VenueBulkImport } from './pages/VenueBulkImport';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ROUTES } from './routes/routeRegistry';
+import { ROLES } from './auth/permissions';
 import { useEffect } from 'react';
 
 // Redirect helper component
@@ -175,6 +177,14 @@ export default function App() {
               <ProtectedRoute>
                 <AppLayout>
                   <UserSettings />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path={ROUTES.venueImport} element={
+              <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <AppLayout>
+                  <VenueBulkImport />
                 </AppLayout>
               </ProtectedRoute>
             } />
