@@ -49,15 +49,17 @@
 ALTER TABLE hotels ADD COLUMN IF NOT EXISTS residential_capacity INTEGER DEFAULT 0;
 ALTER TABLE hotels ADD COLUMN IF NOT EXISTS largest_hall_capacity INTEGER DEFAULT 0;
 ALTER TABLE hotels ADD COLUMN IF NOT EXISTS total_rooms INTEGER;
-ALTER COLUMN contact_person TYPE TEXT;  -- Already exists
-ALTER COLUMN contact_number TYPE TEXT;  -- Already exists, rename to mobile?
+ALTER TABLE hotels ADD COLUMN IF NOT EXISTS vendor_code TEXT;  -- NEW: For future procurement
+ALTER TABLE hotels ADD COLUMN IF NOT EXISTS preferred_vendor_status TEXT CHECK (
+  preferred_vendor_status IS NULL OR 
+  preferred_vendor_status IN ('PREFERRED', 'APPROVED', 'UNDER_REVIEW', 'BLACKLISTED')
+);  -- NEW: For future commercial negotiations
 ```
 
-**Issue:** Current table uses `contact_number` but requirements specify `mobile`. Need to decide:
-- Option A: Use existing `contact_number` column
-- Option B: Add new `mobile` column and migrate data
-
-**Recommended:** Use existing `contact_number` as `mobile` field for simplicity.
+**Notes:**
+- `contact_number` will be used as `mobile` field (no rename needed)
+- `vendor_code` and `preferred_vendor_status` are reserved for future commercial workflows
+- Both fields are NULLable initially
 
 ---
 
@@ -97,6 +99,7 @@ ALTER TABLE halls ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE';
 ```sql
 CREATE TABLE venue_import_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  import_session_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),  -- NEW: Traceable session ID
   file_name TEXT NOT NULL,
   uploaded_by UUID REFERENCES auth.users(id) NOT NULL,
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -106,12 +109,19 @@ CREATE TABLE venue_import_history (
   halls_created INTEGER NOT NULL DEFAULT 0,
   halls_updated INTEGER NOT NULL DEFAULT 0,
   rows_skipped INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL CHECK (status IN ('SUCCESS', 'FAILED')),
+  status TEXT NOT NULL CHECK (status IN ('UPLOADED', 'VALIDATED', 'IMPORTING', 'SUCCESS', 'FAILED')),
   error_report_path TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+```
 
--- Indexes for performance
+**New Fields:**
+- `import_session_id`: UUID for traceability (every error report links to single session)
+- `status`: Extended states (UPLOADED, VALIDATED, IMPORTING, SUCCESS, FAILED)
+
+**Indexes:**
+```sql
+CREATE INDEX idx_import_history_import_session_id ON venue_import_history(import_session_id);
 CREATE INDEX idx_import_history_uploaded_by ON venue_import_history(uploaded_by);
 CREATE INDEX idx_import_history_uploaded_at ON venue_import_history(uploaded_at);
 CREATE INDEX idx_import_history_status ON venue_import_history(status);
@@ -208,56 +218,44 @@ CREATE INDEX idx_import_history_status ON venue_import_history(status);
 
 **Logic:** Find existing hotel by name + city, update if found, create if not.
 
-**SQL Approach:**
+**SQL Approach (ON CONFLICT):**
 ```sql
--- Step 1: Find or create city
+-- Step 1: Upsert city (if doesn't exist)
 INSERT INTO cities (city_name, state)
 VALUES ('Mumbai', 'Maharashtra')
 ON CONFLICT (city_name) DO NOTHING
 RETURNING id;
 
--- Step 2: Upsert hotel using ON CONFLICT
+-- Step 2: Upsert hotel using ON CONFLICT (faster, race-condition safe)
 INSERT INTO hotels (
-  hotel_name, city_id, state, star_rating, total_rooms, residential_capacity,
-  contact_person, mobile, email, status
+  hotel_name, city_id, star_rating, total_rooms, residential_capacity,
+  contact_person, contact_number, email, status
 )
 VALUES (
-  'Taj Lands End', city_id, 'Maharashtra', 5, 250, 200,
+  'Taj Lands End', city_id, 5, 250, 200,
   'Rajesh Sharma', '9876543210', 'sales@taj.com', 'ACTIVE'
 )
 ON CONFLICT (hotel_name, city_id) DO UPDATE
 SET
-  state = EXCLUDED.state,
   star_rating = EXCLUDED.star_rating,
   total_rooms = EXCLUDED.total_rooms,
   residential_capacity = EXCLUDED.residential_capacity,
   contact_person = EXCLUDED.contact_person,
-  mobile = EXCLUDED.mobile,
+  contact_number = EXCLUDED.contact_number,
   email = EXCLUDED.email,
   status = EXCLUDED.status,
+  vendor_code = EXCLUDED.vendor_code,
+  preferred_vendor_status = EXCLUDED.preferred_vendor_status,
+  largest_hall_capacity = EXCLUDED.largest_hall_capacity,
   updated_at = NOW()
 RETURNING id, CASE WHENxmax = 0 THEN 'created' ELSE 'updated' END AS action;
 ```
 
-**Alternative: Explicit Select + Insert/Update**
-```sql
--- Find existing hotel
-SELECT id, hotel_name, city_id
-FROM hotels
-WHERE hotel_name = 'Taj Lands End'
-  AND city_id = (SELECT id FROM cities WHERE city_name = 'Mumbai');
-
--- If found, UPDATE
-UPDATE hotels SET
-  star_rating = 5,
-  total_rooms = 250,
-  ...
-WHERE id = found_hotel_id;
-
--- If not found, INSERT
-INSERT INTO hotels (...)
-VALUES (...);
-```
+**Why ON CONFLICT:**
+- **Faster:** Single database round-trip
+- **Race-condition safe:** Atomic operation
+- **Cleaner:** No explicit SELECT + UPDATE/INSERT
+- **Atomic:** Either inserts or updates, no intermediate state
 
 ---
 
@@ -265,29 +263,20 @@ VALUES (...);
 
 **Logic:** Find existing hall by hotel + name, update if found, create if not.
 
-**SQL Approach:**
+**SQL Approach (ON CONFLICT):**
 ```sql
--- Find hotel ID by name + city
-WITH hotel_lookup AS (
-  SELECT h.id
-  FROM hotels h
-  JOIN cities c ON h.city_id = c.id
-  WHERE h.hotel_name = 'Taj Lands End'
-    AND c.city_name = 'Mumbai'
-)
-
--- Upsert hall
+-- Upsert hall using ON CONFLICT (faster, race-condition safe)
 INSERT INTO halls (
   hotel_id, hall_name, hall_type, theatre_capacity, classroom_capacity,
   u_shape_capacity, cluster_capacity, boardroom_capacity, reception_capacity, status
 )
-SELECT
-  hotel_id,
+VALUES (
+  hotel_id_value,  -- Foreign key to hotels
   'Regency Ballroom',
   'Ballroom',
   500, 250, 80, 200, 40, 700,
   'ACTIVE'
-FROM hotel_lookup
+)
 ON CONFLICT (hotel_id, hall_name) DO UPDATE
 SET
   hall_type = EXCLUDED.hall_type,
@@ -306,46 +295,72 @@ RETURNING id, CASE WHENxmax = 0 THEN 'created' ELSE 'updated' END AS action;
 
 ## 3. Transaction Strategy
 
-### 3.1 If Row 500 Fails
+### 3.1 Single Transaction for Entire Import
 
-**Current Approach:** Process rows individually with error collection
+**Approach:** Atomic Import - All Rows Success OR No Rows Imported
 
 **Behavior:**
-- Rows 1-499: Committed successfully
-- Row 500: Marked as error, not committed
-- Rows 501+: Not processed
+```
+Upload → Validate → Dry Run → IMPORT (Single Transaction) → Success
+
+If ANY row fails:
+  → ROLLBACK entire transaction
+  → Import status: FAILED
+  → No partial data left in database
+  → Error report shows all failures
+
+If ALL rows succeed:
+  → COMMIT entire transaction
+  → Import status: SUCCESS
+  → All data committed atomically
+```
 
 **Recovery:**
-- User downloads error report showing row 500 issue
-- User fixes data and re-uploads
-- Previous 499 rows are already in database
-
----
-
-### 3.2 Commit Behavior
-
-**Per-Operation Commits:**
-- City creation: Auto-commits (if already exists, no-op)
-- Hotel upsert: Auto-commits
-- Hall upsert: Auto-commits
-- Import history: Auto-commits
-
-**No Single Transaction for Entire Import**
-
-**Reason:** Allows partial success and provides clear recovery points.
-
----
-
-### 3.3 Recovery Behavior
-
-**Steps for Recovery:**
-1. User identifies error from error report
-2. User fixes data in Excel
-3. User re-uploads file
-4. System detects duplicates by hotel_name + city
-5. System updates existing records instead of creating
+- User downloads error report showing ALL failures
+- User fixes ALL data issues in Excel
+- User re-uploads entire file
+- Entire import succeeds or fails atomically
 
 **Idempotent Design:** Re-uploading same data multiple times produces same result.
+
+### 3.2 Transaction Flow
+
+```
+BEGIN TRANSACTION;
+  → Create missing cities (bulk upsert)
+  → Upsert hotels (bulk upsert with ON CONFLICT)
+  → Upsert halls (bulk upsert with ON CONFLICT)
+  → Update hotel.largest_hall_capacity
+  → Write import history record (status=SUCCESS)
+COMMIT;
+
+If any statement fails:
+  → ROLLBACK (all changes discarded)
+  → Import history record (status=FAILED)
+```
+
+### 3.3 Error Handling
+
+| Error Type | Behavior |
+|------------|----------|
+| City upsert conflict | No-op (city already exists) |
+| Hotel upsert conflict | UPDATE existing hotel |
+| Hall upsert conflict | UPDATE existing hall |
+| Invalid email format | Mark as error, skip row |
+| Duplicate hall within file | Mark as error, skip row |
+| Any database error | ROLLBACK entire import |
+
+### 3.4 Why Atomic Import?
+
+**Scenario (BAD):** Partial success with 500 hotels (300 imported, 200 failed)
+- Nobody knows which venues exist and which do not
+- Corporate master data is in inconsistent state
+- Difficult to reconcile and recover
+
+**Solution (GOOD):** Atomic import
+- All 500 hotels succeed OR none do
+- No partial state possible
+- Clear recovery path (fix and re-upload)
 
 ---
 
@@ -437,31 +452,50 @@ CREATE POLICY "Allow anonymous read" ON halls FOR SELECT USING (true);
 
 ### 6.2 Permissions Required
 
-**For Import Service:**
-```sql
--- Minimum permissions
-GRANT INSERT, UPDATE ON hotels TO authenticated;
-GRANT INSERT, UPDATE ON halls TO authenticated;
-GRANT INSERT, UPDATE ON cities TO authenticated;
-GRANT INSERT, SELECT ON venue_import_history TO authenticated;
-```
+**Approach:** Use RLS policies, NOT grant permissions to authenticated
 
-**For Import History:**
+**Permissions for Super Admin and Admin Only:**
 ```sql
--- Allow viewing all import history
-CREATE POLICY "Admins can view import history" ON venue_import_history
-  FOR SELECT
+-- RLS Policy: Only SUPER_ADMIN and ADMIN can import venues
+CREATE POLICY "Import venues by Super Admin and Admin"
+  ON hotels FOR INSERT
   USING (
-    auth.role() = 'authenticated' AND
-    EXISTS (
-      SELECT 1 FROM users u
-      WHERE u.auth_user_id = auth.uid()
-      AND u.role_id IN (
-        SELECT id FROM roles WHERE role_code IN ('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')
-      )
+    auth.uid() IN (
+      SELECT u.auth_user_id FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE r.role_code IN ('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')
+    )
+  );
+
+CREATE POLICY "Import venues by Super Admin and Admin"
+  ON halls FOR INSERT
+  USING (
+    auth.uid() IN (
+      SELECT u.auth_user_id FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE r.role_code IN ('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')
     )
   );
 ```
+
+**Import History Access:**
+```sql
+-- RLS Policy: Super Admin and Admin can view all import history
+CREATE POLICY "Admins can view import history"
+  ON venue_import_history FOR SELECT
+  USING (
+    auth.uid() IN (
+      SELECT u.auth_user_id FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE r.role_code IN ('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')
+    )
+  );
+```
+
+**Key Principles:**
+- Never use `GRANT INSERT, UPDATE ON hotels TO authenticated`
+- RLS policies control access at database level
+- Frontend permissions alone are insufficient
 
 ---
 
@@ -610,11 +644,14 @@ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()  -- Auto-populated
 **Ready for:** Implementation Planning
 
 ### Key Decisions:
-1. **Upsert Strategy:** Explicit SELECT + INSERT/UPDATE (clearer than ON CONFLICT)
-2. **Transaction Strategy:** Per-operation commits (allows partial success)
-3. **Concurrency:** Database constraints handle duplicates (no explicit locks)
-4. **Validation:** Two-pass (Dry Run, then Import)
+1. **Upsert Strategy:** `ON CONFLICT` pattern (faster, race-condition safe, atomic)
+2. **Transaction Strategy:** Single transaction for entire import (atomic - all or nothing)
+3. **Concurrency:** Database constraints handle duplicates (no explicit locks needed)
+4. **Validation:** Two-pass (Dry Run, then Import) with atomic commit
 5. **Error Reporting:** Excel format with row-level details
+6. **Import Session:** Each import gets unique `import_session_id` for traceability
+7. **Import Status:** Extended states (UPLOADED, VALIDATED, IMPORTING, SUCCESS, FAILED)
+8. **Permissions:** RLS policies only, no GRANT to authenticated users
 
 ### Risks:
 - Minor: Current table schema differs from requirements (requires migration)
@@ -633,11 +670,17 @@ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()  -- Auto-populated
 ```sql
 -- venue_bulk_import_migration.sql
 -- Run this in Supabase SQL Editor
+-- IMPORTANT: Atomic Import - Single Transaction for entire import
 
--- Step 1: Add columns to hotels table
+-- Step 1: Add columns to hotels table (including future vendor fields)
 ALTER TABLE hotels ADD COLUMN IF NOT EXISTS residential_capacity INTEGER DEFAULT 0;
 ALTER TABLE hotels ADD COLUMN IF NOT EXISTS largest_hall_capacity INTEGER DEFAULT 0;
 ALTER TABLE hotels ADD COLUMN IF NOT EXISTS total_rooms INTEGER;
+ALTER TABLE hotels ADD COLUMN IF NOT EXISTS vendor_code TEXT;  -- NEW: For future procurement
+ALTER TABLE hotels ADD COLUMN IF NOT EXISTS preferred_vendor_status TEXT CHECK (
+  preferred_vendor_status IS NULL OR 
+  preferred_vendor_status IN ('PREFERRED', 'APPROVED', 'UNDER_REVIEW', 'BLACKLISTED')
+);  -- NEW: For future commercial negotiations
 
 -- Step 2: Add columns to halls table
 ALTER TABLE halls ADD COLUMN IF NOT EXISTS hall_type TEXT;
@@ -656,9 +699,10 @@ ALTER TABLE hotels
 ALTER TABLE halls 
   ADD CONSTRAINT IF NOT EXISTS halls_hotel_name_uk UNIQUE (hotel_id, hall_name);
 
--- Step 4: Create import history table
+-- Step 4: Create import history table (with import_session_id and extended status)
 CREATE TABLE IF NOT EXISTS venue_import_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  import_session_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),  -- NEW: Traceable session ID
   file_name TEXT NOT NULL,
   uploaded_by UUID REFERENCES auth.users(id) NOT NULL,
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -668,15 +712,48 @@ CREATE TABLE IF NOT EXISTS venue_import_history (
   halls_created INTEGER NOT NULL DEFAULT 0,
   halls_updated INTEGER NOT NULL DEFAULT 0,
   rows_skipped INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL CHECK (status IN ('SUCCESS', 'FAILED')),
+  status TEXT NOT NULL CHECK (status IN ('UPLOADED', 'VALIDATED', 'IMPORTING', 'SUCCESS', 'FAILED')),  -- NEW: Extended states
   error_report_path TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Step 5: Add indexes
+CREATE INDEX IF NOT EXISTS idx_import_history_import_session_id ON venue_import_history(import_session_id);
 CREATE INDEX IF NOT EXISTS idx_import_history_uploaded_by ON venue_import_history(uploaded_by);
 CREATE INDEX IF NOT EXISTS idx_import_history_uploaded_at ON venue_import_history(uploaded_at);
 CREATE INDEX IF NOT EXISTS idx_import_history_status ON venue_import_history(status);
+
+-- Step 6: RLS Policies (NO GRANT to authenticated)
+-- Only SUPER_ADMIN and ADMIN can import venues via RLS policies
+CREATE POLICY IF NOT EXISTS "Import venues by Super Admin and Admin"
+  ON hotels FOR INSERT
+  USING (
+    auth.uid() IN (
+      SELECT u.auth_user_id FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE r.role_code IN ('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')
+    )
+  );
+
+CREATE POLICY IF NOT EXISTS "Import venues by Super Admin and Admin"
+  ON halls FOR INSERT
+  USING (
+    auth.uid() IN (
+      SELECT u.auth_user_id FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE r.role_code IN ('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')
+    )
+  );
+
+CREATE POLICY IF NOT EXISTS "Admins can view import history"
+  ON venue_import_history FOR SELECT
+  USING (
+    auth.uid() IN (
+      SELECT u.auth_user_id FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE r.role_code IN ('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')
+    )
+  );
 ```
 
 ---
