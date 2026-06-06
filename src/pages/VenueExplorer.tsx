@@ -353,9 +353,9 @@ export function VenueExplorer() {
           ) : !hasSearched && venues.length === 0 ? (
             <div className="card" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
               <Building2 size={48} style={{ color: 'var(--text-light)', marginBottom: 'var(--space-4)' }} />
-              <h4 style={{ fontWeight: '700', marginBottom: 'var(--space-2)' }}>No venue master data available yet.</h4>
+              <h4 style={{ fontWeight: '700', marginBottom: 'var(--space-2)' }}>Venue data is being configured.</h4>
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)' }}>
-                Please import or seed venue data to begin discovery.
+                Please import venue master data or run the development seed script.
               </p>
             </div>
           ) : venues.length === 0 ? (

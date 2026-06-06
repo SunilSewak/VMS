@@ -37,9 +37,11 @@ export function VenueDetails() {
     (a, b) => (a.display_order ?? 99) - (b.display_order ?? 99)
   );
   const primaryPhoto = photos[0]?.storage_path ?? null;
+  const galleryPhotos = photos.slice(0, 6);
 
   const halls = venue?.halls ?? [];
   const maxCapacity = halls.length > 0 ? Math.max(...halls.map((h) => h.capacity)) : 0;
+  const totalArea = halls.reduce((sum, hall) => sum + (hall.area ?? 0), 0);
 
   if (loading) {
     return (
@@ -168,11 +170,76 @@ export function VenueDetails() {
         </div>
       </div>
 
+      {galleryPhotos.length > 1 && (
+        <div className="card" style={{ padding: 'var(--space-5)' }}>
+          <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '800', marginBottom: 'var(--space-4)' }}>Gallery</h2>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gap: 'var(--space-3)'
+          }}>
+            {galleryPhotos.map((photo: any, index: number) => (
+              <div key={photo.id ?? index} style={{
+                borderRadius: 'var(--radius-lg)',
+                overflow: 'hidden',
+                minHeight: '140px',
+                background: 'var(--surface-2)'
+              }}>
+                <img
+                  src={photo.storage_path}
+                  alt={`${venue.hotel_name} gallery ${index + 1}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMAGE; }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ─── MAIN CONTENT GRID ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 'var(--space-6)', alignItems: 'start' }}>
 
-        {/* ─── HALL INVENTORY ─── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          <div className="card" style={{ padding: 'var(--space-6)' }}>
+            <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '800', marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <Building2 size={18} style={{ color: 'var(--primary)' }} />
+              Venue Information
+            </h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <div>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Category</p>
+                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{venue.hotel_categories?.category_name ?? '—'}</strong>
+              </div>
+              <div>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>City</p>
+                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{venue.cities?.city_name ?? '—'}</strong>
+              </div>
+              <div>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Address</p>
+                <span style={{ display: 'block', marginTop: '6px', color: 'var(--text-main)', fontSize: 'var(--font-sm)', lineHeight: 1.6 }}>{venue.address ?? '—'}</span>
+              </div>
+              <div>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Status</p>
+                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{venue.status}</strong>
+              </div>
+              <div>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Total Halls</p>
+                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{halls.length}</strong>
+              </div>
+              <div>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Largest Capacity</p>
+                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{maxCapacity > 0 ? `${maxCapacity} pax` : '—'}</strong>
+              </div>
+              <div>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Total Hall Area</p>
+                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{totalArea > 0 ? `${totalArea} sq ft` : '—'}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* ─── HALL INVENTORY ─── */}
           <div className="card" style={{ padding: 'var(--space-6)' }}>
             <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '800', marginBottom: 'var(--space-5)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <Layers size={18} style={{ color: 'var(--primary)' }} />

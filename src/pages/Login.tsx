@@ -4,11 +4,11 @@ import { AppRole, ROLES } from '../auth/permissions';
 import { ROUTES } from '../routes/routeRegistry';
 
 export function Login() {
-  const { login } = useAuth();
+  const { signInWithMock } = useAuth();
   const navigate = useNavigate();
 
   const handleRoleLogin = async (role: AppRole) => {
-    await login(role);
+    await signInWithMock(role);
     navigate(ROUTES.dashboard);
   };
 
@@ -56,11 +56,11 @@ export function Login() {
         </div>
 
         <h3 style={{ fontSize: 'var(--font-base)', fontWeight: '600', color: 'var(--text-main)', marginBottom: 'var(--space-4)' }}>
-          Developer Authentication Sandbox
+          Development Authentication
         </h3>
         
         <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-6)', lineHeight: '1.5' }}>
-          Select a role profile below to simulate authentication state in the project foundation.
+          Select a role profile to continue testing the application. Supabase authentication integration is active.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
