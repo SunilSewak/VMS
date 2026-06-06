@@ -386,7 +386,7 @@ export function VenueExplorer() {
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-4)' }}>
+            <div className="venue-cards-grid">
               {venues.map((venue) => {
                 const isShortlisted = shortlistedIds.includes(venue.id);
                 const isInCompare = compareList.some((v) => v.id === venue.id);
@@ -650,48 +650,64 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
     <div
       className="card"
       style={{
-        display: 'grid',
-        gridTemplateColumns: '280px 1fr',
-        gap: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '520px', // Fixed card height
         padding: 0,
         overflow: 'hidden',
         transition: 'transform 0.2s, box-shadow 0.2s',
-        minHeight: '200px',
+        backgroundColor: '#fff',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border)',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+        e.currentTarget.style.transform = 'translateY(-4px)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-xl)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)';
         e.currentTarget.style.boxShadow = '';
       }}
     >
-      {/* ─── IMAGE SECTION (40%) ─── */}
-      <div style={{ position: 'relative', minHeight: '200px', background: 'var(--surface-2)' }}>
+      {/* ─── IMAGE SECTION (Fixed Height) ─── */}
+      <div style={{ 
+        position: 'relative', 
+        height: '240px', // Fixed image height
+        overflow: 'hidden',
+        background: 'var(--surface-2)' 
+      }}>
         <img
           src={imgError ? PLACEHOLDER_IMAGE : (venue.primaryImage ?? PLACEHOLDER_IMAGE)}
           alt={venue.hotelName}
           onError={() => setImgError(true)}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          style={{ 
+            width: '100%', 
+            height: '100%', 
+            objectFit: 'cover', 
+            display: 'block' 
+          }}
         />
         {/* Gradient overlay */}
         <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to right, rgba(0,0,0,0.15) 0%, transparent 60%)',
+          position: 'absolute', 
+          inset: 0,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 40%, rgba(0,0,0,0.6) 100%)',
         }} />
 
         {/* Category badge */}
         <div style={{
-          position: 'absolute', top: '12px', left: '12px',
-          background: 'rgba(0,0,0,0.55)',
+          position: 'absolute', 
+          top: '12px', 
+          left: '12px',
+          background: 'rgba(0,0,0,0.7)',
           backdropFilter: 'blur(6px)',
           color: '#fff',
-          padding: '4px 10px',
+          padding: '6px 12px',
           borderRadius: 'var(--radius-full)',
           fontSize: '11px',
           fontWeight: '700',
           letterSpacing: '0.04em',
+          textTransform: 'uppercase',
         }}>
           {venue.categoryName}
         </div>
@@ -703,66 +719,129 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
             onClick={onShortlist}
             title={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
             style={{
-              position: 'absolute', top: '12px', right: '12px',
-              width: '36px', height: '36px',
+              position: 'absolute', 
+              top: '12px', 
+              right: '12px',
+              width: '40px', 
+              height: '40px',
               borderRadius: '50%',
-              background: isShortlisted ? 'var(--status-warning)' : 'rgba(255,255,255,0.9)',
+              background: isShortlisted ? 'var(--status-warning)' : 'rgba(255,255,255,0.95)',
               color: isShortlisted ? '#fff' : 'var(--text-muted)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
               boxShadow: 'var(--shadow-md)',
               transition: 'all 0.2s',
               cursor: 'pointer',
               backdropFilter: 'blur(4px)',
+              border: 'none',
             }}
           >
-            <Bookmark size={16} fill={isShortlisted ? '#fff' : 'none'} />
+            <Bookmark size={18} fill={isShortlisted ? '#fff' : 'none'} />
           </button>
         )}
       </div>
 
-      {/* ─── INFO SECTION (60%) ─── */}
-      <div style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-
-        <div>
-          {/* Name + City */}
-          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '800', color: 'var(--text-main)', marginBottom: 'var(--space-1)', lineHeight: 1.3 }}>
+      {/* ─── CONTENT SECTION (Flexible) ─── */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        flex: 1, // Takes remaining space
+        padding: 'var(--space-4)' 
+      }}>
+        {/* Hotel Name & Location */}
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ 
+            fontSize: 'var(--font-size-lg)', 
+            fontWeight: '800', 
+            color: 'var(--text-main)', 
+            marginBottom: 'var(--space-2)', 
+            lineHeight: 1.3,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap' 
+          }}>
             {venue.hotelName}
           </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 'var(--space-1)', 
+            color: 'var(--text-muted)', 
+            fontSize: 'var(--font-sm)' 
+          }}>
             <MapPin size={14} />
-            <span>{venue.cityName}{venue.address && venue.address !== '—' ? ` · ${venue.address}` : ''}</span>
-          </div>
-
-          {/* Key Stats */}
-          <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-            <StatBadge
-              icon={<Users size={14} />}
-              label="Max Capacity"
-              value={venue.largestHallCapacity > 0 ? `${venue.largestHallCapacity} pax` : '—'}
-              highlight
-            />
-            <StatBadge
-              icon={<Building2 size={14} />}
-              label="Halls"
-              value={`${venue.hallCount} hall${venue.hallCount !== 1 ? 's' : ''}`}
-            />
+            <span style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {venue.cityName}{venue.address && venue.address !== '—' ? ` · ${venue.address}` : ''}
+            </span>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-4)', flexWrap: 'wrap' }}>
+        {/* Key Stats */}
+        <div style={{ 
+          display: 'flex', 
+          gap: 'var(--space-3)', 
+          marginBottom: 'var(--space-4)',
+          flexWrap: 'wrap' 
+        }}>
+          <StatBadge
+            icon={<Users size={14} />}
+            label="Max Capacity"
+            value={venue.largestHallCapacity > 0 ? `${venue.largestHallCapacity} pax` : '—'}
+            highlight
+          />
+          <StatBadge
+            icon={<Building2 size={14} />}
+            label="Halls"
+            value={`${venue.hallCount} hall${venue.hallCount !== 1 ? 's' : ''}`}
+          />
+        </div>
+
+        {/* Shortlisted indicator */}
+        {isShortlisted && (
+          <div style={{
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 'var(--space-2)',
+            marginBottom: 'var(--space-3)',
+            padding: 'var(--space-2)',
+            background: 'color-mix(in srgb, var(--status-success) 10%, transparent)',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--status-success)',
+            fontSize: 'var(--font-sm)',
+            fontWeight: '600',
+          }}>
+            <CheckCircle2 size={16} /> 
+            <span>Added to Shortlist</span>
+          </div>
+        )}
+
+        {/* Action Buttons - Pinned to bottom */}
+        <div style={{ 
+          display: 'flex', 
+          gap: 'var(--space-3)', 
+          marginTop: 'auto', // Pushes buttons to bottom
+          paddingTop: 'var(--space-3)'
+        }}>
           <button
             id={`view-btn-${venue.id}`}
             onClick={onView}
             style={{
               flex: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: 'var(--space-2)',
               padding: 'var(--space-3)',
               background: 'var(--primary)',
               color: '#fff',
-              borderRadius: 'var(--radius-lg)',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
               fontWeight: '700',
-              fontFamily: 'var(--font-family)',
               fontSize: 'var(--font-sm)',
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -778,14 +857,16 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
             onClick={onCompare}
             style={{
               flex: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: 'var(--space-2)',
               padding: 'var(--space-3)',
               background: isInCompare ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'var(--surface-2)',
               color: isInCompare ? 'var(--primary)' : 'var(--text-muted)',
               border: `1.5px solid ${isInCompare ? 'var(--primary)' : 'var(--border)'}`,
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: 'var(--radius-md)',
               fontWeight: '700',
-              fontFamily: 'var(--font-family)',
               fontSize: 'var(--font-sm)',
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -793,18 +874,6 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
           >
             <Scale size={15} /> {isInCompare ? 'In Compare' : 'Compare'}
           </button>
-
-          {isShortlisted && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 'var(--space-1)',
-              padding: 'var(--space-3)',
-              color: 'var(--status-success)',
-              fontSize: 'var(--font-sm)',
-              fontWeight: '700',
-            }}>
-              <CheckCircle2 size={16} /> Shortlisted
-            </div>
-          )}
         </div>
       </div>
     </div>
