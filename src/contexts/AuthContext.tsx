@@ -49,23 +49,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check for existing Supabase session
     const getSession = async () => {
       try {
-        console.log('🔍 === AUTH DEBUG: Session Check Started ===');
-        
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
         
-        console.log('📦 SESSION:', session);
-        console.log('👤 AUTH_USER:', session?.user);
-        
         if (session?.user) {
           const authUser = session.user;
-          console.log('🔑 AUTH_USER ID:', authUser.id);
-          console.log('📧 AUTH_USER EMAIL:', authUser.email);
-          console.log('🏷️ AUTH_USER METADATA:', authUser.user_metadata);
           
           // Query public.users table to get the app user profile
-          console.log('🔍 Querying public.users table...');
-          console.log('🔑 Looking up user with auth_user_id:', authUser.id);
           const { data: appUser, error: userError } = await supabase
             .from('users')
             .select(`
@@ -83,25 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .eq('auth_user_id', authUser.id)
             .single() as { data: AppUser | null; error: any };
           
-          console.log('👥 APP_USER from public.users:', appUser);
           if (userError) {
-            console.error('❌ USER ERROR:', userError);
-            console.error('❌ USER ERROR CODE:', userError.code);
-            console.error('❌ USER ERROR MESSAGE:', userError.message);
-            console.error('❌ USER ERROR DETAILS:', userError.details);
-          }
-          
-          if (appUser) {
-            console.log('🆔 APP_USER ID:', appUser.id);
-            console.log('👤 APP_USER employee_name:', appUser.employee_name);
-            console.log('📍 APP_USER status:', appUser.status);
-            console.log('🎭 APP_USER role_id:', appUser.role_id);
-            console.log('🔗 APP_USER roles:', appUser.roles);
-            
-            if (appUser.roles) {
-              console.log('🎭 ROLE_CODE:', appUser.roles.role_code);
-              console.log('📛 ROLE_NAME:', appUser.roles.role_name);
-            }
+            console.error('Failed to load user profile:', userError);
           }
           
           // Determine the role - use database role if available, fallback to metadata
@@ -111,35 +84,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Handle both 'SUPER_ADMIN' and 'ROLE_SUPER_ADMIN' formats
             if (dbRoleCode === 'ROLE_SUPER_ADMIN') {
               role = ROLES.SUPER_ADMIN;
-              console.log('✅ Using role from database (normalized): ROLE_SUPER_ADMIN →', role);
             } else {
               role = dbRoleCode as AppRole;
-              console.log('✅ Using role from database:', role);
             }
           } else {
             role = (authUser.user_metadata?.role as AppRole) ?? ROLES.VIEWER;
-            console.log('⚠️ Using role from metadata (fallback):', role);
           }
           
-          console.log('🎯 FINAL ROLE:', role);
-          console.log('🔍 Is SUPER_ADMIN?', role === ROLES.SUPER_ADMIN);
-          console.log('🔍 ROLES.SUPER_ADMIN constant:', ROLES.SUPER_ADMIN);
-          
           setUser(mapSupabaseUserToProfile(authUser, role));
-          
-          // Test hotel query
-          const { data: hotels, error: hotelError } = await supabase
-            .from('hotels')
-            .select('*');
-          console.log('🏨 HOTELS:', hotels?.length || 0, 'records');
-          if (hotelError) console.error('❌ HOTEL ERROR:', hotelError);
-          
-          console.log('🔍 === AUTH DEBUG: Session Check Complete ===');
-        } else {
-          console.log('⚠️ No session found');
         }
       } catch (err) {
-        console.error('❌ Failed to restore session:', err);
+        console.error('Failed to restore session:', err);
       } finally {
         setIsLoading(false);
       }
@@ -168,9 +123,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      console.log('🔍 === AUTH DEBUG: Login Started ===');
-      console.log('📧 Email:', email);
-      
       const { data: { user: supabaseUser, session }, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -178,17 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
 
-      console.log('📦 LOGIN SESSION:', session);
-      console.log('👤 LOGIN AUTH_USER:', supabaseUser);
-
       if (supabaseUser && session) {
-        console.log('🔑 LOGIN AUTH_USER ID:', supabaseUser.id);
-        console.log('📧 LOGIN AUTH_USER EMAIL:', supabaseUser.email);
-        console.log('🏷️ LOGIN AUTH_USER METADATA:', supabaseUser.user_metadata);
-        
         // Query public.users table
-        console.log('🔍 Querying public.users table...');
-        console.log('🔑 Looking up user with auth_user_id:', supabaseUser.id);
         const { data: appUser, error: userError } = await supabase
           .from('users')
           .select(`
@@ -206,25 +149,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('auth_user_id', supabaseUser.id)
           .single() as { data: AppUser | null; error: any };
         
-        console.log('👥 LOGIN APP_USER from public.users:', appUser);
         if (userError) {
-          console.error('❌ LOGIN USER ERROR:', userError);
-          console.error('❌ LOGIN USER ERROR CODE:', userError.code);
-          console.error('❌ LOGIN USER ERROR MESSAGE:', userError.message);
-          console.error('❌ LOGIN USER ERROR DETAILS:', userError.details);
-        }
-        
-        if (appUser) {
-          console.log('🆔 LOGIN APP_USER ID:', appUser.id);
-          console.log('👤 LOGIN APP_USER employee_name:', appUser.employee_name);
-          console.log('📍 LOGIN APP_USER status:', appUser.status);
-          console.log('🎭 LOGIN APP_USER role_id:', appUser.role_id);
-          console.log('🔗 LOGIN APP_USER roles:', appUser.roles);
-          
-          if (appUser.roles) {
-            console.log('🎭 LOGIN ROLE_CODE:', appUser.roles.role_code);
-            console.log('📛 LOGIN ROLE_NAME:', appUser.roles.role_name);
-          }
+          console.error('Failed to load user profile:', userError);
         }
         
         // Determine the role - use database role if available, fallback to metadata
@@ -234,33 +160,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Handle both 'SUPER_ADMIN' and 'ROLE_SUPER_ADMIN' formats
           if (dbRoleCode === 'ROLE_SUPER_ADMIN') {
             role = ROLES.SUPER_ADMIN;
-            console.log('✅ LOGIN: Using role from database (normalized): ROLE_SUPER_ADMIN →', role);
           } else {
             role = dbRoleCode as AppRole;
-            console.log('✅ LOGIN: Using role from database:', role);
           }
         } else {
           role = (supabaseUser.user_metadata?.role as AppRole) ?? ROLES.VIEWER;
-          console.log('⚠️ LOGIN: Using role from metadata (fallback):', role);
         }
         
-        console.log('🎯 LOGIN FINAL ROLE:', role);
-        console.log('🔍 LOGIN: Is SUPER_ADMIN?', role === ROLES.SUPER_ADMIN);
-        console.log('🔍 ROLES.SUPER_ADMIN constant:', ROLES.SUPER_ADMIN);
-        
         setUser(mapSupabaseUserToProfile(supabaseUser, role));
-        
-        // Test hotel query
-        const { data: hotels, error: hotelError } = await supabase
-          .from('hotels')
-          .select('*');
-        console.log('🏨 HOTELS AFTER LOGIN:', hotels?.length || 0, 'records');
-        if (hotelError) console.error('❌ HOTEL ERROR:', hotelError);
-        
-        console.log('🔍 === AUTH DEBUG: Login Complete ===');
       }
     } catch (err: any) {
-      console.error('❌ Login failed:', err);
+      console.error('Login failed:', err);
       throw new Error(err?.message ?? 'Login failed');
     } finally {
       setIsLoading(false);
