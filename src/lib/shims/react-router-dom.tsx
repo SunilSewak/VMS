@@ -40,15 +40,26 @@ export function useLocation() {
   return { pathname: ctx ? ctx.path : '/' };
 }
 
+export function useSearchParams(): [URLSearchParams, (params: URLSearchParams) => void] {
+  const params = new URLSearchParams(window.location.search);
+  const setParams = (_p: URLSearchParams) => {}; // read-only for now
+  return [params, setParams];
+}
+
 export function useParams() {
   const ctx = useContext(RouterContext);
   const path = ctx ? ctx.path : '/';
-  const segments = path.split('/');
+  const segments = path.split('?')[0].split('/');
+  // /meeting-requests/:id or /meeting-requests/:id/edit
   if (segments[1] === 'meeting-requests') {
     const id = segments[2];
     if (id && id !== 'new') {
       return { id };
     }
+  }
+  // /venue-explorer/:id
+  if (segments[1] === 'venue-explorer' && segments[2]) {
+    return { id: segments[2] };
   }
   return {} as Record<string, string>;
 }

@@ -32,8 +32,15 @@ export const navigationConfig: NavigationItem[] = [
   // Venue Explorer: Sales Head specific hero screen
   {
     name: 'Venue Explorer',
-    path: '/venue-explorer',
+    path: ROUTES.venueExplorer,
     iconName: 'Search',
+    roles: [ROLES.SALES_HEAD]
+  },
+  // My Shortlists: Sales Head only
+  {
+    name: 'My Shortlists',
+    path: ROUTES.myShortlists,
+    iconName: 'Bookmark',
     roles: [ROLES.SALES_HEAD]
   },
   // Venues: Admin specific master screen

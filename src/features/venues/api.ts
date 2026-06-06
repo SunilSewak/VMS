@@ -1,0 +1,174 @@
+import { supabase } from '../../lib/supabase';
+import type { Hotel, VenueCardData, VenueSearchFilters, VenueShortlist, HotelCategory, City } from './types';
+
+// Fetch all cities for filter dropdowns
+export async function fetchCities(): Promise<City[]> {
+  const { data, error } = await supabase
+    .from('cities')
+    .select('id, city_name')
+    .order('city_name');
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// Fetch all hotel categories for filter dropdowns
+export async function fetchCategories(): Promise<HotelCategory[]> {
+  const { data, error } = await supabase
+    .from('hotel_categories')
+    .select('id, category_code, category_name')
+    .order('category_name');
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// Search venues with filters — returns card-ready data
+// Joins: hotel_categories, cities, venue_photos (primary), halls (for MAX capacity)
+export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCardData[]> {
+  let query = supabase
+    .from('hotels')
+    .select(`
+      id,
+      hotel_name,
+      address,
+      status,
+      hotel_categories ( id, category_code, category_name ),
+      cities ( id, city_name ),
+      venue_photos ( id, photo_type, storage_path, display_order ),
+      halls ( id, capacity )
+    `)
+    .eq('status', 'ACTIVE')
+    .is('is_deleted', false);
+
+  // Filter by city
+  if (filters.cityId && filters.cityId !== 'all') {
+    query = query.eq('city_id', filters.cityId);
+  }
+
+  // Filter by category
+  if (filters.categoryCode && filters.categoryCode !== 'all') {
+    const { data: catData } = await supabase
+      .from('hotel_categories')
+      .select('id')
+      .eq('category_code', filters.categoryCode)
+      .single() as { data: { id: string } | null; error: unknown };
+    if (catData?.id) {
+      query = query.eq('category_id', catData.id);
+    }
+  }
+
+  const { data, error } = await query.order('hotel_name');
+  if (error) throw new Error(error.message);
+
+  const hotels = (data ?? []) as Hotel[];
+
+  // Transform into VenueCardData
+  let results: VenueCardData[] = hotels.map((h) => {
+    const halls = h.halls ?? [];
+    const photos = h.venue_photos ?? [];
+    const primaryPhoto = photos
+      .sort((a, b) => (a.display_order ?? 99) - (b.display_order ?? 99))
+      .find((p) => p.photo_type === 'EXTERIOR' || p.display_order === 1);
+
+    return {
+      id: h.id,
+      hotel_name: h.hotel_name,
+      category_name: h.hotel_categories?.category_name ?? '—',
+      city_name: h.cities?.city_name ?? '—',
+      address: h.address ?? '—',
+      primaryPhotoUrl: primaryPhoto?.storage_path ?? null,
+      maxCapacity: halls.length > 0 ? Math.max(...halls.map((hall) => hall.capacity)) : 0,
+      hallCount: halls.length,
+    };
+  });
+
+  // Client-side text search (hotel name, city, address)
+  if (filters.searchQuery.trim()) {
+    const q = filters.searchQuery.toLowerCase();
+    results = results.filter(
+      (v) =>
+        v.hotel_name.toLowerCase().includes(q) ||
+        v.city_name.toLowerCase().includes(q) ||
+        v.address.toLowerCase().includes(q)
+    );
+  }
+
+  // Client-side capacity filter
+  if (filters.capacityMin !== undefined) {
+    results = results.filter((v) => v.maxCapacity >= (filters.capacityMin ?? 0));
+  }
+  if (filters.capacityMax !== undefined) {
+    results = results.filter((v) => v.maxCapacity <= (filters.capacityMax ?? Infinity));
+  }
+
+  return results;
+}
+
+// Get full hotel details for the Detail Page
+export async function getVenueById(id: string): Promise<Hotel> {
+  const { data, error } = await supabase
+    .from('hotels')
+    .select(`
+      id, hotel_name, address, contact_person, contact_number, email, remarks, status,
+      hotel_categories ( id, category_code, category_name ),
+      cities ( id, city_name ),
+      venue_photos ( id, photo_type, file_name, storage_path, display_order ),
+      halls ( id, hall_name, capacity, area, floor_name, seating_types )
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as Hotel;
+}
+
+// Toggle shortlist: add if not exists, or no-op (removal handled by UI for now)
+export async function addToShortlist(
+  requestId: string,
+  hotelId: string,
+  userId: string
+): Promise<void> {
+  const record = {
+    request_id: requestId,
+    hotel_id: hotelId,
+    shortlisted_by: userId,
+    shortlisted_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from('venue_shortlists').insert(record as never);
+  if (error && !error.message.includes('duplicate')) throw new Error(error.message);
+}
+
+export async function removeFromShortlist(
+  requestId: string,
+  hotelId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('venue_shortlists')
+    .delete()
+    .eq('request_id', requestId)
+    .eq('hotel_id', hotelId);
+  if (error) throw new Error(error.message);
+}
+
+// Fetch shortlisted hotel IDs for a given request
+export async function fetchShortlistedIds(requestId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('venue_shortlists')
+    .select('hotel_id')
+    .eq('request_id', requestId);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Array<{ hotel_id: string }>).map((row) => row.hotel_id);
+}
+
+// Fetch all shortlists for the logged-in user
+export async function fetchMyShortlists(userId: string): Promise<VenueShortlist[]> {
+  const { data, error } = await supabase
+    .from('venue_shortlists')
+    .select(`
+      id, request_id, hotel_id, hall_id, shortlisted_by, shortlisted_at,
+      hotels ( id, hotel_name, address, cities ( city_name ), hotel_categories ( category_name ), venue_photos ( storage_path, display_order, photo_type ) )
+    `)
+    .eq('shortlisted_by', userId)
+    .order('shortlisted_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as VenueShortlist[];
+}
