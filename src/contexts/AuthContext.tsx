@@ -81,7 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           let role: AppRole;
           if (appUser?.roles?.role_code) {
             const dbRoleCode = appUser.roles.role_code;
-            // Handle both 'SUPER_ADMIN' and 'ROLE_SUPER_ADMIN' formats
             if (dbRoleCode === 'ROLE_SUPER_ADMIN') {
               role = ROLES.SUPER_ADMIN;
             } else {
@@ -104,10 +103,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         if (session?.user) {
-          const role = (session.user.user_metadata?.role as AppRole) ?? ROLES.VIEWER;
-          setUser(mapSupabaseUserToProfile(session.user, role));
+          const authUser = session.user;
+          
+          // Query public.users table to get the app user profile
+          const { data: appUser, error: userError } = await supabase
+            .from('users')
+            .select(`
+              id,
+              employee_name,
+              status,
+              role_id,
+              auth_user_id,
+              roles:role_id (
+                id,
+                role_code,
+                role_name
+              )
+            `)
+            .eq('auth_user_id', authUser.id)
+            .single() as { data: AppUser | null; error: any };
+          
+          if (userError) {
+            console.error('Failed to load user profile:', userError);
+          }
+          
+          // Determine the role - use database role if available, fallback to metadata
+          let role: AppRole;
+          if (appUser?.roles?.role_code) {
+            const dbRoleCode = appUser.roles.role_code;
+            if (dbRoleCode === 'ROLE_SUPER_ADMIN') {
+              role = ROLES.SUPER_ADMIN;
+            } else {
+              role = dbRoleCode as AppRole;
+            }
+          } else {
+            role = (authUser.user_metadata?.role as AppRole) ?? ROLES.VIEWER;
+          }
+          
+          setUser(mapSupabaseUserToProfile(authUser, role));
         } else {
           setUser(null);
         }
@@ -157,7 +192,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let role: AppRole;
         if (appUser?.roles?.role_code) {
           const dbRoleCode = appUser.roles.role_code;
-          // Handle both 'SUPER_ADMIN' and 'ROLE_SUPER_ADMIN' formats
           if (dbRoleCode === 'ROLE_SUPER_ADMIN') {
             role = ROLES.SUPER_ADMIN;
           } else {
