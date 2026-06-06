@@ -9,13 +9,16 @@ Welcome to the Ajanta Venue & Event Management System (AVEMS) developer document
 ```text
 VMS/
 ├── docs/                      # Architectural documentation
-│   └── architecture.md
+│   ├── architecture.md        # This file
+│   └── AVEMS_ARCHITECTURE_SYNCHRONIZED.md  # Current state audit
 ├── src/
 │   ├── app/                   # App configurations (routing integrations)
 │   ├── auth/                  # RBAC definition registries
 │   │   └── permissions.ts     # Permission models & Role constants
-│   ├── components/            # Reusable components (ErrorBoundary, LoadingScreen, EmptyState)
+│   ├── components/            # Reusable components (ErrorBoundary, LoadingScreen, EmptyState, CommandSearch)
+│   ├── config/                # Configuration modules (navigation)
 │   ├── contexts/              # Context providers (AuthProvider, RoleGuards)
+│   ├── features/              # Feature modules (venues, meetings)
 │   ├── hooks/                 # Custom React hooks (placeholders)
 │   ├── layouts/               # Common structures (AppLayout with Header & Sidebar)
 │   ├── lib/                   # External library clients
@@ -27,20 +30,31 @@ VMS/
 │   │       ├── react-router-dom.tsx
 │   │       └── zod.ts
 │   ├── pages/                 # Visual page components
+│   │   ├── Dashboard.tsx
+│   │   ├── VenueRequests.tsx
+│   │   ├── MeetingRequests.tsx
+│   │   ├── MeetingRequestForm.tsx
+│   │   ├── Hotels.tsx
+│   │   ├── VenueExplorer.tsx
+│   │   ├── VenueDetails.tsx
+│   │   ├── VenueComparison.tsx
+│   │   ├── MyShortlists.tsx
+│   │   ├── Quotations.tsx
 │   │   ├── Approvals.tsx
 │   │   ├── Bookings.tsx
-│   │   ├── Dashboard.tsx
 │   │   ├── Finance.tsx
-│   │   ├── Hotels.tsx
-│   │   ├── Login.tsx
-│   │   ├── Quotations.tsx
 │   │   ├── Reports.tsx
 │   │   ├── UserSettings.tsx
-│   │   └── VenueRequests.tsx
+│   │   └── Login.tsx
 │   ├── routes/                # Central routing architecture
 │   │   └── routeRegistry.ts   # Single source of truth for routing paths
 │   ├── styles/                # CSS theme configurations
-│   │   └── theme.css          # Design system & CSS variables
+│   │   ├── theme.css          # Design system & CSS variables
+│   │   ├── tokens.css         # Design tokens
+│   │   ├── semantic.css       # Semantic variables
+│   │   ├── layout.css         # Layout utilities
+│   │   ├── components.css     # Component styles
+│   │   └── theme.css          # Theme configuration
 │   ├── types/                 # Shared TypeScript models
 │   │   └── index.ts
 │   ├── App.tsx                # Main Router config
@@ -58,16 +72,24 @@ VMS/
 Mapped dynamically in [routeRegistry.ts](file:///c:/Users/sunils/OneDrive%20-%20Ajanta%20Pharma%20Limited/Webapps/VMS/src/routes/routeRegistry.ts):
 
 | Registry constant | Path | Element | Description |
-|---|---|---|---|
+|-------------------|------|---------|-------------|
 | `ROUTES.login` | `/login` | `Login` | Sandbox switch to select user roles |
 | `ROUTES.dashboard` | `/dashboard` | `Dashboard` | Core statistics cards & active vendor log |
 | `ROUTES.requests` | `/requests` | `VenueRequests` | Requests datatable log with status filters |
-| `ROUTES.hotels` | `/hotels` | `Hotels` | Reusable `EmptyState` placeholder for partners |
-| `ROUTES.quotations` | `/quotations` | `Quotations` | Quotations upload comparison interface |
+| `ROUTES.meetingRequests` | `/meeting-requests` | `MeetingRequests` | Meeting requests for Sales Head |
+| `ROUTES.meetingRequestNew` | `/meeting-requests/new` | `MeetingRequestForm` | Create new meeting request |
+| `ROUTES.meetingRequestView` | `/meeting-requests/:id` | `MeetingRequestForm` | View meeting request |
+| `ROUTES.meetingRequestEdit` | `/meeting-requests/:id/edit` | `MeetingRequestForm` | Edit meeting request |
+| `ROUTES.hotels` | `/hotels` | `Hotels` | Master venue management |
+| `ROUTES.venueExplorer` | `/venue-explorer` | `VenueExplorer` | Hero search and venue discovery |
+| `ROUTES.venueDetails` | `/venue-explorer/:id` | `VenueDetails` | Venue details page |
+| `ROUTES.venueComparison` | `/venue-comparison` | `VenueComparison` | Side-by-side venue comparison |
+| `ROUTES.myShortlists` | `/my-shortlists` | `MyShortlists` | Shortlisted venues manager |
+| `ROUTES.quotations` | `/quotations` | `Quotations` | Commercial management |
 | `ROUTES.approvals` | `/approvals` | `Approvals` | Approval workflows log |
-| `ROUTES.bookings` | `/bookings` | `Bookings` | Confirmed event timelines & calendars |
-| `ROUTES.finance` | `/finance` | `Finance` | Transaction list advances / billings |
-| `ROUTES.reports` | `/reports` | `Reports` | Analytical log & spend indicators |
+| `ROUTES.bookings` | `/bookings` | `Bookings` | Confirmed event timelines |
+| `ROUTES.finance` | `/finance` | `Finance` | Transaction list |
+| `ROUTES.reports` | `/reports` | `Reports` | Analytics & reports |
 | `ROUTES.users` | `/settings/users` | `UserSettings` | User accounts & role policy controls |
 
 ---
@@ -77,7 +99,27 @@ Mapped dynamically in [routeRegistry.ts](file:///c:/Users/sunils/OneDrive%20-%20
 Defined in [permissions.ts](file:///c:/Users/sunils/OneDrive%20-%20Ajanta%20Pharma%20Limited/Webapps/VMS/src/auth/permissions.ts):
 
 - **Roles**: `SUPER_ADMIN`, `ADMIN`, `SALES_HEAD`, `FINANCE`, `VIEWER`
-- **Permissions**: Core action tags like `create:request`, `view:request`, `approve:request`, `manage:hotels`, `manage:quotations`, `manage:bookings`, `manage:finance`, `view:reports`, `manage:users`.
+- **Permissions**: Core action tags like `create:request`, `view:request`, `approve:request`, `manage:hotels`, `manage:quotations`, `manage:bookings`, `manage:finance`, `view:reports`, `manage:users`
+
+### Navigation Access Control
+
+| Navigation Item | Super Admin | Admin | Sales Head | Finance | Viewer |
+|-----------------|-------------|-------|------------|---------|--------|
+| Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Requests | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Meetings | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Venue Explorer | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Venue Comparison | ✅ | ❌ | ✅ | ❌ | ❌ |
+| My Shortlists | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Venues | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Commercials | ✅ | ✅ | ❌ | ❌ | ❌ |
+| My Quotations | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Bookings | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Invoices | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Payments | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Reports | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Masters | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Venue Import | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
