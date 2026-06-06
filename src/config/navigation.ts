@@ -36,6 +36,13 @@ export const navigationConfig: NavigationItem[] = [
     iconName: 'Search',
     roles: [ROLES.SALES_HEAD]
   },
+  // Venue Comparison: Sales Head can compare shortlisted venues
+  {
+    name: 'Venue Comparison',
+    path: ROUTES.venueComparison,
+    iconName: 'ArrowLeftRight',
+    roles: [ROLES.SALES_HEAD]
+  },
   // My Shortlists: Sales Head only
   {
     name: 'My Shortlists',
@@ -100,5 +107,22 @@ export const navigationConfig: NavigationItem[] = [
 ];
 
 export function getNavigationForRole(role: AppRole): NavigationItem[] {
-  return navigationConfig.filter(item => item.roles.includes(role));
+  console.log('🔍 getNavigationForRole called with role:', role);
+  console.log('🔍 ROLES.SUPER_ADMIN constant:', ROLES.SUPER_ADMIN);
+  console.log('🔍 role === ROLES.SUPER_ADMIN?', role === ROLES.SUPER_ADMIN);
+  
+  // SUPER_ADMIN Governance Rule: Show ALL navigation items without filtering
+  // This ensures platform owner sees all current and future modules
+  if (role === ROLES.SUPER_ADMIN) {
+    console.log('✅ SUPER_ADMIN detected - returning ALL navigation items');
+    console.log('📋 Total items:', navigationConfig.length);
+    console.log('📋 Items:', navigationConfig.map(item => item.name));
+    return navigationConfig;
+  }
+  
+  // For all other roles, filter navigation based on role permissions
+  const filtered = navigationConfig.filter(item => item.roles.includes(role));
+  console.log('🔍 Role', role, 'has access to', filtered.length, 'items');
+  console.log('📋 Filtered items:', filtered.map(item => item.name));
+  return filtered;
 }

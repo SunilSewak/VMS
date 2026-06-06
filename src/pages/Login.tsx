@@ -1,24 +1,28 @@
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { AppRole, ROLES } from '../auth/permissions';
 import { ROUTES } from '../routes/routeRegistry';
 
 export function Login() {
-  const { signInWithMock } = useAuth();
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
+  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleRoleLogin = async (role: AppRole) => {
-    await signInWithMock(role);
-    navigate(ROUTES.dashboard);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    
+    try {
+      await login(email, password);
+      navigate(ROUTES.dashboard);
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+      console.error('Login error:', err);
+    }
   };
-
-  const loginRoles: AppRole[] = [
-    ROLES.SUPER_ADMIN,
-    ROLES.ADMIN,
-    ROLES.SALES_HEAD,
-    ROLES.FINANCE,
-    ROLES.VIEWER
-  ];
 
   return (
     <div style={{
@@ -38,9 +42,8 @@ export function Login() {
         boxShadow: 'var(--shadow-lg)',
         borderRadius: 'var(--radius-xl)',
         padding: 'var(--space-8)',
-        textAlign: 'center'
       }}>
-        <div style={{ marginBottom: 'var(--space-6)' }}>
+        <div style={{ marginBottom: 'var(--space-6)', textAlign: 'center' }}>
           <h1 style={{
             fontSize: 'var(--font-2xl)',
             fontWeight: '700',
@@ -56,50 +59,118 @@ export function Login() {
         </div>
 
         <h3 style={{ fontSize: 'var(--font-base)', fontWeight: '600', color: 'var(--text-main)', marginBottom: 'var(--space-4)' }}>
-          Development Authentication
+          Sign in to your account
         </h3>
-        
-        <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-6)', lineHeight: '1.5' }}>
-          Select a role profile to continue testing the application. Supabase authentication integration is active.
-        </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          {loginRoles.map((role) => (
-            <button
-              key={role}
-              onClick={() => handleRoleLogin(role)}
+        {error && (
+          <div style={{
+            padding: 'var(--space-3)',
+            backgroundColor: '#fee',
+            border: '1px solid #fcc',
+            borderRadius: 'var(--radius-md)',
+            color: '#c33',
+            fontSize: 'var(--font-sm)',
+            marginBottom: 'var(--space-4)'
+          }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <div>
+            <label htmlFor="email" style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: '600', color: 'var(--text-main)', marginBottom: 'var(--space-2)' }}>
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="you@ajantapharma.com"
               style={{
+                width: '100%',
                 padding: 'var(--space-3)',
                 backgroundColor: 'var(--background)',
                 border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-md)',
-                color: 'var(--text-main)',
                 fontSize: 'var(--font-sm)',
-                fontWeight: '600',
-                textTransform: 'capitalize',
-                transition: 'all var(--transition-fast)',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
+                color: 'var(--text-main)',
+                outline: 'none',
               }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--primary-light)';
-                e.currentTarget.style.borderColor = 'var(--primary)';
-                e.currentTarget.style.color = 'var(--primary)';
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: '600', color: 'var(--text-main)', marginBottom: 'var(--space-2)' }}>
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              placeholder="••••••••"
+              style={{
+                width: '100%',
+                padding: 'var(--space-3)',
+                backgroundColor: 'var(--background)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 'var(--font-sm)',
+                color: 'var(--text-main)',
+                outline: 'none',
               }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--background)';
-                e.currentTarget.style.borderColor = 'var(--border)';
-                e.currentTarget.style.color = 'var(--text-main)';
-              }}
-            >
-              Sign in as {role.replace('_', ' ')}
-            </button>
-          ))}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            style={{
+              padding: 'var(--space-3)',
+              backgroundColor: isLoading ? 'var(--text-muted)' : 'var(--primary)',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
+              color: '#fff',
+              fontSize: 'var(--font-sm)',
+              fontWeight: '600',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              transition: 'all var(--transition-fast)',
+            }}
+            onMouseOver={(e) => {
+              if (!isLoading) e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--primary) 85%, black)';
+            }}
+            onMouseOut={(e) => {
+              if (!isLoading) e.currentTarget.style.backgroundColor = 'var(--primary)';
+            }}
+          >
+            {isLoading ? 'Signing in...' : 'Sign in'}
+          </button>
+        </form>
+
+        <div style={{ marginTop: 'var(--space-6)', borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)' }}>
+          <details style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>
+            <summary style={{ cursor: 'pointer', marginBottom: 'var(--space-2)' }}>Test Accounts</summary>
+            <div style={{ paddingLeft: 'var(--space-2)', lineHeight: '1.6' }}>
+              <p><strong>SUPER_ADMIN:</strong> superadmin@ajantapharma.com</p>
+              <p><strong>ADMIN:</strong> admin@ajantapharma.com</p>
+              <p><strong>SALES_HEAD:</strong> saleshead@ajantapharma.com</p>
+              <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-light)' }}>
+                Password: Test@123
+              </p>
+            </div>
+          </details>
         </div>
 
-        <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)' }}>
+        <div style={{ marginTop: 'var(--space-4)', textAlign: 'center' }}>
           <p style={{ fontSize: '10px', color: 'var(--text-light)' }}>
             Ajanta Pharma Ltd. Security Policy Enforced
           </p>

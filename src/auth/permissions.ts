@@ -58,3 +58,55 @@ export const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
 export function hasPermission(role: AppRole, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role]?.includes(permission) || false;
 }
+
+/**
+ * Centralized permission helper for access control
+ * 
+ * Governance Rule:
+ * - SUPER_ADMIN has unrestricted access to ALL permissions and routes
+ * - This ensures platform owner can access any current or future module
+ * - Other roles follow their defined permission sets
+ * 
+ * @param role - The user's role
+ * @param permission - The permission to check
+ * @returns true if the user has access, false otherwise
+ */
+export function hasAccess(role: AppRole | undefined, permission: Permission): boolean {
+  // SUPER_ADMIN override: Always grant access
+  if (role === ROLES.SUPER_ADMIN) {
+    return true;
+  }
+  
+  // All other roles follow standard permission checks
+  if (!role) {
+    return false;
+  }
+  
+  return hasPermission(role, permission);
+}
+
+/**
+ * Check if a user has access to a specific route
+ * 
+ * Governance Rule:
+ * - SUPER_ADMIN can access ALL routes without restriction
+ * - Other roles must be explicitly listed in allowedRoles
+ * 
+ * @param userRole - The user's role
+ * @param allowedRoles - Roles allowed to access this route
+ * @returns true if the user can access the route
+ */
+export function canAccessRoute(userRole: AppRole | undefined, allowedRoles?: AppRole[]): boolean {
+  // SUPER_ADMIN override: Always grant access
+  if (userRole === ROLES.SUPER_ADMIN) {
+    return true;
+  }
+  
+  // If no specific roles defined, allow access (public route)
+  if (!allowedRoles || allowedRoles.length === 0) {
+    return true;
+  }
+  
+  // Check if user's role is in allowed roles
+  return userRole ? allowedRoles.includes(userRole) : false;
+}

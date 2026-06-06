@@ -28,7 +28,11 @@
       "@tanstack/react-query": ["src/lib/shims/react-query.tsx"],
       "react-hook-form": ["src/lib/shims/react-hook-form.tsx"],
       "zod": ["src/lib/shims/zod.ts"]
-    }
+    },
+    
+    /* Explicitly exclude node_modules from type checking */
+    "types": []
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

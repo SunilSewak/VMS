@@ -10,6 +10,7 @@ import { MeetingRequestForm } from './pages/MeetingRequestForm';
 import { Hotels } from './pages/Hotels';
 import { VenueExplorer } from './pages/VenueExplorer';
 import { VenueDetails } from './pages/VenueDetails';
+import { VenueComparison } from './pages/VenueComparison';
 import { MyShortlists } from './pages/MyShortlists';
 import { Quotations } from './pages/Quotations';
 import { Approvals } from './pages/Approvals';
@@ -111,6 +112,14 @@ export default function App() {
               <ProtectedRoute>
                 <AppLayout>
                   <VenueDetails />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path={ROUTES.venueComparison} element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <VenueComparison />
                 </AppLayout>
               </ProtectedRoute>
             } />
