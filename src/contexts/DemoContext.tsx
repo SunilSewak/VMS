@@ -23,7 +23,8 @@ interface DemoContextType {
 const DemoContext = createContext<DemoContextType | null>(null);
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => isDemoModeActive());
+  const [isReloading, setIsReloading] = useState(false);
+  const [isDemoMode] = useState<boolean>(() => isDemoModeActive());
 
   // Seed on first enable
   useEffect(() => {
@@ -33,23 +34,28 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   }, [isDemoMode]);
 
   const toggleDemoMode = useCallback(() => {
+    if (isReloading) return;
+    
     if (isDemoMode) {
       disableDemoMode();
-      setIsDemoMode(false);
     } else {
       enableDemoMode();
       seedDemoData(false);
-      setIsDemoMode(true);
     }
-    // Reload so all hooks re-initialize with the new mode
+    
+    setIsReloading(true);
     window.location.reload();
-  }, [isDemoMode]);
+  }, [isDemoMode, isReloading]);
 
   const resetDemoData = useCallback(() => {
+    if (isReloading) return;
+    
     demoReset();
     seedDemoData(true);
+    
+    setIsReloading(true);
     window.location.reload();
-  }, []);
+  }, [isReloading]);
 
   const exportDemoData = useCallback(() => {
     const json = demoExport();
@@ -64,6 +70,8 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
   const importDemoData = useCallback((json: string) => {
     demoImport(json);
+    
+    setIsReloading(true);
     window.location.reload();
   }, []);
 

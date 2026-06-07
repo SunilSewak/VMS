@@ -18,8 +18,8 @@ import { Approvals } from './pages/Approvals';
 import { Bookings } from './pages/Bookings';
 import { Finance } from './pages/Finance';
 import { Reports } from './pages/Reports';
-import { UserSettings } from './pages/UserSettings';
 import { VenueBulkImport } from './pages/VenueBulkImport';
+import { DemoTools } from './pages/DemoTools';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ROUTES } from './routes/routeRegistry';
 import { ROLES } from './auth/permissions';
@@ -175,14 +175,6 @@ export default function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path={ROUTES.users} element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <UserSettings />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-
               <Route path={ROUTES.venueImport} element={
                 <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                   <AppLayout>
@@ -190,6 +182,14 @@ export default function App() {
                   </AppLayout>
                 </ProtectedRoute>
               } />
+
+            <Route path={ROUTES.demoTools} element={
+              <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <AppLayout>
+                  <DemoTools />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
             </Routes>
           </BrowserRouter>
         </AuthProvider>

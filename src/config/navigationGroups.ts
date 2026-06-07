@@ -176,6 +176,12 @@ export const navigationGroups: NavigationGroup[] = [
     roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
     submenus: [
       {
+        name: 'Demo Tools',
+        path: ROUTES.demoTools,
+        iconName: 'Bug',
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
+      },
+      {
         name: 'Users',
         path: ROUTES.users,
         iconName: 'Users',
