@@ -37,6 +37,10 @@ export function NavigationDropdown({ group, isActive }: NavigationDropdownProps)
     setIsExpanded(false);
   };
 
+  const handleToggleExpanded = () => {
+    setIsExpanded((current) => !current);
+  };
+
   // Render icon
   const renderIcon = (name: string) => {
     const IconComponent = (LucideIcons as any)[name];
@@ -62,6 +66,7 @@ export function NavigationDropdown({ group, isActive }: NavigationDropdownProps)
     >
       {/* Top-level menu item */}
       <button
+        onClick={handleToggleExpanded}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -142,7 +147,7 @@ export function NavigationDropdown({ group, isActive }: NavigationDropdownProps)
         </div>
       )}
 
-      {/* Hover overlay for desktop */}
+      {/* Hover overlay for desktop (non-blocking) */}
       {isHovered && (
         <div
           style={{
@@ -151,7 +156,8 @@ export function NavigationDropdown({ group, isActive }: NavigationDropdownProps)
             left: 0,
             width: '100%',
             height: '100%',
-            zIndex: 1001,
+            zIndex: 0,
+            pointerEvents: 'none',
             backgroundColor: 'transparent'
           }}
         />

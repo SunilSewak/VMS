@@ -24,7 +24,7 @@ const DemoContext = createContext<DemoContextType | null>(null);
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [isReloading, setIsReloading] = useState(false);
-  const [isDemoMode] = useState<boolean>(() => isDemoModeActive());
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => isDemoModeActive());
 
   // Seed on first enable
   useEffect(() => {
@@ -35,14 +35,16 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
   const toggleDemoMode = useCallback(() => {
     if (isReloading) return;
-    
-    if (isDemoMode) {
-      disableDemoMode();
-    } else {
+
+    const next = !isDemoMode;
+    if (next) {
       enableDemoMode();
       seedDemoData(false);
+    } else {
+      disableDemoMode();
     }
-    
+
+    setIsDemoMode(next);
     setIsReloading(true);
     window.location.reload();
   }, [isDemoMode, isReloading]);
