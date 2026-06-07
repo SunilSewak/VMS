@@ -9,7 +9,7 @@ import {
   removeFromShortlist,
   fetchShortlistedIds,
   fetchMyShortlists,
-} from './api';
+} from './venueService';
 
 // Hook: Fetch cities and categories for filter dropdowns
 export function useVenueFilters() {

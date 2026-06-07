@@ -5,7 +5,7 @@ import { ResponsiveDataTable, ColumnDefinition } from '../components/ResponsiveD
 import { useMeetingRequests } from '../features/meetings/hooks';
 import { MeetingRequest } from '../features/meetings/types';
 import { MEETING_STATUSES } from '../features/meetings/constants';
-import { deleteMeetingRequest, updateMeetingRequest } from '../features/meetings/api';
+import { deleteMeetingRequest, updateMeetingRequest } from '../features/meetings/meetingService';
 import { ROUTES } from '../routes/routeRegistry';
 
 export function MeetingRequests() {

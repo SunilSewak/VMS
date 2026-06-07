@@ -1,6 +1,7 @@
 import './styles/theme.css';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider, ProtectedRoute } from './contexts/AuthContext';
+import { DemoProvider } from './contexts/DemoContext';
 import { AppLayout } from './layouts/AppLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -36,161 +37,163 @@ function RedirectToDashboard() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public Login Route */}
-            <Route path={ROUTES.login} element={<Login />} />
+      <DemoProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Public Login Route */}
+              <Route path={ROUTES.login} element={<Login />} />
 
-            {/* Redirect root to Dashboard */}
-            <Route path="/" element={<RedirectToDashboard />} />
-            
-            {/* Protected Application Routes */}
-            <Route path={ROUTES.dashboard} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Dashboard />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              {/* Redirect root to Dashboard */}
+              <Route path="/" element={<RedirectToDashboard />} />
 
-            <Route path={ROUTES.requests} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <VenueRequests />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              {/* Protected Application Routes */}
+              <Route path={ROUTES.dashboard} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Dashboard />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.meetingRequests} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <MeetingRequests />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.requests} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <VenueRequests />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.meetingRequestNew} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <MeetingRequestForm />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.meetingRequests} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <MeetingRequests />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.meetingRequestView} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <MeetingRequestForm />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.meetingRequestNew} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <MeetingRequestForm />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.meetingRequestEdit} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <MeetingRequestForm />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.meetingRequestView} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <MeetingRequestForm />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.hotels} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Hotels />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.meetingRequestEdit} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <MeetingRequestForm />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.venueExplorer} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <VenueExplorer />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.hotels} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Hotels />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.venueDetails} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <VenueDetails />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.venueExplorer} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <VenueExplorer />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.venueComparison} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <VenueComparison />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.venueDetails} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <VenueDetails />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.myShortlists} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <MyShortlists />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-            <Route path={ROUTES.quotations} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Quotations />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.venueComparison} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <VenueComparison />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.approvals} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Approvals />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.myShortlists} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <MyShortlists />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path={ROUTES.quotations} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Quotations />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.bookings} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Bookings />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.approvals} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Approvals />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.finance} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Finance />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.bookings} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Bookings />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.reports} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Reports />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.finance} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Finance />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.users} element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <UserSettings />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+              <Route path={ROUTES.reports} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Reports />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
 
-            <Route path={ROUTES.venueImport} element={
-              <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-                <AppLayout>
-                  <VenueBulkImport />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+              <Route path={ROUTES.users} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <UserSettings />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.venueImport} element={
+                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                  <AppLayout>
+                    <VenueBulkImport />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </DemoProvider>
     </ErrorBoundary>
   );
 }

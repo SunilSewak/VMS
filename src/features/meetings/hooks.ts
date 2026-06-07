@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { MeetingRequest, Division, City, MeetingType } from './types';
-import * as api from './api';
+import * as api from './meetingService';
 
 // Hook to load all necessary form lookup masters
 export function useMeetingMasters() {

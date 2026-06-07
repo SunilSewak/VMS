@@ -8,7 +8,7 @@ import {
   Layers, GraduationCap, CheckCircle2, TrendingUp, Cpu, BedDouble
 } from 'lucide-react';
 import { useMeetingRequest, useMeetingMasters } from '../features/meetings/hooks';
-import { createMeetingRequest, updateMeetingRequest } from '../features/meetings/api';
+import { createMeetingRequest, updateMeetingRequest } from '../features/meetings/meetingService';
 import { DEFAULT_FORM_VALUES, SEATING_STYLES } from '../features/meetings/constants';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../routes/routeRegistry';
