@@ -1,0 +1,376 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, FileText } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { getBookings } from '../features/bookings/bookingService';
+import { createInvoice } from '../features/invoices/invoiceService';
+import type { InvoiceCreateInput } from '../features/invoices/types';
+import type { Booking } from '../features/bookings/types';
+import { ROUTES } from '../routes/routeRegistry';
+
+export function InvoiceCreate() {
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const bookingIdParam = searchParams.get('bookingId') ?? undefined;
+
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    let mounted = true;
+    const loadBookings = async () => {
+      try {
+        const items = await getBookings(user, { status: 'CONFIRMED' });
+        if (mounted) setBookings(items);
+      } catch (error) {
+        console.error('Failed to load bookings:', error);
+      } finally {
+        if (mounted) setBookingsLoading(false);
+      }
+    };
+
+    loadBookings();
+    return () => { mounted = false; };
+  }, [user]);
+
+  const [bookingId, setBookingId] = useState<string>(bookingIdParam ?? '');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [roomCharges, setRoomCharges] = useState('0');
+  const [hallCharges, setHallCharges] = useState('0');
+  const [foodCharges, setFoodCharges] = useState('0');
+  const [taxAmount, setTaxAmount] = useState('0');
+  const [paxBilled, setPaxBilled] = useState('0');
+  const [remarks, setRemarks] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (bookingIdParam) {
+      setBookingId(bookingIdParam);
+    }
+  }, [bookingIdParam]);
+
+  const selectedBooking = useMemo(
+    () => bookings.find((booking) => booking.id === bookingId) ?? null,
+    [bookings, bookingId]
+  );
+
+  const invoiceAmount = Math.max(
+    0,
+    (Number(roomCharges) || 0) +
+      (Number(hallCharges) || 0) +
+      (Number(foodCharges) || 0) +
+      (Number(taxAmount) || 0)
+  );
+
+  const handleCreate = async () => {
+    if (!user) return;
+
+    setSubmitError(null);
+
+    if (!bookingId) {
+      setSubmitError('Booking is required.');
+      return;
+    }
+    if (!invoiceNumber.trim()) {
+      setSubmitError('Invoice number is required.');
+      return;
+    }
+    if (!invoiceDate) {
+      setSubmitError('Invoice date is required.');
+      return;
+    }
+    if (Number(paxBilled) <= 0) {
+      setSubmitError('Pax billed must be greater than zero.');
+      return;
+    }
+    if (invoiceAmount <= 0) {
+      setSubmitError('Invoice amount must be greater than zero.');
+      return;
+    }
+
+    const payload: InvoiceCreateInput = {
+      booking_id: bookingId,
+      invoice_number: invoiceNumber.trim(),
+      invoice_date: invoiceDate,
+      invoice_amount: invoiceAmount,
+      room_charges: Number(roomCharges) || 0,
+      hall_charges: Number(hallCharges) || 0,
+      food_charges: Number(foodCharges) || 0,
+      tax_amount: Number(taxAmount) || 0,
+      pax_billed: Number(paxBilled),
+      remarks: remarks.trim() || null,
+    };
+
+    setSaving(true);
+    try {
+      const invoice = await createInvoice(payload, user);
+      navigate(`${ROUTES.invoiceDetails.replace(':id', invoice.id)}?created=true`);
+    } catch (error: any) {
+      setSubmitError(error?.message ?? 'Unable to create invoice.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!user) {
+    return null;
+  }
+
+  const loading = bookingsLoading;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'fadeIn 0.3s ease' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+        <div>
+          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, margin: 0 }}>Create Invoice</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: '0.5rem' }}>
+            Submit invoice details for booking charges and services.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <Link
+            to={ROUTES.invoices}
+            className="btn btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <ArrowLeft size={16} /> Back to Invoices
+          </Link>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+          Loading bookings...
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: '1fr 320px' }}>
+          <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+            <div style={{ display: 'grid', gap: '1.25rem' }}>
+              {/* Section A: Invoice Details */}
+              <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem' }}>Invoice Details</h2>
+                
+                <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Booking *</label>
+                  <select
+                    value={bookingId}
+                    onChange={(event) => setBookingId(event.target.value)}
+                    style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                  >
+                    <option value="">Select a confirmed booking</option>
+                    {bookings
+                      .filter((b) => b.status === 'CONFIRMED')
+                      .map((booking) => (
+                        <option key={booking.id} value={booking.id}>
+                          {booking.booking_reference} — {booking.check_in_date}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Invoice Number *</label>
+                    <input
+                      type="text"
+                      value={invoiceNumber}
+                      onChange={(e) => setInvoiceNumber(e.target.value)}
+                      placeholder="INV-2024-..."
+                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Invoice Date *</label>
+                    <input
+                      type="date"
+                      value={invoiceDate}
+                      onChange={(e) => setInvoiceDate(e.target.value)}
+                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section B: Charge Breakdown */}
+              <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem' }}>Charge Breakdown</h2>
+
+                <div style={{ display: 'grid', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Room Charges</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="100"
+                      value={roomCharges}
+                      onChange={(e) => setRoomCharges(e.target.value)}
+                      placeholder="0"
+                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Hall Charges</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="100"
+                      value={hallCharges}
+                      onChange={(e) => setHallCharges(e.target.value)}
+                      placeholder="0"
+                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Food Charges</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="100"
+                      value={foodCharges}
+                      onChange={(e) => setFoodCharges(e.target.value)}
+                      placeholder="0"
+                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Tax Amount</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="100"
+                      value={taxAmount}
+                      onChange={(e) => setTaxAmount(e.target.value)}
+                      placeholder="0"
+                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 600 }}>Invoice Amount</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>₹{invoiceAmount.toLocaleString('en-IN')}</div>
+                </div>
+              </div>
+
+              {/* Section C: Operational Data */}
+              <div style={{ paddingBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem' }}>Operational Data</h2>
+
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Pax Billed *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={paxBilled}
+                      onChange={(e) => setPaxBilled(e.target.value)}
+                      placeholder="0"
+                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Remarks</label>
+                    <textarea
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      placeholder="Any additional remarks or notes..."
+                      style={{
+                        width: '100%',
+                        minHeight: '100px',
+                        padding: '0.9rem 1rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border)',
+                        fontFamily: 'inherit',
+                        resize: 'vertical',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Error */}
+              {submitError ? (
+                <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 500 }}>
+                  {submitError}
+                </div>
+              ) : null}
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+                <button
+                  onClick={handleCreate}
+                  disabled={saving}
+                  style={{
+                    flex: 1,
+                    padding: '1rem',
+                    borderRadius: 'var(--radius-lg)',
+                    border: 'none',
+                    background: 'var(--primary)',
+                    color: '#fff',
+                    fontWeight: 700,
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                    opacity: saving ? 0.6 : 1,
+                  }}
+                >
+                  {saving ? 'Creating...' : 'Create Invoice'}
+                </button>
+                <Link
+                  to={ROUTES.invoices}
+                  style={{
+                    flex: 1,
+                    padding: '1rem',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--primary)',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textDecoration: 'none',
+                  }}
+                >
+                  Cancel
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* Sidebar */}
+          <div>
+            {selectedBooking ? (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', position: 'sticky', top: 'var(--space-4)' }}>
+                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>SELECTED BOOKING</h3>
+                <div style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+                  {selectedBooking.booking_reference}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'grid', gap: '0.5rem' }}>
+                  <div>Check-in: {new Date(selectedBooking.check_in_date).toLocaleDateString('en-IN')}</div>
+                  <div>Check-out: {new Date(selectedBooking.check_out_date).toLocaleDateString('en-IN')}</div>
+                  <div>Expected pax: {selectedBooking.expected_pax}</div>
+                  <div>Rooms: {selectedBooking.rooms_booked}</div>
+                  <div>Halls: {selectedBooking.halls_booked}</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: 'var(--background)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <FileText size={32} style={{ margin: '0 auto var(--space-2)', opacity: 0.5 }} />
+                <div style={{ fontSize: '0.9rem' }}>Select a booking to view details</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

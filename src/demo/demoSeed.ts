@@ -220,7 +220,9 @@ export function seedDemoData(force = false): void {
 
   // ─── Bookings ────────────────────────────────────────────────────────────────
   demoSet(DEMO_COLLECTIONS.BOOKINGS, [
-    { id: 'bkg-001', request_id: IDS.REQ_003, hotel_id: IDS.HOT_BLR1, hall_id: IDS.HALL_BLR1_A, check_in: '2024-02-20', check_out: '2024-02-21', rooms: 0, status: 'CONFIRMED', amount: 185000, currency: 'INR', created_at: '2024-01-25T12:00:00Z' },
+    { id: 'bkg-001', meeting_request_id: IDS.REQ_003, hotel_id: IDS.HOT_BLR1, hall_id: IDS.HALL_BLR1_A, check_in: '2024-02-20', check_out: '2024-02-21', rooms: 0, halls_booked: 1, expected_pax: 300, status: 'CONFIRMED', amount: 185000, currency: 'INR', created_by: IDS.USR_ADMIN, confirmed_by: IDS.USR_ADMIN, confirmed_at: '2024-01-26T15:00:00Z', created_at: '2024-01-25T12:00:00Z' },
+    { id: 'bkg-002', meeting_request_id: IDS.REQ_001, hotel_id: IDS.HOT_MUM1, hall_id: IDS.HALL_MUM1_A, check_in: '2024-03-10', check_out: '2024-03-12', rooms: 60, halls_booked: 2, expected_pax: 150, special_requirements: 'VIP welcome desk, AV onsite support', status: 'UNDER_REVIEW', amount: 750000, currency: 'INR', created_by: IDS.USR_SALES, created_at: '2024-01-22T10:15:00Z' },
+    { id: 'bkg-003', meeting_request_id: IDS.REQ_002, hotel_id: IDS.HOT_DEL1, hall_id: IDS.HALL_DEL1_A, check_in: '2024-04-15', check_out: '2024-04-17', rooms: 140, halls_booked: 3, expected_pax: 300, status: 'CANCELLED', amount: 1200000, currency: 'INR', created_by: IDS.USR_ADMIN, created_at: '2024-01-30T09:45:00Z', updated_at: '2024-02-01T10:00:00Z' },
   ]);
 
   // ─── Invoices ────────────────────────────────────────────────────────────────

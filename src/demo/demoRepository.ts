@@ -122,16 +122,26 @@ export interface DemoQuotation {
 // Booking types
 export interface DemoBooking {
   id: string;
-  request_id: string;
+  meeting_request_id: string;
+  request_id?: string;
   hotel_id: string;
   hall_id?: string;
+  booking_reference?: string;
+  status: string;
   check_in: string;
   check_out: string;
   rooms: number;
-  status: string;
-  amount: number;
-  currency: string;
+  halls_booked?: number;
+  expected_pax?: number;
+  special_requirements?: string;
+  amount?: number;
+  currency?: string;
+  confirmed_by?: string;
+  confirmed_at?: string;
+  created_by?: string;
   created_at: string;
+  updated_at?: string;
+  updated_by?: string;
 }
 
 // Finance types
@@ -139,12 +149,39 @@ export interface DemoInvoice {
   id: string;
   booking_id: string;
   invoice_number: string;
-  amount: number;
-  tax: number;
-  total: number;
-  currency: string;
+  invoice_date: string;
+  invoice_amount: number;
+  room_charges: number;
+  hall_charges: number;
+  food_charges: number;
+  tax_amount: number;
+  pax_billed: number;
+  remarks?: string | null;
   status: string;
-  due_date: string;
+  verified_by?: string | null;
+  verified_at?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
+  created_at: string;
+  created_by?: string | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+}
+
+export interface DemoInvoiceVariance {
+  id: string;
+  invoice_id: string;
+  category: string;
+  expected_value: number;
+  actual_value: number;
+  variance_amount: number;
+  variance_percentage: number;
+  severity: string;
+  description: string;
   created_at: string;
 }
 
@@ -199,11 +236,21 @@ export interface DemoRepository {
 
   // Bookings
   getBookings(): Promise<DemoBooking[]>;
+  getBookingById(id: string): Promise<DemoBooking>;
   createBooking(data: any): Promise<DemoBooking>;
+  updateBooking(id: string, data: any): Promise<DemoBooking>;
+  confirmBooking(id: string, confirmedBy: string): Promise<DemoBooking>;
+  cancelBooking(id: string, cancelledBy: string): Promise<DemoBooking>;
 
   // Invoices
   getInvoices(): Promise<DemoInvoice[]>;
+  getInvoiceById(id: string): Promise<DemoInvoice>;
   createInvoice(data: any): Promise<DemoInvoice>;
+  updateInvoice(id: string, data: any): Promise<DemoInvoice>;
+  verifyInvoice(id: string, verifiedBy: string): Promise<DemoInvoice>;
+  approveInvoice(id: string, approvedBy: string): Promise<DemoInvoice>;
+  rejectInvoice(id: string, reason: string): Promise<DemoInvoice>;
+  getInvoiceVariances(invoiceId: string): Promise<DemoInvoiceVariance[]>;
 
   // Payments
   getPayments(): Promise<DemoPayment[]>;
@@ -347,17 +394,126 @@ export const demoRepository: DemoRepository = {
     return demoGet<DemoBooking>(DEMO_COLLECTIONS.BOOKINGS);
   },
 
+  async getBookingById(id: string) {
+    const item = demoFindById<DemoBooking>(DEMO_COLLECTIONS.BOOKINGS, id);
+    if (!item) throw new Error('Booking not found');
+    return item;
+  },
+
   async createBooking(data: any) {
-    return demoInsert<DemoBooking>(DEMO_COLLECTIONS.BOOKINGS, { ...data, id: 'demo' + Math.random().toString(36).slice(2, 11) });
+    const record: DemoBooking = {
+      ...data,
+      meeting_request_id: data.meeting_request_id ?? data.request_id,
+      id: 'demo' + Math.random().toString(36).slice(2, 11),
+      booking_reference: data.booking_reference ?? `DEMO-${Math.floor(1000 + Math.random() * 9000)}`,
+      status: data.status ?? 'REQUESTED',
+      created_at: data.created_at ?? new Date().toISOString(),
+      confirmed_by: data.confirmed_by ?? undefined,
+      confirmed_at: data.confirmed_at ?? undefined,
+      updated_at: data.updated_at ?? undefined,
+      updated_by: data.updated_by ?? undefined,
+    };
+    return demoInsert<DemoBooking>(DEMO_COLLECTIONS.BOOKINGS, record);
+  },
+
+  async updateBooking(id: string, data: any) {
+    const updated = demoUpdate<DemoBooking>(DEMO_COLLECTIONS.BOOKINGS, id, {
+      ...data,
+      updated_at: new Date().toISOString(),
+      updated_by: data.updated_by ?? undefined,
+    });
+    if (!updated) throw new Error('Booking not found');
+    return updated;
+  },
+
+  async confirmBooking(id: string, confirmedBy: string) {
+    const updated = demoUpdate<DemoBooking>(DEMO_COLLECTIONS.BOOKINGS, id, {
+      status: 'CONFIRMED',
+      confirmed_by: confirmedBy,
+      confirmed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      updated_by: confirmedBy,
+    });
+    if (!updated) throw new Error('Booking not found');
+    return updated;
+  },
+
+  async cancelBooking(id: string, cancelledBy: string) {
+    const updated = demoUpdate<DemoBooking>(DEMO_COLLECTIONS.BOOKINGS, id, {
+      status: 'CANCELLED',
+      updated_at: new Date().toISOString(),
+      updated_by: cancelledBy,
+    });
+    if (!updated) throw new Error('Booking not found');
+    return updated;
   },
 
   // Invoices
   async getInvoices() {
-    return demoGet<DemoInvoice>(DEMO_COLLECTIONS.INVOICES);
+    return demoGet<DemoInvoice>(DEMO_COLLECTIONS.INVOICES).filter((inv) => !inv.is_deleted);
+  },
+
+  async getInvoiceById(id: string) {
+    const item = demoFindById<DemoInvoice>(DEMO_COLLECTIONS.INVOICES, id);
+    if (!item || item.is_deleted) throw new Error('Invoice not found');
+    return item;
   },
 
   async createInvoice(data: any) {
-    return demoInsert<DemoInvoice>(DEMO_COLLECTIONS.INVOICES, { ...data, id: 'demo' + Math.random().toString(36).slice(2, 11) });
+    const record: DemoInvoice = {
+      ...data,
+      id: 'demo' + Math.random().toString(36).slice(2, 11),
+      status: data.status ?? 'RECEIVED',
+      created_at: data.created_at ?? new Date().toISOString(),
+      is_deleted: false,
+    };
+    return demoInsert<DemoInvoice>(DEMO_COLLECTIONS.INVOICES, record);
+  },
+
+  async updateInvoice(id: string, data: any) {
+    const updated = demoUpdate<DemoInvoice>(DEMO_COLLECTIONS.INVOICES, id, {
+      ...data,
+      updated_at: new Date().toISOString(),
+    });
+    if (!updated || updated.is_deleted) throw new Error('Invoice not found');
+    return updated;
+  },
+
+  async verifyInvoice(id: string, verifiedBy: string) {
+    const updated = demoUpdate<DemoInvoice>(DEMO_COLLECTIONS.INVOICES, id, {
+      status: 'VERIFIED',
+      verified_by: verifiedBy,
+      verified_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (!updated || updated.is_deleted) throw new Error('Invoice not found');
+    return updated;
+  },
+
+  async approveInvoice(id: string, approvedBy: string) {
+    const updated = demoUpdate<DemoInvoice>(DEMO_COLLECTIONS.INVOICES, id, {
+      status: 'APPROVED',
+      approved_by: approvedBy,
+      approved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (!updated || updated.is_deleted) throw new Error('Invoice not found');
+    return updated;
+  },
+
+  async rejectInvoice(id: string, reason: string) {
+    const updated = demoUpdate<DemoInvoice>(DEMO_COLLECTIONS.INVOICES, id, {
+      status: 'REJECTED',
+      rejection_reason: reason,
+      updated_at: new Date().toISOString(),
+    });
+    if (!updated || updated.is_deleted) throw new Error('Invoice not found');
+    return updated;
+  },
+
+  async getInvoiceVariances(invoiceId: string) {
+    const all = demoGet<DemoInvoiceVariance>(DEMO_COLLECTIONS.INVOICES);
+    return (all.filter((v: any) => v.invoice_id === invoiceId) ?? []) as DemoInvoiceVariance[];
   },
 
   // Payments

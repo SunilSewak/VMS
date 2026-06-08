@@ -1,26 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Search, SlidersHorizontal, Plus } from 'lucide-react';
+import { DollarSign, Search, SlidersHorizontal, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getBookings } from '../features/bookings/bookingService';
-import type { Booking, BookingStatus } from '../features/bookings/types';
+import { getInvoices } from '../features/invoices/invoiceService';
+import type { Invoice, InvoiceStatus } from '../features/invoices/types';
 import { ROUTES } from '../routes/routeRegistry';
 import { ROLES } from '../auth/permissions';
 import { EmptyState } from '../components/EmptyState';
 import { ResponsiveDataTable, type ColumnDefinition } from '../components/ResponsiveDataTable';
 
-const STATUS_OPTIONS: Array<BookingStatus | ''> = ['', 'REQUESTED', 'UNDER_REVIEW', 'CONFIRMED', 'CANCELLED', 'COMPLETED'];
+const STATUS_OPTIONS: Array<InvoiceStatus | ''> = ['', 'RECEIVED', 'VERIFIED', 'APPROVED', 'REJECTED'];
 
-const statusBadge = (status: BookingStatus) => {
+const statusBadge = (status: InvoiceStatus) => {
   const color =
-    status === 'CONFIRMED'
+    status === 'APPROVED'
       ? 'var(--success)'
-      : status === 'CANCELLED'
+      : status === 'REJECTED'
       ? 'var(--danger)'
-      : status === 'UNDER_REVIEW'
+      : status === 'VERIFIED'
       ? 'var(--warning)'
-      : status === 'COMPLETED'
-      ? 'var(--text-muted)'
       : 'var(--primary)';
 
   return (
@@ -35,55 +33,43 @@ const statusBadge = (status: BookingStatus) => {
         fontSize: '0.8rem',
       }}
     >
-      {status.replace('_', ' ')}
+      {status}
     </span>
   );
 };
 
-const columns: ColumnDefinition<Booking>[] = [
+const columns: ColumnDefinition<Invoice>[] = [
   {
-    header: 'Booking reference',
-    accessor: (booking) => (
-      <Link to={ROUTES.bookingDetails.replace(':id', booking.id)} style={{ color: 'var(--primary)', fontWeight: 600 }}>
-        {booking.booking_reference}
+    header: 'Invoice number',
+    accessor: (invoice) => (
+      <Link to={ROUTES.invoiceDetails.replace(':id', invoice.id)} style={{ color: 'var(--primary)', fontWeight: 600 }}>
+        {invoice.invoice_number}
       </Link>
     ),
     priority: 'always',
   },
   {
-    header: 'Meeting',
-    accessor: (booking) => booking.meeting_requests?.meeting_name ?? booking.meeting_request_id,
+    header: 'Invoice date',
+    accessor: (invoice) => new Date(invoice.invoice_date).toLocaleDateString('en-IN'),
     priority: 'tablet-desktop',
-    mobileLabel: 'Meeting',
+    mobileLabel: 'Date',
   },
   {
-    header: 'Hotel',
-    accessor: (booking) => booking.hotels?.hotel_name ?? booking.hotel_id,
+    header: 'Amount',
+    accessor: (invoice) => `₹${invoice.invoice_amount.toLocaleString('en-IN')}`,
     priority: 'tablet-desktop',
-    mobileLabel: 'Hotel',
-  },
-  {
-    header: 'Check in',
-    accessor: (booking) => booking.check_in_date ?? '-',
-    priority: 'desktop',
-    mobileLabel: 'Check in',
-  },
-  {
-    header: 'Check out',
-    accessor: (booking) => booking.check_out_date ?? '-',
-    priority: 'desktop',
-    mobileLabel: 'Check out',
+    mobileLabel: 'Amount',
   },
   {
     header: 'Status',
-    accessor: (booking) => statusBadge(booking.status),
+    accessor: (invoice) => statusBadge(invoice.status),
     priority: 'tablet-desktop',
     mobileLabel: 'Status',
   },
   {
     header: 'Actions',
-    accessor: (booking) => (
-      <Link to={ROUTES.bookingDetails.replace(':id', booking.id)} style={{ color: 'var(--primary)' }}>
+    accessor: (invoice) => (
+      <Link to={ROUTES.invoiceDetails.replace(':id', invoice.id)} style={{ color: 'var(--primary)' }}>
         View
       </Link>
     ),
@@ -92,10 +78,10 @@ const columns: ColumnDefinition<Booking>[] = [
   },
 ];
 
-export function Bookings() {
+export function Invoices() {
   const { user } = useAuth();
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [statusFilter, setStatusFilter] = useState<BookingStatus | ''>('');
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('');
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,18 +90,18 @@ export function Bookings() {
     if (!user) return;
 
     let mounted = true;
-    const loadBookings = async () => {
+    const loadInvoices = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const items = await getBookings(user, statusFilter ? { status: statusFilter } : undefined);
+        const items = await getInvoices(user, statusFilter ? { status: statusFilter } : undefined);
         if (mounted) {
-          setBookings(items);
+          setInvoices(items);
         }
       } catch (caught) {
         if (mounted) {
-          setError((caught as Error).message ?? 'Unable to load bookings.');
+          setError((caught as Error).message ?? 'Unable to load invoices.');
         }
       } finally {
         if (mounted) {
@@ -124,39 +110,32 @@ export function Bookings() {
       }
     };
 
-    loadBookings();
+    loadInvoices();
     return () => {
       mounted = false;
     };
   }, [user, statusFilter]);
 
-  const filteredBookings = useMemo(() => {
+  const filteredInvoices = useMemo(() => {
     const query = searchText.trim().toLowerCase();
-    if (!query) return bookings;
+    if (!query) return invoices;
 
-    return bookings.filter((booking) => {
-      const meetingName = booking.meeting_requests?.meeting_name ?? '';
-      const hotelName = booking.hotels?.hotel_name ?? '';
+    return invoices.filter((invoice) => {
       return [
-        booking.booking_reference,
-        booking.meeting_request_id,
-        meetingName,
-        hotelName,
-        booking.status,
+        invoice.invoice_number,
+        invoice.booking_id,
+        invoice.status,
       ]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(query));
     });
-  }, [bookings, searchText]);
+  }, [invoices, searchText]);
 
   if (!user) {
     return null;
   }
 
-  const canCreateBooking =
-    user.role === ROLES.SALES_HEAD ||
-    user.role === ROLES.ADMIN ||
-    user.role === ROLES.SUPER_ADMIN;
+  const canCreateInvoice = user.role === ROLES.ADMIN || user.role === ROLES.SUPER_ADMIN;
 
   return (
     <div>
@@ -164,14 +143,14 @@ export function Bookings() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
             <div>
-              <h3 style={{ fontSize: 'var(--font-xl)', fontWeight: 700, marginBottom: 'var(--space-1)' }}>Bookings</h3>
+              <h3 style={{ fontSize: 'var(--font-xl)', fontWeight: 700, marginBottom: 'var(--space-1)' }}>Invoices</h3>
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>
-                Review confirmed bookings and manage venue logistics.
+                Review and manage invoice submissions, verify charges, and process approvals.
               </p>
             </div>
-            {canCreateBooking ? (
+            {canCreateInvoice ? (
               <Link
-                to={ROUTES.bookingNew}
+                to={ROUTES.invoiceNew}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -185,7 +164,7 @@ export function Bookings() {
                   textDecoration: 'none',
                 }}
               >
-                <Plus size={16} /> Create booking
+                <Plus size={16} /> Create invoice
               </Link>
             ) : null}
           </div>
@@ -197,7 +176,7 @@ export function Bookings() {
             <input
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
-              placeholder="Search bookings, meetings, hotels..."
+              placeholder="Search invoice number..."
               style={{
                 width: '100%',
                 padding: '0.85rem 1rem 0.85rem 2.5rem',
@@ -211,9 +190,9 @@ export function Bookings() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <SlidersHorizontal size={18} />
             <select
-              aria-label="Filter bookings by status"
+              aria-label="Filter invoices by status"
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as BookingStatus | '')}
+              onChange={(event) => setStatusFilter(event.target.value as InvoiceStatus | '')}
               style={{
                 minWidth: '200px',
                 padding: '0.85rem 1rem',
@@ -225,7 +204,7 @@ export function Bookings() {
               <option value="">All statuses</option>
               {STATUS_OPTIONS.filter(Boolean).map((statusOption) => (
                 <option key={statusOption} value={statusOption}>
-                  {statusOption.replace('_', ' ')}
+                  {statusOption}
                 </option>
               ))}
             </select>
@@ -235,25 +214,25 @@ export function Bookings() {
 
       {loading ? (
         <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading bookings...
+          Loading invoices...
         </div>
       ) : error ? (
         <div style={{ padding: '3rem 0', color: 'var(--danger)' }}>{error}</div>
-      ) : filteredBookings.length === 0 ? (
+      ) : filteredInvoices.length === 0 ? (
         <EmptyState
-          title={bookings.length === 0 ? 'No bookings available' : 'No bookings matched your filters'}
+          title={invoices.length === 0 ? 'No invoices available' : 'No invoices matched your filters'}
           description={
-            bookings.length === 0
-              ? 'No bookings are available yet. Create a meeting request and assign a booking when ready.'
+            invoices.length === 0
+              ? 'No invoices have been submitted yet. Create an invoice when ready.'
               : 'Try clearing the search or selecting a different status filter.'
           }
-          icon={<CalendarDays size={48} style={{ color: 'var(--primary)' }} />}
+          icon={<DollarSign size={48} style={{ color: 'var(--primary)' }} />}
         />
       ) : (
         <ResponsiveDataTable
           columns={columns}
-          data={filteredBookings}
-          keyExtractor={(booking) => booking.id}
+          data={filteredInvoices}
+          keyExtractor={(invoice) => invoice.id}
           emptyState={null}
         />
       )}

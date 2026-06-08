@@ -4,7 +4,6 @@ import {
   Bookmark,
   Building2,
   AlertCircle,
-  ExternalLink,
   Clock,
 } from 'lucide-react';
 import { useMyShortlists } from '../features/venues/hooks';
@@ -139,6 +138,7 @@ export function MyShortlists() {
                     key={item.id}
                     shortlist={item}
                     onView={() => navigate(`/venue-explorer/${item.hotel_id}?requestId=${requestId}`)}
+                    onCreate={() => navigate(`${ROUTES.bookingNew}?requestId=${requestId}&hotelId=${item.hotel_id}`)}
                   />
                 ))}
               </div>
@@ -151,7 +151,7 @@ export function MyShortlists() {
 }
 
 // ─── SHORTLIST CARD ───
-function ShortlistCard({ shortlist, onView }: { shortlist: VenueShortlist; onView: () => void }) {
+function ShortlistCard({ shortlist, onView, onCreate }: { shortlist: VenueShortlist; onView: () => void; onCreate: () => void }) {
   const hotel = shortlist.hotels;
   const photoUrl = getVenuePhoto(hotel);
   const city = (hotel as any)?.cities?.city_name ?? '—';
@@ -214,14 +214,59 @@ function ShortlistCard({ shortlist, onView }: { shortlist: VenueShortlist; onVie
           <MapPin size={13} /> {city}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
           {shortlistedAt && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: '11px', color: 'var(--text-light)' }}>
               <Clock size={11} /> {shortlistedAt}
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '700' }}>
-            View <ExternalLink size={12} />
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onView();
+              }}
+              style={{
+                width: '100%',
+                padding: '0.85rem 1rem',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--primary)',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+              }}
+            >
+              View venue
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onCreate();
+              }}
+              style={{
+                width: '100%',
+                padding: '0.85rem 1rem',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--primary)',
+                background: 'var(--primary)',
+                color: '#fff',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+              }}
+            >
+              Create booking
+            </button>
           </div>
         </div>
       </div>

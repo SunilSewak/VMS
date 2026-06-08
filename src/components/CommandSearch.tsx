@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Hotel, FileText, CalendarRange, Coins, CornerDownLeft, X } from 'lucide-react';
+import { Search, Hotel, CalendarRange, Coins, CornerDownLeft, X } from 'lucide-react';
 import { ROUTES } from '../routes/routeRegistry';
 
 interface SearchResultItem {
@@ -23,11 +23,6 @@ const searchableData: SearchResultItem[] = [
   { id: 'hl1', title: 'Grand Ballroom (Taj)', category: 'Halls', subtitle: 'Capacity: 300 Pax • Audio-Visual Equipped', path: ROUTES.venueExplorer },
   { id: 'hl2', title: 'Poolside Lawn (Hyatt)', category: 'Halls', subtitle: 'Capacity: 500 Pax • Outdoor Event Area', path: ROUTES.venueExplorer },
   
-  // Requests
-  { id: 'r1', title: 'Annual Leadership Meet 2026', category: 'Requests', subtitle: 'Mumbai • Pending Review', path: ROUTES.requests },
-  { id: 'r2', title: 'Q3 Regional Sales Conference', category: 'Requests', subtitle: 'Goa • Approved', path: ROUTES.requests },
-  { id: 'r3', title: 'Product Launch & Expo', category: 'Requests', subtitle: 'Pune • Draft', path: ROUTES.requests },
-
   // Bookings
   { id: 'b1', title: 'Board of Directors Meeting', category: 'Bookings', subtitle: '12 June 2026 • Confirmed', path: ROUTES.bookings },
   { id: 'b2', title: 'HR Annual Training Program', category: 'Bookings', subtitle: '24 June 2026 • Confirmed', path: ROUTES.bookings },
@@ -103,7 +98,6 @@ export function CommandSearch({ isOpen, onClose }: CommandSearchProps) {
     switch (category) {
       case 'Hotels': return <Hotel size={16} />;
       case 'Halls': return <Hotel size={16} style={{ opacity: 0.7 }} />;
-      case 'Requests': return <FileText size={16} />;
       case 'Bookings': return <CalendarRange size={16} />;
       case 'Invoices': return <Coins size={16} />;
       default: return <Search size={16} />;
@@ -120,7 +114,7 @@ export function CommandSearch({ isOpen, onClose }: CommandSearchProps) {
             ref={inputRef}
             type="text" 
             className="command-search-input" 
-            placeholder="Search hotels, halls, requests, bookings, invoices..."
+            placeholder="Search hotels, halls, bookings, invoices..."
             value={query}
             onChange={e => {
               setQuery(e.target.value);

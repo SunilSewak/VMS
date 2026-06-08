@@ -16,6 +16,7 @@ import {
 import { useVenueDetails } from '../features/venues/hooks';
 import { useShortlist } from '../features/venues/hooks';
 import { useAuth } from '../contexts/AuthContext';
+import { ROUTES } from '../routes/routeRegistry';
 import type { Hall } from '../features/venues/types';
 
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=80';
@@ -92,6 +93,15 @@ export function VenueDetails() {
           <ArrowLeft size={16} /> Back to Results
         </button>
 
+        {requestId && (
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate(`${ROUTES.bookingNew}?requestId=${requestId}&hotelId=${id}`)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}
+          >
+            <CheckCircle2 size={16} /> Create Booking
+          </button>
+        )}
         {requestId && (
           <button
             id="venue-shortlist-btn"

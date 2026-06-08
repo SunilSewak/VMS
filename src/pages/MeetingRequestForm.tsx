@@ -5,7 +5,7 @@ import {
   ArrowLeft, Save, Send, Edit3, Search, AlertCircle, RefreshCw,
   ClipboardList, MapPin, Users, Wrench, Home, Building2, Check,
   Award, Briefcase, Calendar, Sparkles, Star, Hotel,
-  Layers, GraduationCap, CheckCircle2, TrendingUp, Cpu, BedDouble
+  Layers, GraduationCap, CheckCircle2, ShieldCheck, TrendingUp, Cpu, BedDouble
 } from 'lucide-react';
 import { useMeetingRequest, useMeetingMasters } from '../features/meetings/hooks';
 import { createMeetingRequest, updateMeetingRequest } from '../features/meetings/meetingService';
@@ -798,6 +798,16 @@ export function MeetingRequestForm() {
             >
               <Search size={15} />
               <span>Find Matching Venues</span>
+            </button>
+          )}
+          {request && !isCreate && request?.status !== 'DRAFT' && (
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate(`${ROUTES.bookingNew}?requestId=${id}`)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+            >
+              <ShieldCheck size={15} />
+              <span>Create Booking</span>
             </button>
           )}
           {isView && request?.status === 'DRAFT' && (

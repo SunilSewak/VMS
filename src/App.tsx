@@ -5,7 +5,6 @@ import { DemoProvider } from './contexts/DemoContext';
 import { AppLayout } from './layouts/AppLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
-import { VenueRequests } from './pages/VenueRequests';
 import { MeetingRequests } from './pages/MeetingRequests';
 import { MeetingRequestForm } from './pages/MeetingRequestForm';
 import { Hotels } from './pages/Hotels';
@@ -13,9 +12,13 @@ import { VenueExplorer } from './pages/VenueExplorer';
 import { VenueDetails } from './pages/VenueDetails';
 import { VenueComparison } from './pages/VenueComparison';
 import { MyShortlists } from './pages/MyShortlists';
-import { Quotations } from './pages/Quotations';
-import { Approvals } from './pages/Approvals';
 import { Bookings } from './pages/Bookings';
+import { BookingCreate } from './pages/BookingCreate';
+import { BookingDetails } from './pages/BookingDetails';
+import { BookingReview } from './pages/BookingReview';
+import { Invoices } from './pages/Invoices';
+import { InvoiceCreate } from './pages/InvoiceCreate';
+import { InvoiceDetails } from './pages/InvoiceDetails';
 import { Finance } from './pages/Finance';
 import { Reports } from './pages/Reports';
 import { VenueBulkImport } from './pages/VenueBulkImport';
@@ -52,14 +55,6 @@ export default function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <Dashboard />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-
-              <Route path={ROUTES.requests} element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <VenueRequests />
                   </AppLayout>
                 </ProtectedRoute>
               } />
@@ -135,26 +130,59 @@ export default function App() {
                   </AppLayout>
                 </ProtectedRoute>
               } />
-              <Route path={ROUTES.quotations} element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Quotations />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-
-              <Route path={ROUTES.approvals} element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Approvals />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
 
               <Route path={ROUTES.bookings} element={
                 <ProtectedRoute>
                   <AppLayout>
                     <Bookings />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.bookingNew} element={
+                <ProtectedRoute allowedRoles={[ROLES.SALES_HEAD, ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                  <AppLayout>
+                    <BookingCreate />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.bookingDetails} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <BookingDetails />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.bookingReview} element={
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                  <AppLayout>
+                    <BookingReview />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.invoices} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Invoices />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.invoiceNew} element={
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                  <AppLayout>
+                    <InvoiceCreate />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.invoiceDetails} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <InvoiceDetails />
                   </AppLayout>
                 </ProtectedRoute>
               } />

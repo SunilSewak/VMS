@@ -1,5 +1,7 @@
 import { useAuth } from '../contexts/AuthContext';
 import { ROLES } from '../auth/permissions';
+import { Link, useNavigate } from 'react-router-dom';
+import { ROUTES } from '../routes/routeRegistry';
 import { 
   FileText, 
   CheckSquare, 
@@ -8,14 +10,12 @@ import {
   ArrowRight, 
   AlertCircle,
   FileClock,
-  ExternalLink,
   MessageSquare
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { ROUTES } from '../routes/routeRegistry';
 
 export function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const role = user?.role || ROLES.VIEWER;
 
   // 1. ADMIN / SUPER ADMIN / DEFAULT DASHBOARD VIEW
@@ -182,40 +182,16 @@ export function Dashboard() {
                 </div>
               </div>
             </div>
-            <Link to={ROUTES.requests} className="btn btn-primary" style={{ width: '100%' }}>
+            <button
+              onClick={() => navigate(ROUTES.meetingRequests)}
+              className="btn btn-primary"
+              style={{ width: '100%' }}
+            >
               <span>Create New Request</span>
               <ArrowRight size={14} />
-            </Link>
+            </button>
           </div>
 
-          {/* My Quotations (Workflow Widget) */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
-                <span className="badge badge-warning" style={{ fontSize: '9px' }}>Action Required</span>
-                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>2 Received</span>
-              </div>
-              <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-2)' }}>My Quotations</h4>
-              <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-4)' }}>
-                Review and accept commercial offers submitted by hotel vendors.
-              </p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-                <div style={{ padding: 'var(--space-2) var(--space-3)', backgroundColor: 'var(--background)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Taj Lands End (Mumbai)</span>
-                  <strong style={{ color: 'var(--status-info)' }}>₹9,50,000</strong>
-                </div>
-                <div style={{ padding: 'var(--space-2) var(--space-3)', backgroundColor: 'var(--background)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>JW Marriott (Pune)</span>
-                  <strong style={{ color: 'var(--status-info)' }}>₹7,80,000</strong>
-                </div>
-              </div>
-            </div>
-            <Link to={ROUTES.quotations} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
-              <span>Review Quotations</span>
-              <ExternalLink size={14} />
-            </Link>
-          </div>
         </div>
 
         {/* Workflow Action Checklist Grid */}
@@ -229,7 +205,7 @@ export function Dashboard() {
                 <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 var(--space-3)' }}>
                   You have <strong>2</strong> requests awaiting your management signoff.
                 </p>
-                <Link to="/requests" style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Link to={ROUTES.meetingRequests} style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   Approve Now <ArrowRight size={12} />
                 </Link>
               </div>

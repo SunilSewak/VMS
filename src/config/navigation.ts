@@ -57,19 +57,6 @@ export const navigationConfig: NavigationItem[] = [
     iconName: 'Hotel',
     roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
   },
-  // Commercials (for Admin) vs My Quotations (for Sales Head)
-  {
-    name: 'Commercials',
-    path: ROUTES.quotations,
-    iconName: 'Receipt',
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
-  },
-  {
-    name: 'My Quotations',
-    path: ROUTES.quotations,
-    iconName: 'Receipt',
-    roles: [ROLES.SALES_HEAD]
-  },
   // Bookings is visible to both
   {
     name: 'Bookings',
@@ -77,18 +64,19 @@ export const navigationConfig: NavigationItem[] = [
     iconName: 'CalendarRange',
     roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
   },
-  // Invoices & Payments for Admin (mapping both to finance, or custom sub-routes)
+  // Invoices: Admin specific
   {
     name: 'Invoices',
-    path: `${ROUTES.finance}?tab=invoices`,
-    iconName: 'Coins',
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
+    path: ROUTES.invoices,
+    iconName: 'DollarSign',
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.FINANCE]
   },
+  // Finance: Admin module
   {
-    name: 'Payments',
-    path: `${ROUTES.finance}?tab=payments`,
+    name: 'Finance',
+    path: ROUTES.finance,
     iconName: 'Coins',
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.FINANCE]
   },
   // Reports
   {

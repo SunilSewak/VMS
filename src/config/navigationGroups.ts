@@ -32,16 +32,10 @@ export const navigationGroups: NavigationGroup[] = [
     roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD, ROLES.FINANCE],
     submenus: [
       {
-        name: 'Requests',
-        path: ROUTES.requests,
-        iconName: 'FileText',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.FINANCE]
-      },
-      {
         name: 'Meetings',
         path: ROUTES.meetingRequests,
         iconName: 'Calendar',
-        roles: [ROLES.SALES_HEAD]
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
       }
     ]
   },
@@ -74,32 +68,6 @@ export const navigationGroups: NavigationGroup[] = [
         path: ROUTES.hotels,
         iconName: 'List',
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
-      }
-    ]
-  },
-  {
-    id: 'commercials',
-    name: 'Commercials',
-    iconName: 'Receipt',
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD],
-    submenus: [
-      {
-        name: 'Commercial Requests',
-        path: ROUTES.requests,
-        iconName: 'FilePlus',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
-      },
-      {
-        name: 'My Quotations',
-        path: ROUTES.quotations,
-        iconName: 'FileText',
-        roles: [ROLES.SALES_HEAD]
-      },
-      {
-        name: 'Approved Commercials',
-        path: ROUTES.approvals,
-        iconName: 'CheckCircle',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
       }
     ]
   },
