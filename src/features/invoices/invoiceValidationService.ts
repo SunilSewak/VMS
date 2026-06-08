@@ -51,10 +51,24 @@ function validateDates(invoice: Invoice, booking: Booking): InvoiceValidationChe
   return checks;
 }
 
-/**
- * Rule Group 4: Pax Validation
- * Validates billed pax against booking expected pax.
- */
+function validateHotelMatch(invoice: Invoice, booking: Booking): InvoiceValidationCheck[] {
+  const check: InvoiceValidationCheck = {
+    id: 'chk-hotel-' + Math.random().toString(36).slice(2),
+    invoice_id: invoice.id,
+    check_type: 'HOTEL_MISMATCH',
+    expected_value: booking.hotel_id || 'Unknown Hotel',
+    actual_value: invoice.bookings?.booking_reference ?? 'Invoice booking reference unavailable',
+    variance_value: 'Review supporting documents for hotel match',
+    severity: 'INFO',
+    status: 'PASS',
+    description: `Hotel mismatch check uses booking hotel reference. Confirm with invoice supporting documents if hotel metadata exists.`,
+    remarks: 'Hotel information is not stored directly in invoice metadata. Validate hotel name/ID from uploaded documents.',
+    created_at: new Date().toISOString(),
+  };
+
+  return [check];
+}
+
 function validatePax(invoice: Invoice, booking: Booking): InvoiceValidationCheck[] {
   const expectedPax = booking.expected_pax || 1;
   const variance = invoice.pax_billed - expectedPax;
@@ -98,6 +112,28 @@ function validateRooms(invoice: Invoice, booking: Booking): InvoiceValidationChe
     severity: 'INFO',
     status: 'PASS',
     description: `Room allocation: ${expectedRooms} room(s) booked. Review supporting documents for actual room charges breakdown.`,
+    created_at: new Date().toISOString(),
+  };
+
+  return [check];
+}
+
+function validateHallMatch(invoice: Invoice, booking: Booking): InvoiceValidationCheck[] {
+  const expectedHalls = booking.halls_booked || 0;
+  const actualHallCountDetected = invoice.hall_charges > 0 ? expectedHalls : 0;
+  const isMismatch = expectedHalls === 0 && invoice.hall_charges > 0;
+  const check: InvoiceValidationCheck = {
+    id: 'chk-hall-match-' + Math.random().toString(36).slice(2),
+    invoice_id: invoice.id,
+    check_type: 'HALL_MISMATCH',
+    expected_value: expectedHalls,
+    actual_value: actualHallCountDetected,
+    variance_value: expectedHalls - actualHallCountDetected,
+    variance_percentage: expectedHalls > 0 ? ((expectedHalls - actualHallCountDetected) / expectedHalls) * 100 : 0,
+    severity: isMismatch ? 'CRITICAL' : 'INFO',
+    status: isMismatch ? 'FAIL' : 'PASS',
+    description: `Hall mismatch check compares booking hall count to detected hall charges.`,
+    remarks: expectedHalls === 0 && invoice.hall_charges > 0 ? 'Hall charges exist without booked halls.' : undefined,
     created_at: new Date().toISOString(),
   };
 
@@ -230,6 +266,8 @@ export async function validateInvoicePackage(invoice: Invoice): Promise<InvoiceV
 
     // Run all validation rule groups
     allChecks.push(...validateDates(invoice, booking));
+    allChecks.push(...validateHotelMatch(invoice, booking));
+    allChecks.push(...validateHallMatch(invoice, booking));
     allChecks.push(...validatePax(invoice, booking));
     allChecks.push(...validateRooms(invoice, booking));
     allChecks.push(...validateRoomCharges(invoice));
@@ -263,11 +301,17 @@ export async function validateInvoicePackage(invoice: Invoice): Promise<InvoiceV
  * Validation summary for quick review.
  */
 export function getValidationSummary(result: InvoiceValidationResult) {
+  const penalty = result.criticalCount * 25 + result.warningCount * 10;
+  const healthScore = Math.max(0, Math.min(100, 100 - penalty));
+  const auditOutcome = result.criticalCount > 0 ? 'Fail' : result.warningCount > 0 ? 'Review Required' : 'Pass';
+
   return {
     totalChecks: result.checks.length,
     passed: result.passCount,
     warnings: result.warningCount,
     critical: result.criticalCount,
+    healthScore,
+    auditOutcome,
     readyForApproval: result.criticalCount === 0,
     requiresReview: result.warningCount > 0,
   };

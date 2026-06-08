@@ -2,10 +2,16 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, AlertCircle, DollarSign, Users, Zap, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getInvoiceById } from '../features/invoices/invoiceService';
+import { getInvoiceById, startVerification, verifyInvoice, approveInvoice, rejectInvoice } from '../features/invoices/invoiceService';
+import {
+  getInvoiceDocuments,
+  uploadInvoiceDocument,
+  deleteInvoiceDocument,
+  downloadInvoiceDocument,
+} from '../features/invoices/invoiceDocumentService';
 import { validateInvoicePackage, getValidationSummary } from '../features/invoices/invoiceValidationService';
 import { getBookingById } from '../features/bookings/bookingService';
-import type { Invoice, InvoiceValidationCheck } from '../features/invoices/types';
+import type { Invoice, InvoiceValidationCheck, InvoiceDocument, InvoiceDocumentType } from '../features/invoices/types';
 import type { Booking } from '../features/bookings/types';
 import { ROUTES } from '../routes/routeRegistry';
 import { ROLES } from '../auth/permissions';
@@ -59,10 +65,20 @@ export function InvoiceDetails() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [validationChecks, setValidationChecks] = useState<InvoiceValidationCheck[]>([]);
   const [validationSummary, setValidationSummary] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState<InvoiceDocument[]>([]);
+  const [activeTab, setActiveTab] = useState<'info' | 'validation' | 'documents'>('info');
+  const [selectedDocumentType, setSelectedDocumentType] = useState<InvoiceDocumentType>('PRIMARY_INVOICE');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const successMessage = searchParams.get('created') ? 'Invoice created successfully.' : null;
-  const canApprove = user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN;
+  const canManageWorkflow = user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN;
+  const canDeleteDocuments = user?.role === ROLES.SUPER_ADMIN;
 
   useEffect(() => {
     if (!id) {
@@ -81,8 +97,7 @@ export function InvoiceDetails() {
         const invoiceData = await getInvoiceById(id);
         if (mounted) {
           setInvoice(invoiceData);
-          
-          // Load booking details
+
           try {
             const bookingData = await getBookingById(invoiceData.booking_id);
             setBooking(bookingData);
@@ -90,7 +105,6 @@ export function InvoiceDetails() {
             // Booking may not exist
           }
 
-          // Run validation engine
           const validationResult = await validateInvoicePackage(invoiceData);
           setValidationChecks(validationResult.checks);
           setValidationSummary(getValidationSummary(validationResult));
@@ -109,6 +123,38 @@ export function InvoiceDetails() {
     };
   }, [id]);
 
+  useEffect(() => {
+    if (!invoice) {
+      setDocuments([]);
+      return;
+    }
+
+    let mounted = true;
+
+    const loadDocuments = async () => {
+      setLoadingDocuments(true);
+
+      try {
+        const docs = await getInvoiceDocuments(invoice.id);
+        if (mounted) {
+          setDocuments(docs);
+        }
+      } catch {
+        // ignore demo or fetch errors for documents
+      } finally {
+        if (mounted) {
+          setLoadingDocuments(false);
+        }
+      }
+    };
+
+    loadDocuments();
+
+    return () => {
+      mounted = false;
+    };
+  }, [invoice]);
+
   if (loading) {
     return <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>Loading invoice details...</div>;
   }
@@ -123,8 +169,149 @@ export function InvoiceDetails() {
     );
   }
 
-  const criticalVariances = validationChecks.filter((v) => v.severity === 'CRITICAL');
-  const hasMaterialVariance = criticalVariances.length > 0;
+  const hasApproveGateIssue = validationSummary?.requiresReview === true;
+
+  const documentTypeOptions: { value: InvoiceDocumentType; label: string }[] = [
+    { value: 'PRIMARY_INVOICE', label: 'Primary Invoice' },
+    { value: 'GST_INVOICE', label: 'GST Invoice' },
+    { value: 'COVER_LETTER', label: 'Cover Letter' },
+    { value: 'OCCUPANCY_REPORT', label: 'Occupancy Report' },
+    { value: 'ROOMING_REPORT', label: 'Rooming Report' },
+    { value: 'NRC_LIST', label: 'NRC List' },
+    { value: 'BANQUET_BILL', label: 'Banquet Bill' },
+    { value: 'GUEST_BILL', label: 'Guest Bill' },
+    { value: 'OTHER', label: 'Other' },
+  ];
+
+  const refreshDocuments = async () => {
+    if (!invoice) {
+      return;
+    }
+    setLoadingDocuments(true);
+    try {
+      const docs = await getInvoiceDocuments(invoice.id);
+      setDocuments(docs);
+    } finally {
+      setLoadingDocuments(false);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!invoice) return;
+    if (!selectedFile) {
+      setUploadError('Please choose a file to upload.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      await uploadInvoiceDocument(invoice.id, selectedDocumentType, selectedFile, user!);
+      setSelectedFile(null);
+      setSelectedDocumentType('PRIMARY_INVOICE');
+      await refreshDocuments();
+    } catch (uploadError) {
+      setUploadError((uploadError as Error).message || 'Upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePreview = async (document: InvoiceDocument) => {
+    try {
+      const url = await downloadInvoiceDocument(document);
+      window.open(url, '_blank');
+    } catch (previewError) {
+      setActionError((previewError as Error).message || 'Unable to preview document.');
+    }
+  };
+
+  const handleDownload = async (invoiceDocument: InvoiceDocument) => {
+    try {
+      const url = await downloadInvoiceDocument(invoiceDocument);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = invoiceDocument.file_name;
+      link.click();
+    } catch (downloadError) {
+      setActionError((downloadError as Error).message || 'Unable to download document.');
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!window.confirm('Delete this document?')) {
+      return;
+    }
+
+    try {
+      await deleteInvoiceDocument(documentId);
+      await refreshDocuments();
+    } catch (deleteError) {
+      setActionError((deleteError as Error).message || 'Unable to delete document.');
+    }
+  };
+
+  const handleStartVerification = async () => {
+    if (!invoice || !user) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const updated = await startVerification(invoice.id, user);
+      setInvoice(updated);
+    } catch (transitionError) {
+      setActionError((transitionError as Error).message || 'Unable to start verification.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!invoice || !user) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const updated = await verifyInvoice(invoice.id, user);
+      setInvoice(updated);
+    } catch (transitionError) {
+      setActionError((transitionError as Error).message || 'Unable to verify invoice.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!invoice || !user) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const updated = await approveInvoice(invoice.id, user);
+      setInvoice(updated);
+    } catch (transitionError) {
+      setActionError((transitionError as Error).message || 'Unable to approve invoice.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!invoice || !user) return;
+    const reason = window.prompt('Enter rejection reason');
+    if (!reason?.trim()) {
+      return;
+    }
+
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const updated = await rejectInvoice(invoice.id, reason.trim(), user);
+      setInvoice(updated);
+    } catch (transitionError) {
+      setActionError((transitionError as Error).message || 'Unable to reject invoice.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -159,17 +346,72 @@ export function InvoiceDetails() {
             Status: {statusBadge(invoice.status)}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-          {canApprove && invoice.status === 'VERIFIED' ? (
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+          {canManageWorkflow && invoice.status === 'RECEIVED' ? (
             <button
+              disabled={actionLoading}
+              onClick={handleStartVerification}
               style={{
                 padding: '0.85rem 1.25rem',
                 borderRadius: 'var(--radius-lg)',
                 border: 'none',
-                background: 'var(--success)',
+                background: 'var(--indigo-600)',
                 color: '#fff',
                 fontWeight: 700,
-                cursor: 'pointer',
+                cursor: actionLoading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Start Verification
+            </button>
+          ) : null}
+
+          {canManageWorkflow && invoice.status === 'UNDER_VERIFICATION' ? (
+            <>
+              <button
+                disabled={actionLoading}
+                onClick={handleVerify}
+                style={{
+                  padding: '0.85rem 1.25rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: 'none',
+                  background: 'var(--success)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Verify
+              </button>
+              <button
+                disabled={actionLoading}
+                onClick={handleReject}
+                style={{
+                  padding: '0.85rem 1.25rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--danger)',
+                  background: 'transparent',
+                  color: 'var(--danger)',
+                  fontWeight: 700,
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Reject
+              </button>
+            </>
+          ) : null}
+
+          {canManageWorkflow && invoice.status === 'VERIFIED' ? (
+            <button
+              disabled={actionLoading || hasApproveGateIssue}
+              onClick={handleApprove}
+              style={{
+                padding: '0.85rem 1.25rem',
+                borderRadius: 'var(--radius-lg)',
+                border: 'none',
+                background: hasApproveGateIssue ? 'var(--border)' : 'var(--success)',
+                color: hasApproveGateIssue ? 'var(--text-muted)' : '#fff',
+                fontWeight: 700,
+                cursor: actionLoading || hasApproveGateIssue ? 'not-allowed' : 'pointer',
               }}
             >
               Approve Invoice
@@ -178,8 +420,28 @@ export function InvoiceDetails() {
         </div>
       </div>
 
-      {/* Variance Alert */}
-      {hasMaterialVariance ? (
+      {/* Approval Gate */}
+      {hasApproveGateIssue ? (
+        <div
+          style={{
+            display: 'flex',
+            gap: '1rem',
+            padding: 'var(--space-3)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'rgba(245, 158, 11, 0.1)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            color: 'var(--warning)',
+          }}
+        >
+          <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '0.25rem' }} />
+          <div>
+            <div style={{ fontWeight: 700 }}>Review required before approval</div>
+            <div style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Critical variances detected. Approval is blocked until review comments are resolved.</div>
+          </div>
+        </div>
+      ) : null}
+
+      {actionError ? (
         <div
           style={{
             display: 'flex',
@@ -192,179 +454,364 @@ export function InvoiceDetails() {
           }}
         >
           <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '0.25rem' }} />
-          <div>
-            <div style={{ fontWeight: 700 }}>Material variance detected</div>
-            <div style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
-              {criticalVariances.length} critical variance{criticalVariances.length > 1 ? 's' : ''} found. Review before approval.
-            </div>
-          </div>
+          <div>{actionError}</div>
         </div>
       ) : null}
 
-      {/* Main Content */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 'var(--space-3)',
+        }}
+      >
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-4)',
+          }}
+        >
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Health Score</div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary)' }}>{validationSummary?.healthScore ?? '—'}%</div>
+        </div>
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-4)',
+          }}
+        >
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Audit Outcome</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{validationSummary?.auditOutcome ?? '—'}</div>
+        </div>
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-4)',
+          }}
+        >
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Approval Recommendation</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{validationSummary?.readyForApproval ? 'Ready For Approval' : 'Requires Review'}</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: 'var(--space-4)' }}>
+        <button
+          onClick={() => setActiveTab('info')}
+          style={{
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-lg)',
+            border: activeTab === 'info' ? '1px solid var(--primary)' : '1px solid var(--border)',
+            background: activeTab === 'info' ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+            color: activeTab === 'info' ? 'var(--primary)' : 'var(--text)',
+            cursor: 'pointer',
+          }}
+        >
+          Invoice Information
+        </button>
+        <button
+          onClick={() => setActiveTab('validation')}
+          style={{
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-lg)',
+            border: activeTab === 'validation' ? '1px solid var(--primary)' : '1px solid var(--border)',
+            background: activeTab === 'validation' ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+            color: activeTab === 'validation' ? 'var(--primary)' : 'var(--text)',
+            cursor: 'pointer',
+          }}
+        >
+          Validation Results
+        </button>
+        <button
+          onClick={() => setActiveTab('documents')}
+          style={{
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-lg)',
+            border: activeTab === 'documents' ? '1px solid var(--primary)' : '1px solid var(--border)',
+            background: activeTab === 'documents' ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+            color: activeTab === 'documents' ? 'var(--primary)' : 'var(--text)',
+            cursor: 'pointer',
+          }}
+        >
+          Supporting Documents
+        </button>
+      </div>
+
       <div style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: '1fr 320px' }}>
         <section style={{ display: 'grid', gap: 'var(--space-4)' }}>
-          {/* Invoice Information */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
-            <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <DollarSign size={18} /> Invoice Information
-            </h2>
-            <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Invoice Number</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{invoice.invoice_number}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Invoice Date</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatDate(invoice.invoice_date)}</div>
-                </div>
-              </div>
-
-              <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
-                <div style={{ display: 'grid', gap: '1rem', fontSize: 'var(--font-sm)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Room Charges</span>
-                    <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.room_charges)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Hall Charges</span>
-                    <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.hall_charges)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Food Charges</span>
-                    <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.food_charges)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Tax Amount</span>
-                    <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.tax_amount)}</span>
-                  </div>
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 700 }}>Total Amount</span>
-                    <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary)' }}>{formatCurrency(invoice.invoice_amount)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Pax Billed</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Users size={16} /> {invoice.pax_billed}
-                  </div>
-                </div>
-                {invoice.remarks ? (
-                  <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Remarks</div>
-                    <div style={{ fontSize: '0.95rem' }}>{invoice.remarks}</div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          {/* Validation Panel */}
-          {validationSummary ? (
+          {activeTab === 'info' ? (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
               <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <Zap size={18} /> Validation Summary
+                <DollarSign size={18} /> Invoice Information
               </h2>
+              <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Invoice Number</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{invoice.invoice_number}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Invoice Date</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatDate(invoice.invoice_date)}</div>
+                  </div>
+                </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
                 <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Total Checks</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{validationSummary.totalChecks}</div>
+                  <div style={{ display: 'grid', gap: '1rem', fontSize: 'var(--font-sm)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Room Charges</span>
+                      <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.room_charges)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Hall Charges</span>
+                      <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.hall_charges)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Food Charges</span>
+                      <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.food_charges)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Tax Amount</span>
+                      <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.tax_amount)}</span>
+                    </div>
+                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 700 }}>Total Amount</span>
+                      <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary)' }}>{formatCurrency(invoice.invoice_amount)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--success)', marginBottom: '0.5rem' }}>Passed</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--success)' }}>{validationSummary.passed}</div>
-                </div>
-                <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--warning)', marginBottom: '0.5rem' }}>Warnings</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--warning)' }}>{validationSummary.warnings}</div>
-                </div>
-                <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--danger)', marginBottom: '0.5rem' }}>Critical</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--danger)' }}>{validationSummary.critical}</div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Pax Billed</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Users size={16} /> {invoice.pax_billed}
+                    </div>
+                  </div>
+                  {invoice.remarks ? (
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Remarks</div>
+                      <div style={{ fontSize: '0.95rem' }}>{invoice.remarks}</div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
           ) : null}
 
-          {/* Validation Checks Grid */}
-          {validationChecks.length > 0 ? (
+          {activeTab === 'validation' ? (
+            <>
+              {validationSummary ? (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+                  <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Zap size={18} /> Validation Summary
+                  </h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+                    <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Total Checks</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{validationSummary.totalChecks}</div>
+                    </div>
+                    <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--success)', marginBottom: '0.5rem' }}>Passed</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--success)' }}>{validationSummary.passed}</div>
+                    </div>
+                    <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--warning)', marginBottom: '0.5rem' }}>Warnings</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--warning)' }}>{validationSummary.warnings}</div>
+                    </div>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--danger)', marginBottom: '0.5rem' }}>Critical</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--danger)' }}>{validationSummary.critical}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {validationChecks.length > 0 ? (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+                  <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <TrendingUp size={18} /> Validation Checks
+                  </h2>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-sm)' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                          <th style={{ textAlign: 'left', padding: '1rem 0', fontWeight: 700, color: 'var(--text-muted)' }}>Check</th>
+                          <th style={{ textAlign: 'right', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Expected</th>
+                          <th style={{ textAlign: 'right', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Actual</th>
+                          <th style={{ textAlign: 'center', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Severity</th>
+                          <th style={{ textAlign: 'center', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {validationChecks.map((check) => (
+                          <tr key={check.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '1rem 0', fontWeight: 500 }}>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{check.check_type}</div>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{check.description}</div>
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '1rem 1rem', fontSize: '0.9rem' }}>
+                              {typeof check.expected_value === 'number' ? check.expected_value.toLocaleString('en-IN') : check.expected_value}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '1rem 1rem', fontSize: '0.9rem', fontWeight: 600 }}>
+                              {typeof check.actual_value === 'number' ? check.actual_value.toLocaleString('en-IN') : check.actual_value}
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '1rem 1rem' }}>
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  padding: '0.25rem 0.75rem',
+                                  borderRadius: '999px',
+                                  backgroundColor:
+                                    check.severity === 'CRITICAL'
+                                      ? 'rgba(239, 68, 68, 0.1)'
+                                      : check.severity === 'WARNING'
+                                      ? 'rgba(245, 158, 11, 0.1)'
+                                      : 'rgba(59, 130, 246, 0.1)',
+                                  color:
+                                    check.severity === 'CRITICAL'
+                                      ? 'var(--danger)'
+                                      : check.severity === 'WARNING'
+                                      ? 'var(--warning)'
+                                      : 'var(--primary)',
+                                  fontWeight: 600,
+                                  fontSize: '0.75rem',
+                                }}
+                              >
+                                {check.severity}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '1rem 1rem' }}>
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  padding: '0.25rem 0.75rem',
+                                  borderRadius: '999px',
+                                  backgroundColor: check.status === 'PASS' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                  color: check.status === 'PASS' ? 'var(--success)' : 'var(--danger)',
+                                  fontWeight: 600,
+                                  fontSize: '0.75rem',
+                                }}
+                              >
+                                {check.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+
+          {activeTab === 'documents' ? (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
               <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <TrendingUp size={18} /> Validation Checks
+                <CheckCircle2 size={18} /> Supporting Documents
               </h2>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-sm)' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                      <th style={{ textAlign: 'left', padding: '1rem 0', fontWeight: 700, color: 'var(--text-muted)' }}>Check</th>
-                      <th style={{ textAlign: 'right', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Expected</th>
-                      <th style={{ textAlign: 'right', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Actual</th>
-                      <th style={{ textAlign: 'center', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Severity</th>
-                      <th style={{ textAlign: 'center', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {validationChecks.map((check) => (
-                      <tr key={check.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '1rem 0', fontWeight: 500 }}>
-                          <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{check.check_type}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{check.description}</div>
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '1rem 1rem', fontSize: '0.9rem' }}>
-                          {typeof check.expected_value === 'number' ? check.expected_value.toLocaleString('en-IN') : check.expected_value}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '1rem 1rem', fontSize: '0.9rem', fontWeight: 600 }}>
-                          {typeof check.actual_value === 'number' ? check.actual_value.toLocaleString('en-IN') : check.actual_value}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '1rem 1rem' }}>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '999px',
-                              backgroundColor:
-                                check.severity === 'CRITICAL'
-                                  ? 'rgba(239, 68, 68, 0.1)'
-                                  : check.severity === 'WARNING'
-                                  ? 'rgba(245, 158, 11, 0.1)'
-                                  : 'rgba(59, 130, 246, 0.1)',
-                              color:
-                                check.severity === 'CRITICAL'
-                                  ? 'var(--danger)'
-                                  : check.severity === 'WARNING'
-                                  ? 'var(--warning)'
-                                  : 'var(--primary)',
-                              fontWeight: 600,
-                              fontSize: '0.75rem',
-                            }}
-                          >
-                            {check.severity}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '1rem 1rem' }}>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '999px',
-                              backgroundColor: check.status === 'PASS' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                              color: check.status === 'PASS' ? 'var(--success)' : 'var(--danger)',
-                              fontWeight: 600,
-                              fontSize: '0.75rem',
-                            }}
-                          >
-                            {check.status}
-                          </span>
-                        </td>
-                      </tr>
+
+              <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Document Type</label>
+                  <select
+                    value={selectedDocumentType}
+                    onChange={(event) => setSelectedDocumentType(event.target.value as InvoiceDocumentType)}
+                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--background)' }}
+                  >
+                    {documentTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
-                  </tbody>
-                </table>
+                  </select>
+                </div>
+
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Select File</label>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                {uploadError ? (
+                  <div style={{ color: 'var(--danger)', fontSize: '0.9rem' }}>{uploadError}</div>
+                ) : null}
+
+                <button
+                  disabled={uploading || !selectedFile}
+                  onClick={handleUpload}
+                  style={{
+                    padding: '0.85rem 1.25rem',
+                    borderRadius: 'var(--radius-lg)',
+                    border: 'none',
+                    background: 'var(--primary)',
+                    color: '#fff',
+                    fontWeight: 700,
+                    cursor: uploading || !selectedFile ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {uploading ? 'Uploading…' : 'Upload Document'}
+                </button>
+              </div>
+
+              <div style={{ marginTop: 'var(--space-5)' }}>
+                {loadingDocuments ? (
+                  <div style={{ color: 'var(--text-muted)' }}>Loading documents…</div>
+                ) : documents.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)' }}>No supporting documents uploaded yet.</div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-sm)' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                          <th style={{ textAlign: 'left', padding: '1rem 0', fontWeight: 700, color: 'var(--text-muted)' }}>Type</th>
+                          <th style={{ textAlign: 'left', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>File Name</th>
+                          <th style={{ textAlign: 'left', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Uploaded</th>
+                          <th style={{ textAlign: 'center', padding: '1rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {documents.map((document) => (
+                          <tr key={document.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '1rem 0', fontWeight: 600 }}>{document.document_type.replace('_', ' ')}</td>
+                            <td style={{ padding: '1rem 1rem' }}>{document.file_name}</td>
+                            <td style={{ padding: '1rem 1rem', color: 'var(--text-muted)' }}>{formatDate(document.uploaded_at)}</td>
+                            <td style={{ padding: '1rem 1rem', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                              <button
+                                onClick={() => handlePreview(document)}
+                                style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
+                              >
+                                Preview
+                              </button>
+                              <button
+                                onClick={() => handleDownload(document)}
+                                style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
+                              >
+                                Download
+                              </button>
+                              {canDeleteDocuments ? (
+                                <button
+                                  onClick={() => handleDeleteDocument(document.id)}
+                                  style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)', cursor: 'pointer' }}
+                                >
+                                  Delete
+                                </button>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           ) : null}

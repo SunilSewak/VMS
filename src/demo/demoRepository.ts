@@ -185,6 +185,19 @@ export interface DemoInvoiceVariance {
   created_at: string;
 }
 
+export interface DemoInvoiceDocument {
+  id: string;
+  invoice_id: string;
+  document_type: string;
+  file_name: string;
+  file_size: number;
+  file_path: string;
+  mime_type: string;
+  uploaded_at: string;
+  uploaded_by: string;
+  file_data?: string | null;
+}
+
 export interface DemoPayment {
   id: string;
   invoice_id: string;
@@ -248,13 +261,21 @@ export interface DemoRepository {
   createInvoice(data: any): Promise<DemoInvoice>;
   updateInvoice(id: string, data: any): Promise<DemoInvoice>;
   verifyInvoice(id: string, verifiedBy: string): Promise<DemoInvoice>;
+  startVerification(id: string, startedBy: string): Promise<DemoInvoice>;
   approveInvoice(id: string, approvedBy: string): Promise<DemoInvoice>;
   rejectInvoice(id: string, reason: string): Promise<DemoInvoice>;
   getInvoiceVariances(invoiceId: string): Promise<DemoInvoiceVariance[]>;
+  getInvoiceDocuments(invoiceId: string): Promise<DemoInvoiceDocument[]>;
+  createInvoiceDocument(data: any): Promise<DemoInvoiceDocument>;
+  uploadInvoiceDocument(invoiceId: string, file: File, documentType: string, userId: string): Promise<DemoInvoiceDocument>;
+  downloadInvoiceDocument(documentId: string): Promise<string>;
+  deleteInvoiceDocument(id: string): Promise<void>;
 
   // Payments
   getPayments(): Promise<DemoPayment[]>;
+  getPaymentById(id: string): Promise<DemoPayment>;
   createPayment(data: any): Promise<DemoPayment>;
+  updatePayment(id: string, data: any): Promise<DemoPayment>;
 }
 
 // ─── Implementation ───────────────────────────────────────────────────────────
@@ -490,6 +511,16 @@ export const demoRepository: DemoRepository = {
     return updated;
   },
 
+  async startVerification(id: string, startedBy: string) {
+    const updated = demoUpdate<DemoInvoice>(DEMO_COLLECTIONS.INVOICES, id, {
+      status: 'UNDER_VERIFICATION',
+      updated_at: new Date().toISOString(),
+      updated_by: startedBy,
+    });
+    if (!updated || updated.is_deleted) throw new Error('Invoice not found');
+    return updated;
+  },
+
   async approveInvoice(id: string, approvedBy: string) {
     const updated = demoUpdate<DemoInvoice>(DEMO_COLLECTIONS.INVOICES, id, {
       status: 'APPROVED',
@@ -512,8 +543,67 @@ export const demoRepository: DemoRepository = {
   },
 
   async getInvoiceVariances(invoiceId: string) {
-    const all = demoGet<DemoInvoiceVariance>(DEMO_COLLECTIONS.INVOICES);
+    const all = demoGet<DemoInvoiceVariance>(DEMO_COLLECTIONS.INVOICE_VARIANCES);
     return (all.filter((v: any) => v.invoice_id === invoiceId) ?? []) as DemoInvoiceVariance[];
+  },
+
+  async getInvoiceDocuments(invoiceId: string) {
+    return demoGet<DemoInvoiceDocument>(DEMO_COLLECTIONS.INVOICE_DOCUMENTS).filter((doc) => doc.invoice_id === invoiceId);
+  },
+
+  async createInvoiceDocument(data: any) {
+    const record: DemoInvoiceDocument = {
+      ...data,
+      id: 'demo' + Math.random().toString(36).slice(2, 11),
+      uploaded_at: data.uploaded_at ?? new Date().toISOString(),
+      file_data: data.file_data ?? null,
+    };
+    return demoInsert<DemoInvoiceDocument>(DEMO_COLLECTIONS.INVOICE_DOCUMENTS, record);
+  },
+
+  async uploadInvoiceDocument(invoiceId: string, file: File, documentType: string, userId: string) {
+    const toDataUrl = (input: File): Promise<string> =>
+      new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result);
+          } else {
+            reject(new Error('Unable to read file as data URL'));
+          }
+        };
+        reader.onerror = () => reject(reader.error ?? new Error('File read failed'));
+        reader.readAsDataURL(input);
+      });
+
+    const record: DemoInvoiceDocument = {
+      id: 'demo' + Math.random().toString(36).slice(2, 11),
+      invoice_id: invoiceId,
+      document_type: documentType,
+      file_name: file.name,
+      file_size: file.size,
+      file_path: `${invoiceId}/${Date.now()}-${file.name}`,
+      mime_type: file.type,
+      uploaded_at: new Date().toISOString(),
+      uploaded_by: userId,
+      file_data: await toDataUrl(file),
+    };
+    return demoInsert<DemoInvoiceDocument>(DEMO_COLLECTIONS.INVOICE_DOCUMENTS, record);
+  },
+
+  async downloadInvoiceDocument(documentId: string) {
+    const document = demoFindById<DemoInvoiceDocument>(DEMO_COLLECTIONS.INVOICE_DOCUMENTS, documentId);
+    if (!document) {
+      throw new Error('Invoice document not found');
+    }
+    if (!document.file_data) {
+      throw new Error('Document content unavailable in demo mode');
+    }
+    return document.file_data;
+  },
+
+  async deleteInvoiceDocument(id: string) {
+    demoDelete(DEMO_COLLECTIONS.INVOICE_DOCUMENTS, id);
   },
 
   // Payments
@@ -521,7 +611,22 @@ export const demoRepository: DemoRepository = {
     return demoGet<DemoPayment>(DEMO_COLLECTIONS.PAYMENTS);
   },
 
+  async getPaymentById(id: string) {
+    const item = demoFindById<DemoPayment>(DEMO_COLLECTIONS.PAYMENTS, id);
+    if (!item) throw new Error('Payment not found');
+    return item;
+  },
+
   async createPayment(data: any) {
     return demoInsert<DemoPayment>(DEMO_COLLECTIONS.PAYMENTS, { ...data, id: 'demo' + Math.random().toString(36).slice(2, 11) });
+  },
+
+  async updatePayment(id: string, data: any) {
+    const updated = demoUpdate<DemoPayment>(DEMO_COLLECTIONS.PAYMENTS, id, {
+      ...data,
+      updated_at: new Date().toISOString(),
+    });
+    if (!updated) throw new Error('Payment not found');
+    return updated;
   },
 };

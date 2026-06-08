@@ -19,6 +19,9 @@ import { BookingReview } from './pages/BookingReview';
 import { Invoices } from './pages/Invoices';
 import { InvoiceCreate } from './pages/InvoiceCreate';
 import { InvoiceDetails } from './pages/InvoiceDetails';
+import { Payments } from './pages/Payments';
+import { PaymentCreate } from './pages/PaymentCreate';
+import { PaymentDetails } from './pages/PaymentDetails';
 import { Finance } from './pages/Finance';
 import { Reports } from './pages/Reports';
 import { VenueBulkImport } from './pages/VenueBulkImport';
@@ -183,6 +186,30 @@ export default function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <InvoiceDetails />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.payments} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Payments />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.paymentNew} element={
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                  <AppLayout>
+                    <PaymentCreate />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.paymentDetails} element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PaymentDetails />
                   </AppLayout>
                 </ProtectedRoute>
               } />

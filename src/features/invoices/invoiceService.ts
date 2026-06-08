@@ -7,6 +7,8 @@ import type {
   InvoiceUpdateInput,
   InvoiceQueryFilters,
   InvoiceValidationCheck,
+  InvoiceDocument,
+  InvoiceDocumentType,
 } from './types';
 import type { UserProfile } from '../../types';
 import { validateInvoicePackage } from './invoiceValidationService';
@@ -53,6 +55,11 @@ const supabaseRepo = {
   getInvoiceVariances: supabaseApi.getInvoiceVariances,
   createInvoiceValidationChecks: supabaseApi.createInvoiceValidationChecks,
   deleteInvoice: supabaseApi.deleteInvoice,
+  getInvoiceDocuments: supabaseApi.getInvoiceDocuments,
+  uploadInvoiceDocument: supabaseApi.uploadInvoiceDocument,
+  deleteInvoiceDocument: supabaseApi.deleteInvoiceDocument,
+  downloadInvoiceDocument: supabaseApi.downloadInvoiceDocument,
+  startVerification: supabaseApi.startVerification,
 };
 
 const demoRepo = {
@@ -83,6 +90,11 @@ const demoRepo = {
   approveInvoice: (id: string, userId: string) => demoRepository.approveInvoice(id, userId),
   rejectInvoice: (id: string, reason: string) => demoRepository.rejectInvoice(id, reason),
   getInvoiceVariances: demoRepository.getInvoiceVariances,
+  getInvoiceDocuments: demoRepository.getInvoiceDocuments,
+  uploadInvoiceDocument: demoRepository.uploadInvoiceDocument,
+  deleteInvoiceDocument: demoRepository.deleteInvoiceDocument,
+  downloadInvoiceDocument: demoRepository.downloadInvoiceDocument,
+  startVerification: demoRepository.startVerification,
 };
 
 function applyFilters(invoices: Invoice[], filters?: InvoiceQueryFilters): Invoice[] {
@@ -148,15 +160,25 @@ export const updateInvoice = async (id: string, input: InvoiceUpdateInput, user:
 };
 
 export const verifyInvoice = async (id: string, user: UserProfile): Promise<Invoice> => {
+  const invoice = await getInvoiceById(id);
+  if (invoice.status !== 'UNDER_VERIFICATION') {
+    throw new Error('Invoice must be under verification before it can be verified.');
+  }
+
   if (isDemoModeActive()) {
-    const invoice = await demoRepo.verifyInvoice(id, user.id);
-    return convertDemoToInvoice(invoice);
+    const updated = await demoRepo.verifyInvoice(id, user.id);
+    return convertDemoToInvoice(updated);
   }
 
   return supabaseRepo.verifyInvoice(id, user);
 };
 
 export const approveInvoice = async (id: string, user: UserProfile): Promise<Invoice> => {
+  const invoice = await getInvoiceById(id);
+  if (invoice.status !== 'VERIFIED') {
+    throw new Error('Only verified invoices can be approved.');
+  }
+
   if (isDemoModeActive()) {
     const invoice = await demoRepo.approveInvoice(id, user.id);
     return convertDemoToInvoice(invoice);
@@ -166,12 +188,78 @@ export const approveInvoice = async (id: string, user: UserProfile): Promise<Inv
 };
 
 export const rejectInvoice = async (id: string, reason: string, user: UserProfile): Promise<Invoice> => {
+  const invoice = await getInvoiceById(id);
+  if (invoice.status !== 'UNDER_VERIFICATION') {
+    throw new Error('Only invoices under verification can be rejected.');
+  }
+
   if (isDemoModeActive()) {
-    const invoice = await demoRepo.rejectInvoice(id, reason);
-    return convertDemoToInvoice(invoice);
+    const updated = await demoRepo.rejectInvoice(id, reason);
+    return convertDemoToInvoice(updated);
   }
 
   return supabaseRepo.rejectInvoice(id, reason, user);
+};
+
+export const startVerification = async (id: string, user: UserProfile): Promise<Invoice> => {
+  const invoice = await getInvoiceById(id);
+  if (invoice.status !== 'RECEIVED') {
+    throw new Error('Only invoices with status RECEIVED can start verification.');
+  }
+
+  if (isDemoModeActive()) {
+    const invoice = await demoRepo.startVerification(id, user.id);
+    return convertDemoToInvoice(invoice);
+  }
+
+  return supabaseRepo.startVerification(id, user);
+};
+
+export const getInvoiceDocuments = async (invoiceId: string): Promise<InvoiceDocument[]> => {
+  if (isDemoModeActive()) {
+    return demoRepo.getInvoiceDocuments(invoiceId).then((documents) =>
+      documents.map((document) => ({
+        ...document,
+        document_type: document.document_type as InvoiceDocumentType,
+      }))
+    );
+  }
+
+  return supabaseRepo.getInvoiceDocuments(invoiceId);
+};
+
+export const downloadInvoiceDocument = async (document: InvoiceDocument): Promise<string> => {
+  if (isDemoModeActive()) {
+    return demoRepo.downloadInvoiceDocument(document.id);
+  }
+
+  return supabaseRepo.downloadInvoiceDocument(document);
+};
+
+export const uploadInvoiceDocument = async (
+  invoiceId: string,
+  file: File,
+  documentType: InvoiceDocumentType,
+  user: UserProfile
+): Promise<InvoiceDocument> => {
+  if (isDemoModeActive()) {
+    return demoRepo
+      .uploadInvoiceDocument(invoiceId, file, documentType, user.id)
+      .then((document) => ({
+        ...document,
+        document_type: document.document_type as InvoiceDocumentType,
+      }));
+  }
+
+  return supabaseRepo.uploadInvoiceDocument(invoiceId, file, documentType, user);
+};
+
+export const deleteInvoiceDocument = async (documentId: string): Promise<void> => {
+  if (isDemoModeActive()) {
+    return demoRepo.deleteInvoiceDocument(documentId);
+  }
+
+  return supabaseRepo.deleteInvoiceDocument(documentId);
 };
 
 export const getInvoiceVariances = async (invoiceId: string): Promise<InvoiceValidationCheck[]> => {

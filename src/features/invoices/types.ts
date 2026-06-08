@@ -35,6 +35,7 @@ export interface InvoiceDocument {
   mime_type: string;
   uploaded_at: string;
   uploaded_by: string;
+  file_data?: string | null;
 }
 
 export interface InvoiceValidationCheck {

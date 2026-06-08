@@ -105,13 +105,13 @@ export const navigationGroups: NavigationGroup[] = [
     submenus: [
       {
         name: 'Invoices',
-        path: `${ROUTES.finance}?tab=invoices`,
+        path: ROUTES.invoices,
         iconName: 'FileInvoice',
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.FINANCE]
       },
       {
         name: 'Payments',
-        path: `${ROUTES.finance}?tab=payments`,
+        path: ROUTES.payments,
         iconName: 'CreditCard',
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.FINANCE]
       }

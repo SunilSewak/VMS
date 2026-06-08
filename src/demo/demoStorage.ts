@@ -20,6 +20,8 @@ export const DEMO_COLLECTIONS = {
   QUOTATIONS: 'quotations',
   BOOKINGS: 'bookings',
   INVOICES: 'invoices',
+  INVOICE_DOCUMENTS: 'invoice_documents',
+  INVOICE_VARIANCES: 'invoice_variances',
   PAYMENTS: 'payments',
 } as const;
 
