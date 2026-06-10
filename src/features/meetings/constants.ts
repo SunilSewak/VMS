@@ -2,16 +2,16 @@ import { MeetingStatus } from './types';
 
 export const MEETING_STATUSES: Record<MeetingStatus, { label: string; badgeType: 'info' | 'warning' | 'success' | 'danger' }> = {
   DRAFT: { label: 'Draft', badgeType: 'info' },
-  VENUES_SHORTLISTED: { label: 'Venues Shortlisted', badgeType: 'info' },
-  SUBMITTED_TO_ADMIN: { label: 'Submitted to Admin', badgeType: 'warning' },
+  VENUES_SHORTLISTED: { label: 'Venues Selected', badgeType: 'info' },
+  SUBMITTED_TO_ADMIN: { label: 'Awaiting Admin Review', badgeType: 'warning' },
   AVAILABILITY_CHECK: { label: 'Availability Check', badgeType: 'warning' },
-  BOOKED: { label: 'Booked', badgeType: 'success' },
-  COMPLETED: { label: 'Completed', badgeType: 'success' },
+  BOOKED: { label: 'Venue Confirmed', badgeType: 'success' },
+  COMPLETED: { label: 'Event Completed', badgeType: 'success' },
   CLOSED: { label: 'Closed', badgeType: 'danger' },
   
   // Legacy compatibility fallbacks:
-  SUBMITTED: { label: 'Submitted to Admin', badgeType: 'warning' },
-  SHORTLISTED: { label: 'Venues Shortlisted', badgeType: 'info' },
+  SUBMITTED: { label: 'Awaiting Admin Review', badgeType: 'warning' },
+  SHORTLISTED: { label: 'Venues Selected', badgeType: 'info' },
   VENUE_FINALIZED: { label: 'Availability Check', badgeType: 'warning' }
 };
 
