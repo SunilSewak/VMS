@@ -60,6 +60,7 @@ export async function createBooking(input: BookingCreateInput, user: UserProfile
   const { data, error } = await (supabase as any)
     .from('bookings')
     .insert([payload])
+    .select()
     .single();
 
   if (error) throw new Error(error.message);
