@@ -33,14 +33,18 @@ CREATE POLICY "Allow anonymous read" ON venue_photos
 
 -- Venue Shortlists table: Allow authenticated users to SELECT
 ALTER TABLE venue_shortlists ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated read" ON venue_shortlists;
 CREATE POLICY "Allow authenticated read" ON venue_shortlists
   FOR SELECT
-  USING (auth.role() = 'authenticated_user');
+  USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Allow authenticated insert" ON venue_shortlists;
 CREATE POLICY "Allow authenticated insert" ON venue_shortlists
   FOR INSERT
-  WITH CHECK (auth.role() = 'authenticated_user');
+  WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Allow authenticated delete" ON venue_shortlists;
 CREATE POLICY "Allow authenticated delete" ON venue_shortlists
   FOR DELETE
-  USING (auth.role() = 'authenticated_user');
+  USING (auth.role() = 'authenticated');
