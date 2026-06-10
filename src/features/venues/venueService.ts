@@ -77,9 +77,6 @@ const demoVenueApi = {
     if (filters.capacityMin !== undefined) {
       results = results.filter((v) => v.largestHallCapacity >= (filters.capacityMin ?? 0));
     }
-    if (filters.capacityMax !== undefined) {
-      results = results.filter((v) => v.largestHallCapacity <= (filters.capacityMax ?? Infinity));
-    }
 
     return results.sort((a, b) => a.hotelName.localeCompare(b.hotelName));
   },

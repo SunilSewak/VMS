@@ -105,9 +105,6 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
   if (filters.capacityMin !== undefined) {
     results = results.filter((v) => v.largestHallCapacity >= (filters.capacityMin ?? 0));
   }
-  if (filters.capacityMax !== undefined) {
-    results = results.filter((v) => v.largestHallCapacity <= (filters.capacityMax ?? Infinity));
-  }
 
   return results;
 }
