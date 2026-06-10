@@ -231,17 +231,17 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Widget 3: Booking Pending Confirmation */}
-          <div className="card" style={{ borderLeft: '4px solid var(--status-success)' }}>
+          {/* Widget 3: Booking Instructions */}
+          <div className="card" style={{ borderLeft: '4px solid var(--status-info)' }}>
             <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-              <Calendar size={20} style={{ color: 'var(--status-success)', flexShrink: 0 }} />
+              <Calendar size={20} style={{ color: 'var(--status-info)', flexShrink: 0 }} />
               <div>
-                <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)' }}>Booking Pending</h4>
+                <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)' }}>Create a Booking</h4>
                 <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 var(--space-3)' }}>
-                  Goa Cycle Meet quota is approved. Confirm booking with advance payment.
+                  Bookings are created after venue selection in Meeting Requests. Select a venue in a meeting request to generate a booking.
                 </p>
-                <Link to={ROUTES.bookingNew} style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  Issue Booking <ArrowRight size={12} />
+                <Link to={ROUTES.meetingRequests} style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Go to Meeting Requests <ArrowRight size={12} />
                 </Link>
               </div>
             </div>

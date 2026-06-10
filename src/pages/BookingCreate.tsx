@@ -10,6 +10,24 @@ import type { BookingCreateInput } from '../features/bookings/types';
 import { ROUTES } from '../routes/routeRegistry';
 import { EmptyState } from '../components/EmptyState';
 
+/**
+ * BookingCreate — Execution-Only Booking Creation Page
+ * 
+ * ARCHITECTURAL REQUIREMENT:
+ * - Bookings must ALWAYS originate from a Meeting Request
+ * - This page MUST be accessed with a valid ?requestId=<id> query parameter
+ * - No standalone booking creation is allowed
+ * - Booking workflow:
+ *   Meeting Request → Venue Selection → Create Booking
+ * 
+ * Access Routes (ONLY):
+ * - MeetingRequestForm.tsx → Create Booking (with requestId)
+ * - MyShortlists.tsx → Book Now (with requestId & hotelId)
+ * - VenueDetails.tsx → Create Booking (with requestId & hotelId)
+ * 
+ * Guard: Redirects to Meeting Requests if no requestId provided
+ */
+
 const DEFAULT_VENUE_FILTERS = { searchQuery: '', cityId: 'all', categoryCode: 'all' };
 
 function formatDate(value: string) {
@@ -26,6 +44,14 @@ export function BookingCreate() {
   const navigate = useNavigate();
   const requestIdParam = searchParams.get('requestId') ?? undefined;
   const hotelIdParam = searchParams.get('hotelId') ?? undefined;
+
+  // Guard: Redirect if no requestId provided
+  // Bookings must always originate from a Meeting Request
+  useEffect(() => {
+    if (!requestIdParam) {
+      navigate(ROUTES.bookingNew.includes(':') ? ROUTES.meetingRequests : ROUTES.bookings);
+    }
+  }, [requestIdParam, navigate]);
 
   const [meetingRequestId, setMeetingRequestId] = useState<string>(requestIdParam ?? '');
   const [hotelId, setHotelId] = useState<string>(hotelIdParam ?? '');
