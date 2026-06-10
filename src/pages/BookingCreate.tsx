@@ -160,7 +160,11 @@ export function BookingCreate() {
     try {
       const booking = await createBooking(payload, user);
       await updateMeetingRequest(meetingRequestId, {}, 'BOOKED');
-      navigate(`${ROUTES.bookingDetails.replace(':id', booking.id)}?created=true`);
+      if (booking?.id) {
+        navigate(`${ROUTES.bookingDetails.replace(':id', booking.id)}?created=true`);
+      } else {
+        setSubmitError('Booking created successfully, but the ID was not returned. Please check the Bookings list.');
+      }
     } catch (error: any) {
       setSubmitError(error?.message ?? 'Unable to create booking.');
     } finally {

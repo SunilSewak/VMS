@@ -37,8 +37,8 @@ export function BookingDetails() {
   const successMessage = searchParams.get('created') ? 'Booking created successfully.' : null;
 
   useEffect(() => {
-    if (!id) {
-      setError('Booking ID is missing.');
+    if (!id || id === 'undefined' || id === ':id') {
+      setError(`Booking ID is missing. (Received: ${String(id)})`);
       setLoading(false);
       return;
     }
