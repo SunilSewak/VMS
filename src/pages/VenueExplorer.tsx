@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useVenues, useVenueFilters, useShortlist } from '../features/venues/hooks';
 import { useMeetingRequest } from '../features/meetings/hooks';
+import { updateMeetingRequest } from '../features/meetings/meetingService';
 import { MEETING_STATUSES } from '../features/meetings/constants';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../routes/routeRegistry';
@@ -61,7 +62,7 @@ export function VenueExplorer() {
   };
 
   // Meeting request context for the planning panel
-  const { request, loading: requestLoading } = useMeetingRequest(requestId ?? undefined);
+  const { request, loading: requestLoading, refresh: requestRefresh } = useMeetingRequest(requestId ?? undefined);
   const requestStatus = request ? MEETING_STATUSES[request.status] : null;
 
   const selectedCapacity = CAPACITY_OPTIONS[selectedCapacityIdx];
@@ -409,7 +410,22 @@ export function VenueExplorer() {
                     isInCompare={isInCompare}
                     hasRequestContext={!!requestId}
                     onShortlist={async () => {
+                      const isCurrentlyShortlisted = shortlistedIds.includes(venue.id);
+                      const newCount = isCurrentlyShortlisted 
+                        ? shortlistedIds.length - 1 
+                        : shortlistedIds.length + 1;
+                      
                       await toggleShortlist(venue.id);
+                      
+                      if (request) {
+                        if (newCount === 0 && request.status === 'VENUES_SHORTLISTED') {
+                          await updateMeetingRequest(request.id, {}, 'DRAFT');
+                          requestRefresh();
+                        } else if (newCount > 0 && request.status === 'DRAFT') {
+                          await updateMeetingRequest(request.id, {}, 'VENUES_SHORTLISTED');
+                          requestRefresh();
+                        }
+                      }
                     }}
                     onCompare={() => toggleCompare(venue)}
                     onView={() => navigate(`/venue-explorer/${venue.id}${requestId ? `?requestId=${requestId}` : ''}`)}
@@ -483,53 +499,79 @@ export function VenueExplorer() {
                 <strong>{venues.length}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Compared Venues</span>
-                <strong>{compareList.length}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Shortlisted Venues</span>
                 <strong>{shortlistedIds.length}</strong>
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              <button
-                onClick={() => setShowCompareMatrix(true)}
-                disabled={compareList.length < 2}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              {shortlistedIds.length > 0 && (request?.status === 'DRAFT' || request?.status === 'VENUES_SHORTLISTED') && (
+                <button
+                  id="submit-shortlist-btn"
+                  onClick={async () => {
+                    if (!request) return;
+                    if (!window.confirm('Are you sure you want to submit your shortlisted venues to Admin? This request will become read-only.')) return;
+                    try {
+                      await updateMeetingRequest(request.id, {}, 'SUBMITTED_TO_ADMIN');
+                      requestRefresh();
+                      alert('Shortlisted venues submitted successfully to Admin!');
+                    } catch (e: any) {
+                      alert('Failed to submit shortlisted venues: ' + e.message);
+                    }
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                     padding: '14px 16px',
                     borderRadius: 'var(--radius-xl)',
                     border: 'none',
-                    background: compareList.length < 2 ? 'var(--border)' : 'var(--primary)',
-                    color: compareList.length < 2 ? 'var(--text-muted)' : '#fff',
-                    cursor: compareList.length < 2 ? 'not-allowed' : 'pointer',
+                    background: 'var(--primary)',
+                    color: '#fff',
+                    cursor: 'pointer',
                     fontWeight: '700',
                   }}
                 >
-                  Open Comparison
+                  Send Request to Admin
                 </button>
+              )}
+              {shortlistedIds.length > 0 && (
                 <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setSelectedCityId('all');
-                    setSelectedCategoryCode('all');
-                    setSelectedCapacityIdx(0);
-                    setHasSearched(false);
-                  }}
+                  id="view-shortlist-btn"
+                  onClick={() => navigate(`${ROUTES.myShortlists}?requestId=${requestId}`)}
                   style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                     padding: '14px 16px',
                     borderRadius: 'var(--radius-xl)',
-                    border: '1px solid var(--border)',
-                    background: 'transparent',
-                    color: 'var(--text-main)',
-                    fontWeight: '700',
+                    border: '1px solid ' + (request?.status === 'SUBMITTED_TO_ADMIN' || request?.status === 'AVAILABILITY_CHECK' || request?.status === 'BOOKED' ? 'var(--primary)' : 'var(--border)'),
+                    background: request?.status === 'SUBMITTED_TO_ADMIN' || request?.status === 'AVAILABILITY_CHECK' || request?.status === 'BOOKED' ? 'var(--primary)' : 'transparent',
+                    color: request?.status === 'SUBMITTED_TO_ADMIN' || request?.status === 'AVAILABILITY_CHECK' || request?.status === 'BOOKED' ? '#fff' : 'var(--primary)',
                     cursor: 'pointer',
+                    fontWeight: '700',
                   }}
                 >
-                  Start a new search
+                  View Shortlisted Venues
                 </button>
-              </div>
+              )}
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedCityId('all');
+                  setSelectedCategoryCode('all');
+                  setSelectedCapacityIdx(0);
+                  setHasSearched(false);
+                }}
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: 'var(--radius-xl)',
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--text-main)',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                }}
+              >
+                Start a new search
+              </button>
+            </div>
             </div>
           </aside>
         </div>

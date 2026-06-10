@@ -1,11 +1,15 @@
 export type MeetingStatus =
   | 'DRAFT'
-  | 'SUBMITTED'
-  | 'SHORTLISTED'
-  | 'VENUE_FINALIZED'
+  | 'VENUES_SHORTLISTED'
+  | 'SUBMITTED_TO_ADMIN'
+  | 'AVAILABILITY_CHECK'
   | 'BOOKED'
   | 'COMPLETED'
-  | 'CLOSED';
+  | 'CLOSED'
+  // Compatibility fallbacks for legacy/seeded records:
+  | 'SUBMITTED'
+  | 'SHORTLISTED'
+  | 'VENUE_FINALIZED';
 
 export interface MeetingRequest {
   id: string;

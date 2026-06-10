@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { MeetingRequest, Division, City, MeetingType } from './types';
+import { MeetingRequest, Division, City, MeetingType, MeetingStatus } from './types';
 import { UserProfile } from '../../types';
 import { ROLES } from '../../auth/permissions';
 
@@ -96,7 +96,7 @@ function generateRequestNumber(): string {
 export async function createMeetingRequest(
   input: Omit<MeetingRequest, 'id' | 'request_number' | 'status' | 'created_at' | 'created_by'>,
   user: UserProfile,
-  status: 'DRAFT' | 'SUBMITTED' = 'DRAFT'
+  status: MeetingStatus = 'DRAFT'
 ): Promise<MeetingRequest> {
   const reqNum = generateRequestNumber();
   const payload = {
@@ -123,7 +123,7 @@ export async function createMeetingRequest(
 export async function updateMeetingRequest(
   id: string,
   input: Partial<Omit<MeetingRequest, 'id' | 'request_number' | 'created_at' | 'created_by'>>,
-  status?: 'DRAFT' | 'SUBMITTED'
+  status?: MeetingStatus
 ): Promise<MeetingRequest> {
   const payload = { ...input };
   if (status) {

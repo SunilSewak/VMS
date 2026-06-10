@@ -33,7 +33,7 @@ export function MeetingRequests() {
     try {
       setActionLoading(id);
       setActionError(null);
-      await updateMeetingRequest(id, {}, 'SUBMITTED');
+      await updateMeetingRequest(id, {}, 'SUBMITTED_TO_ADMIN');
       refresh();
     } catch (err: any) {
       setActionError(err.message || 'Failed to submit request');
@@ -102,7 +102,7 @@ export function MeetingRequests() {
     {
       header: 'Actions',
       accessor: (row) => {
-        const isDraft = row.status === 'DRAFT';
+        const isDraft = row.status === 'DRAFT' || row.status === 'VENUES_SHORTLISTED' || row.status === 'SHORTLISTED';
         const isMutating = actionLoading === row.id;
 
         return (

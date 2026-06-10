@@ -49,11 +49,13 @@ export async function getBookingById(id: string): Promise<Booking> {
 export async function createBooking(input: BookingCreateInput, user: UserProfile): Promise<Booking> {
   const payload = {
     ...input,
+    request_id: input.meeting_request_id,
     booking_reference: generateBookingReference(),
     status: 'REQUESTED',
     created_by: user.id,
     created_at: new Date().toISOString(),
   } as const;
+
 
   const { data, error } = await (supabase as any)
     .from('bookings')

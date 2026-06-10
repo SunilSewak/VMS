@@ -5,13 +5,15 @@ import {
   ArrowLeft, Save, Send, Edit3, Search, AlertCircle, RefreshCw,
   ClipboardList, MapPin, Users, Wrench, Home, Building2, Check,
   Award, Briefcase, Calendar, Sparkles, Star, Hotel,
-  Layers, GraduationCap, CheckCircle2, ShieldCheck, TrendingUp, Cpu, BedDouble
+  Layers, GraduationCap, CheckCircle2, ShieldCheck, TrendingUp, Cpu, BedDouble, X
 } from 'lucide-react';
 import { useMeetingRequest, useMeetingMasters } from '../features/meetings/hooks';
 import { createMeetingRequest, updateMeetingRequest } from '../features/meetings/meetingService';
-import { DEFAULT_FORM_VALUES, SEATING_STYLES } from '../features/meetings/constants';
+import { DEFAULT_FORM_VALUES, SEATING_STYLES, MEETING_STATUSES } from '../features/meetings/constants';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../routes/routeRegistry';
+import { MeetingStatus } from '../features/meetings/types';
+import { ROLES } from '../auth/permissions';
 import { CityCombobox, CitySelection } from '../components/CityCombobox';
 import { SearchableCombobox } from '../components/SearchableCombobox';
 
@@ -490,7 +492,7 @@ export function MeetingRequestForm() {
   const isView = !isCreate && !isEdit;
 
   const { divisions, cities, meetingTypes, loading: mastersLoading, error: mastersError } = useMeetingMasters();
-  const { request, loading: requestLoading, error: requestError } = useMeetingRequest(id);
+  const { request, loading: requestLoading, error: requestError, refresh: requestRefresh } = useMeetingRequest(id);
 
   const { register, handleSubmit, reset, watch, setValue } = useForm({
     defaultValues: DEFAULT_FORM_VALUES
@@ -570,7 +572,7 @@ export function MeetingRequestForm() {
     setTimeout(() => setDraftSavedAt(null), 3100);
   };
 
-  const onSave = async (formValues: any, status: 'DRAFT' | 'SUBMITTED') => {
+  const onSave = async (formValues: any, status: MeetingStatus) => {
     if (!user) return;
     try {
       setSaving(true);
@@ -597,10 +599,15 @@ export function MeetingRequestForm() {
         city_id: citySelection.city_id || null,
         target_city_name: citySelection.target_city_name || null
       };
+      
+      const targetStatus = status === 'DRAFT'
+        ? (request?.status === 'VENUES_SHORTLISTED' || request?.status === 'SHORTLISTED' ? request.status : 'DRAFT')
+        : status;
+
       if (isCreate) {
-        await createMeetingRequest(payload, user, status);
+        await createMeetingRequest(payload, user, targetStatus);
       } else if (id) {
-        await updateMeetingRequest(id, payload, status);
+        await updateMeetingRequest(id, payload, targetStatus);
       }
 
       if (status === 'DRAFT') {
@@ -623,7 +630,7 @@ export function MeetingRequestForm() {
       : `Request Details — ${request?.request_number || '…'}`;
 
   const isLoading = mastersLoading || (!isCreate && requestLoading);
-  const isFormDisabled = isView;
+  const isFormDisabled = isView || !!(request && request.status !== 'DRAFT' && request.status !== 'VENUES_SHORTLISTED' && request.status !== 'SHORTLISTED');
 
   // ─── Completion Score ───────────────────────────────────────────
   const completionScore = (() => {
@@ -778,14 +785,17 @@ export function MeetingRequestForm() {
             }}>
               {pageTitle}
             </h2>
-            {request && (
-              <span
-                className={`badge badge-${request.status === 'DRAFT' ? 'info' : 'warning'}`}
-                style={{ fontSize: '11px', marginTop: '5px', display: 'inline-block' }}
-              >
-                {request.status}
-              </span>
-            )}
+            {request && (() => {
+              const statusCfg = MEETING_STATUSES[request.status] || { label: request.status, badgeType: 'info' };
+              return (
+                <span
+                  className={`badge badge-${statusCfg.badgeType}`}
+                  style={{ fontSize: '11px', marginTop: '5px', display: 'inline-block' }}
+                >
+                  {statusCfg.label}
+                </span>
+              );
+            })()}
           </div>
         </div>
 
@@ -800,7 +810,7 @@ export function MeetingRequestForm() {
               <span>Find Matching Venues</span>
             </button>
           )}
-          {request && !isCreate && request?.status !== 'DRAFT' && (
+          {request && !isCreate && (request.status === 'AVAILABILITY_CHECK' || request.status === 'VENUE_FINALIZED') && (
             <button
               className="btn btn-primary"
               onClick={() => navigate(`${ROUTES.bookingNew}?requestId=${id}`)}
@@ -810,7 +820,7 @@ export function MeetingRequestForm() {
               <span>Create Booking</span>
             </button>
           )}
-          {isView && request?.status === 'DRAFT' && (
+          {isView && (request?.status === 'DRAFT' || request?.status === 'VENUES_SHORTLISTED' || request?.status === 'SHORTLISTED') && (
             <button
               className="btn btn-primary"
               onClick={() => navigate(`/meeting-requests/${id}/edit`)}
@@ -819,6 +829,76 @@ export function MeetingRequestForm() {
               <Edit3 size={15} />
               <span>Edit Draft</span>
             </button>
+          )}
+          {request && !isCreate && (user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN) && (
+            <>
+              {(request.status === 'SUBMITTED_TO_ADMIN' || request.status === 'SUBMITTED') && (
+                <button
+                  className="btn btn-primary"
+                  onClick={async () => {
+                    try {
+                      setSaving(true);
+                      await updateMeetingRequest(id, {}, 'AVAILABILITY_CHECK');
+                      if (requestRefresh) requestRefresh();
+                      alert('Availability check started.');
+                    } catch (e: any) {
+                      alert('Error starting availability check: ' + e.message);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  disabled={saving}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <RefreshCw size={15} />
+                  <span>Start Availability Check</span>
+                </button>
+              )}
+              {request.status === 'BOOKED' && (
+                <button
+                  className="btn btn-primary"
+                  onClick={async () => {
+                    try {
+                      setSaving(true);
+                      await updateMeetingRequest(id, {}, 'COMPLETED');
+                      if (requestRefresh) requestRefresh();
+                      alert('Meeting request marked as completed.');
+                    } catch (e: any) {
+                      alert('Error: ' + e.message);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  disabled={saving}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <CheckCircle2 size={15} />
+                  <span>Mark Event Completed</span>
+                </button>
+              )}
+              {request.status === 'COMPLETED' && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={async () => {
+                    try {
+                      setSaving(true);
+                      await updateMeetingRequest(id, {}, 'CLOSED');
+                      if (requestRefresh) requestRefresh();
+                      alert('Meeting request closed.');
+                    } catch (e: any) {
+                      alert('Error: ' + e.message);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  disabled={saving}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', borderColor: 'var(--status-danger)', color: 'var(--status-danger)' }}
+                >
+                  <X size={15} />
+                  <span>Close Request</span>
+                </button>
+              )}
+            </>
           )}
           {!isFormDisabled && (
             <>
@@ -833,7 +913,7 @@ export function MeetingRequestForm() {
               </button>
               <button
                 className="btn btn-primary"
-                onClick={handleSubmit((vals: any) => onSave(vals, 'SUBMITTED'))}
+                onClick={handleSubmit((vals: any) => onSave(vals, 'SUBMITTED_TO_ADMIN'))}
                 disabled={saving}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '8px',
@@ -1643,7 +1723,7 @@ export function MeetingRequestForm() {
           </button>
           <button
             className="btn btn-primary"
-            onClick={handleSubmit((vals: any) => onSave(vals, 'SUBMITTED'))}
+            onClick={handleSubmit((vals: any) => onSave(vals, 'SUBMITTED_TO_ADMIN'))}
             disabled={saving}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Building2, ClipboardList, CheckCircle2, MapPin, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMeetingRequests } from '../features/meetings/hooks';
+import { updateMeetingRequest } from '../features/meetings/meetingService';
 import { useVenues, useVenueDetails, useMyShortlists } from '../features/venues/hooks';
 import { createBooking } from '../features/bookings/bookingService';
 import type { BookingCreateInput } from '../features/bookings/types';
@@ -158,6 +159,7 @@ export function BookingCreate() {
     setSaving(true);
     try {
       const booking = await createBooking(payload, user);
+      await updateMeetingRequest(meetingRequestId, {}, 'BOOKED');
       navigate(`${ROUTES.bookingDetails.replace(':id', booking.id)}?created=true`);
     } catch (error: any) {
       setSubmitError(error?.message ?? 'Unable to create booking.');

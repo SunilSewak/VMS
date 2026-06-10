@@ -64,7 +64,7 @@ export const getMeetingRequestById = async (id: string): Promise<MeetingRequest>
 export const createMeetingRequest = async (
   input: Omit<MeetingRequest, 'id' | 'request_number' | 'status' | 'created_at' | 'created_by'>,
   user: UserProfile,
-  status: 'DRAFT' | 'SUBMITTED' = 'DRAFT'
+  status: MeetingStatus = 'DRAFT'
 ): Promise<MeetingRequest> => {
   const repo = getRepository() as any;
   const data = await repo.createMeetingRequest(input, user.id, status);
@@ -74,7 +74,7 @@ export const createMeetingRequest = async (
 export const updateMeetingRequest = async (
   id: string,
   input: Partial<Omit<MeetingRequest, 'id' | 'request_number' | 'created_at' | 'created_by'>>,
-  status?: 'DRAFT' | 'SUBMITTED'
+  status?: MeetingStatus
 ): Promise<MeetingRequest> => {
   const repo = getRepository() as any;
   const data = await repo.updateMeetingRequest(id, input, status);
