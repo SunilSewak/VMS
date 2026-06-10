@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, MapPin, CalendarDays, ClipboardList } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getBookingById } from '../features/bookings/bookingService';
+import { getAccommodationPlanByBookingId, createAccommodationPlan } from '../features/rooming/roomingService';
 import type { Booking } from '../features/bookings/types';
+import type { AccommodationPlan, AccommodationPlanCreateInput } from '../features/rooming/types';
 import { ROUTES } from '../routes/routeRegistry';
 import { EmptyState } from '../components/EmptyState';
 import { ROLES } from '../auth/permissions';
@@ -24,11 +26,14 @@ function formatDate(value?: string | null) {
 
 export function BookingDetails() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { id } = useParams();
   const [booking, setBooking] = useState<Booking | null>(null);
+  const [accommodationPlan, setAccommodationPlan] = useState<AccommodationPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
   const successMessage = searchParams.get('created') ? 'Booking created successfully.' : null;
 
   useEffect(() => {
@@ -49,6 +54,14 @@ export function BookingDetails() {
         if (mounted) {
           setBooking(data);
         }
+        
+        // Load existing accommodation plan for this booking
+        if (data.id) {
+          const plan = await getAccommodationPlanByBookingId(data.id);
+          if (mounted) {
+            setAccommodationPlan(plan);
+          }
+        }
       } catch (caught) {
         if (mounted) {
           setError((caught as Error).message ?? 'Unable to load booking details.');
@@ -68,6 +81,43 @@ export function BookingDetails() {
   }, [id]);
 
   const canReview = user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN;
+
+  const handlePlanAccommodation = async () => {
+    if (!user || !booking) return;
+    
+    setPlanLoading(true);
+    try {
+      // Check if accommodation plan already exists
+      if (accommodationPlan && accommodationPlan.id) {
+        // Navigate to existing plan
+        const path = ROUTES.roomingDetails.replace(':id', accommodationPlan.id);
+        navigate(path);
+        return;
+      }
+      
+      // Create new draft accommodation plan
+      const createInput: AccommodationPlanCreateInput = {
+        booking_id: booking.id,
+        status: 'DRAFT',
+        expected_pax: booking.expected_pax || 0,
+        single_rooms_planned: booking.rooms_booked || 0,
+        double_rooms_planned: 0,
+        triple_rooms_planned: 0,
+        remarks: null,
+      };
+      
+      const newPlan = await createAccommodationPlan(createInput, user);
+      // Navigate to new plan details
+      if (newPlan.id) {
+        const path = ROUTES.roomingDetails.replace(':id', newPlan.id);
+        navigate(path);
+      }
+    } catch (err: any) {
+      setError(err?.message ?? 'Unable to create accommodation plan.');
+    } finally {
+      setPlanLoading(false);
+    }
+  };
 
   if (loading) {
     return <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>Loading booking details...</div>;
@@ -133,6 +183,34 @@ export function BookingDetails() {
                 <ShieldCheck size={16} /> Review booking
               </Link>
             ) : null}
+            <button
+              onClick={handlePlanAccommodation}
+              disabled={planLoading}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.8rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                background: accommodationPlan ? 'var(--success)' : 'var(--primary)',
+                color: 'white',
+                textDecoration: 'none',
+                border: 'none',
+                cursor: planLoading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {planLoading ? (
+                <span>Loading...</span>
+              ) : accommodationPlan ? (
+                <>
+                  <CalendarDays size={16} /> Manage Accommodation
+                </>
+              ) : (
+                <>
+                  <CalendarDays size={16} /> Plan Accommodation
+                </>
+              )}
+            </button>
           </div>
         </div>
 

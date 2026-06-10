@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   MapPin,
   Bookmark,
@@ -23,11 +23,17 @@ function getVenuePhoto(hotel: Hotel | null | undefined): string | null {
 
 export function MyShortlists() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestId = searchParams.get('requestId');
   const { user } = useAuth();
   const { shortlists, loading, error } = useMyShortlists(user?.id ?? null);
 
+  const filteredShortlists = requestId
+    ? shortlists.filter((item) => item.request_id === requestId)
+    : shortlists;
+
   // Group shortlists by request_id
-  const grouped = shortlists.reduce<Record<string, VenueShortlist[]>>((acc, s) => {
+  const grouped = filteredShortlists.reduce<Record<string, VenueShortlist[]>>((acc, s) => {
     const key = s.request_id;
     if (!acc[key]) acc[key] = [];
     acc[key].push(s);
@@ -55,7 +61,9 @@ export function MyShortlists() {
             </h1>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', maxWidth: '480px' }}>
-            Venues you've shortlisted across all your meeting requests. Review and explore further.
+            {requestId
+              ? 'Venues shortlisted for the selected meeting request. Review or convert the shortlist into a booking.'
+              : "Venues you've shortlisted across all your meeting requests. Review and explore further."}
           </p>
         </div>
 

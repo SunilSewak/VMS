@@ -2,7 +2,7 @@
  * AVEMS Invoice Validation Service
  *
  * Implements comprehensive hotel invoice verification engine.
- * Compares Booking + Approved Commercial + Invoice against real-world validation rules.
+ * Compares Booking + Contracted Rates + Invoice against real-world validation rules.
  * Generates structured validation checks for Occupancy, Charges, Tax, and Total verification.
  */
 
@@ -149,7 +149,7 @@ function validateRoomCharges(invoice: Invoice): InvoiceValidationCheck[] {
     id: 'chk-room-rate-' + Math.random().toString(36).slice(2),
     invoice_id: invoice.id,
     check_type: 'ROOM_RATE_VARIANCE',
-    expected_value: 'Approved Commercial',
+    expected_value: 'Contracted Rates',
     actual_value: invoice.room_charges,
     variance_value: 'Review Supporting Documents',
     severity: 'INFO',
@@ -170,7 +170,7 @@ function validateFood(invoice: Invoice): InvoiceValidationCheck[] {
     id: 'chk-food-' + Math.random().toString(36).slice(2),
     invoice_id: invoice.id,
     check_type: 'FOOD_VARIANCE',
-    expected_value: 'Approved Commercial',
+    expected_value: 'Contracted Rates',
     actual_value: invoice.food_charges,
     variance_value: 'Review Supporting Documents',
     severity: 'INFO',
@@ -194,7 +194,7 @@ function validateHallCharges(invoice: Invoice, booking: Booking): InvoiceValidat
     id: 'chk-hall-charge-' + Math.random().toString(36).slice(2),
     invoice_id: invoice.id,
     check_type: 'HALL_CHARGE_VARIANCE',
-    expected_value: expectedHalls > 0 ? 'Approved Commercial' : 0,
+    expected_value: expectedHalls > 0 ? 'Contracted Rates' : 0,
     actual_value: invoice.hall_charges,
     variance_value: invoice.hall_charges,
     severity: expectedHalls === 0 && invoice.hall_charges > 0 ? 'CRITICAL' : 'INFO',

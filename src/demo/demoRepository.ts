@@ -12,6 +12,7 @@
  */
 
 import { DEMO_COLLECTIONS, demoGet, demoSet, demoInsert, demoUpdate, demoDelete, demoFindById } from './demoStorage';
+import type { AccommodationPlan, AccommodationPlanStatus } from '../features/rooming/types';
 
 // ─── Types for all entity collections ──────────────────────────────────────────
 
@@ -108,16 +109,7 @@ export interface DemoVenueShortlist {
   hotels?: DemoHotel;
 }
 
-// Commercial types
-export interface DemoQuotation {
-  id: string;
-  request_id: string;
-  hotel_id: string;
-  amount: number;
-  currency: string;
-  status: string;
-  submitted_at: string;
-}
+
 
 // Booking types
 export interface DemoBooking {
@@ -142,6 +134,32 @@ export interface DemoBooking {
   created_at: string;
   updated_at?: string;
   updated_by?: string;
+}
+
+export interface DemoAccommodationPlan {
+  id: string;
+  booking_id: string;
+  status: string;
+  single_rooms_planned: number;
+  double_rooms_planned: number;
+  triple_rooms_planned: number;
+  expected_pax: number;
+  remarks?: string;
+  created_at: string;
+  created_by?: string;
+  updated_at?: string;
+  updated_by?: string;
+}
+
+export interface DemoAccommodationUtilization {
+  id: string;
+  plan_id: string;
+  single_rooms_actual: number;
+  double_rooms_actual: number;
+  triple_rooms_actual: number;
+  actual_pax: number;
+  remarks?: string;
+  updated_at: string;
 }
 
 // Finance types
@@ -243,9 +261,7 @@ export interface DemoRepository {
   removeFromShortlist(requestId: string, hotelId: string): Promise<void>;
   getMyShortlists(userId: string): Promise<any[]>;
 
-  // Quotations
-  getQuotations(): Promise<DemoQuotation[]>;
-  createQuotation(data: any): Promise<DemoQuotation>;
+
 
   // Bookings
   getBookings(): Promise<DemoBooking[]>;
@@ -254,6 +270,16 @@ export interface DemoRepository {
   updateBooking(id: string, data: any): Promise<DemoBooking>;
   confirmBooking(id: string, confirmedBy: string): Promise<DemoBooking>;
   cancelBooking(id: string, cancelledBy: string): Promise<DemoBooking>;
+
+  // Accommodation
+  getAccommodationPlans(): Promise<AccommodationPlan[]>;
+  getAccommodationPlanById(id: string): Promise<AccommodationPlan>;
+  getAccommodationPlanByBookingId(bookingId: string): Promise<AccommodationPlan | null>;
+  createAccommodationPlan(data: any): Promise<AccommodationPlan>;
+  updateAccommodationPlan(id: string, data: any): Promise<AccommodationPlan>;
+  deleteAccommodationPlan(id: string): Promise<void>;
+  updateAccommodationUtilization(id: string, data: any): Promise<AccommodationPlan>;
+  populateAccommodationPlan(plan: DemoAccommodationPlan): Promise<AccommodationPlan>;
 
   // Invoices
   getInvoices(): Promise<DemoInvoice[]>;
@@ -401,14 +427,7 @@ export const demoRepository: DemoRepository = {
       .sort((a, b) => (a.shortlisted_at > b.shortlisted_at ? -1 : 1));
   },
 
-  // Quotations
-  async getQuotations() {
-    return demoGet<DemoQuotation>(DEMO_COLLECTIONS.QUOTATIONS);
-  },
 
-  async createQuotation(data: any) {
-    return demoInsert<DemoQuotation>(DEMO_COLLECTIONS.QUOTATIONS, { ...data, id: 'demo' + Math.random().toString(36).slice(2, 11) });
-  },
 
   // Bookings
   async getBookings() {
@@ -467,6 +486,97 @@ export const demoRepository: DemoRepository = {
     });
     if (!updated) throw new Error('Booking not found');
     return updated;
+  },
+
+  // Accommodation
+  async getAccommodationPlans() {
+    const plans = demoGet<DemoAccommodationPlan>(DEMO_COLLECTIONS.ACCOMMODATION_PLANS);
+    return Promise.all(plans.map((plan) => this.populateAccommodationPlan(plan)));
+  },
+
+  async getAccommodationPlanById(id: string) {
+    const item = demoFindById<DemoAccommodationPlan>(DEMO_COLLECTIONS.ACCOMMODATION_PLANS, id);
+    if (!item) throw new Error('Accommodation plan not found');
+    return this.populateAccommodationPlan(item);
+  },
+
+  async createAccommodationPlan(data: any) {
+    const record: DemoAccommodationPlan = {
+      ...data,
+      id: 'demo' + Math.random().toString(36).slice(2, 11),
+      single_rooms_planned: data.single_rooms_planned ?? 0,
+      double_rooms_planned: data.double_rooms_planned ?? 0,
+      triple_rooms_planned: data.triple_rooms_planned ?? 0,
+      expected_pax: data.expected_pax ?? 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    demoInsert<DemoAccommodationPlan>(DEMO_COLLECTIONS.ACCOMMODATION_PLANS, record);
+    return this.getAccommodationPlanById(record.id);
+  },
+
+  async updateAccommodationPlan(id: string, data: any) {
+    const updated = demoUpdate<DemoAccommodationPlan>(DEMO_COLLECTIONS.ACCOMMODATION_PLANS, id, {
+      ...data,
+      updated_at: new Date().toISOString(),
+    });
+    if (!updated) throw new Error('Accommodation plan not found');
+    return this.getAccommodationPlanById(id);
+  },
+
+  async deleteAccommodationPlan(id: string) {
+    demoDelete(DEMO_COLLECTIONS.ACCOMMODATION_PLANS, id);
+    demoSet(
+      DEMO_COLLECTIONS.ACCOMMODATION_UTILIZATIONS,
+      demoGet<DemoAccommodationUtilization>(DEMO_COLLECTIONS.ACCOMMODATION_UTILIZATIONS).filter((util) => util.plan_id !== id)
+    );
+  },
+
+  async getAccommodationPlanByBookingId(bookingId: string): Promise<AccommodationPlan | null> {
+    const plans = demoGet<DemoAccommodationPlan>(DEMO_COLLECTIONS.ACCOMMODATION_PLANS);
+    const plan = plans.find((p) => p.booking_id === bookingId);
+    if (!plan) return null;
+    return this.getAccommodationPlanById(plan.id);
+  },
+
+  async updateAccommodationUtilization(id: string, data: any) {
+    const existing = demoGet<DemoAccommodationUtilization>(DEMO_COLLECTIONS.ACCOMMODATION_UTILIZATIONS).find((util) => util.plan_id === id);
+    if (existing) {
+      const updated = demoUpdate<DemoAccommodationUtilization>(DEMO_COLLECTIONS.ACCOMMODATION_UTILIZATIONS, existing.id, {
+        ...data,
+        updated_at: new Date().toISOString(),
+        plan_id: id,
+      });
+      if (!updated) throw new Error('Accommodation utilization not found');
+      return this.getAccommodationPlanById(id);
+    }
+
+    const record: DemoAccommodationUtilization = {
+      ...data,
+      id: 'demo' + Math.random().toString(36).slice(2, 11),
+      plan_id: id,
+      updated_at: new Date().toISOString(),
+    };
+    demoInsert<DemoAccommodationUtilization>(DEMO_COLLECTIONS.ACCOMMODATION_UTILIZATIONS, record);
+    return this.getAccommodationPlanById(id);
+  },
+
+  async populateAccommodationPlan(plan: DemoAccommodationPlan): Promise<AccommodationPlan> {
+    const booking = await demoFindById<DemoBooking>(DEMO_COLLECTIONS.BOOKINGS, plan.booking_id);
+    const utilization = demoGet<DemoAccommodationUtilization>(DEMO_COLLECTIONS.ACCOMMODATION_UTILIZATIONS).find((util) => util.plan_id === plan.id) ?? undefined;
+
+    return {
+      ...plan,
+      status: plan.status as AccommodationPlanStatus,
+      booking: booking
+        ? {
+            booking_reference: booking.booking_reference ?? booking.id,
+            hotels: { hotel_name: 'Demo venue' },
+            meeting_requests: { meeting_name: booking.booking_reference ?? 'Demo booking', request_number: '' },
+          }
+        : undefined,
+      utilization,
+    };
   },
 
   // Invoices

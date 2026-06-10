@@ -44,7 +44,11 @@ export async function getMeetingRequests(user: UserProfile): Promise<MeetingRequ
   let query = (supabase as any)
     .from('meeting_requests')
     .select(`
-      *,
+      id, request_number, meeting_name, division_id, meeting_type_id,
+      city_id, zone, start_date, end_date, expected_pax, guaranteed_pax,
+      residential_flag, rooms_required, halls_required, seating_style,
+      av_requirements, food_requirements, transfer_requirements, status,
+      created_at, created_by,
       divisions ( division_name ),
       meeting_types ( meeting_type_name ),
       cities ( city_name )
@@ -102,15 +106,13 @@ export async function createMeetingRequest(
     created_by: user.id
   };
 
+  // Debug: Log the payload before insert
+  console.log('Meeting Request Payload', payload);
+
   const { data, error } = await (supabase as any)
     .from('meeting_requests')
     .insert([payload])
-    .select(`
-      *,
-      divisions ( division_name ),
-      meeting_types ( meeting_type_name ),
-      cities ( city_name )
-    `)
+    .select('*')
     .single();
 
   if (error) throw new Error(error.message);

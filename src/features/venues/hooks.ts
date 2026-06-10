@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { VenueCardData, VenueSearchFilters, Hotel, VenueShortlist, HotelCategory, City } from './types';
 import {
   searchVenues,
@@ -33,23 +33,48 @@ export function useVenueFilters() {
 }
 
 // Hook: Search venues with filters
-export function useVenues(filters: VenueSearchFilters) {
+export function useVenues(filters: VenueSearchFilters, skip = false) {
   const [venues, setVenues] = useState<VenueCardData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (skip) return;
+
+    let active = true;
+    setLoading(true);
+    setError(null);
+    searchVenues(filters)
+      .then((data) => {
+        if (active) {
+          setVenues(data);
+        }
+      })
+      .catch((e) => {
+        if (active) {
+          setError(e.message);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [filters, skip]);
+
   const load = useCallback(() => {
+    if (skip) return;
     setLoading(true);
     setError(null);
     searchVenues(filters)
       .then(setVenues)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [JSON.stringify(filters)]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  }, [filters, skip]);
 
   return { venues, loading, error, reload: load };
 }
@@ -77,35 +102,56 @@ export function useVenueDetails(id: string | null) {
 export function useShortlist(requestId: string | null, userId: string | null) {
   const [shortlistedIds, setShortlistedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    if (!requestId) return;
-    fetchShortlistedIds(requestId)
-      .then(setShortlistedIds)
-      .catch(console.error);
+    if (!requestId) {
+      setShortlistedIds([]);
+      return;
+    }
+    
+    // Only fetch on initial mount, not on every requestId change
+    if (!initialized.current) {
+      initialized.current = true;
+      setLoading(true);
+      fetchShortlistedIds(requestId)
+        .then(setShortlistedIds)
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
   }, [requestId]);
 
   const toggleShortlist = useCallback(async (hotelId: string) => {
     if (!requestId || !userId) return;
+    console.log('Toggle Shortlist - Hotel ID:', hotelId);
+    console.log('Toggle Shortlist - Shortlisted IDs Before:', shortlistedIds);
     const isCurrentlyShortlisted = shortlistedIds.includes(hotelId);
     // Optimistic update
-    setShortlistedIds((prev) =>
-      isCurrentlyShortlisted ? prev.filter((id) => id !== hotelId) : [...prev, hotelId]
-    );
+    setShortlistedIds((prev) => {
+      const result = isCurrentlyShortlisted 
+        ? prev.filter((id) => id !== hotelId) 
+        : [...prev, hotelId];
+      console.log('Toggle Shortlist - Shortlisted IDs After Optimistic Update:', result);
+      return result;
+    });
     try {
       if (isCurrentlyShortlisted) {
         await removeFromShortlist(requestId, hotelId);
+        console.log('Toggle Shortlist - Removed from DB');
       } else {
         await addToShortlist(requestId, hotelId, userId);
+        console.log('Toggle Shortlist - Added to DB');
       }
+      console.log('Toggle Shortlist - DB Operation Success');
     } catch (e) {
+      console.error('Shortlist toggle DB operation failed:', e);
       // Rollback on failure
       setShortlistedIds((prev) =>
         isCurrentlyShortlisted ? [...prev, hotelId] : prev.filter((id) => id !== hotelId)
       );
-      console.error('Shortlist toggle failed:', e);
     }
     setLoading(false);
+    console.log('Toggle Shortlist - Final Shortlisted IDs:', shortlistedIds);
   }, [requestId, userId, shortlistedIds]);
 
   return { shortlistedIds, toggleShortlist, loading };

@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useVenueDetails } from '../features/venues/hooks';
 import { useShortlist } from '../features/venues/hooks';
+import { useMeetingRequest } from '../features/meetings/hooks';
+import { MEETING_STATUSES } from '../features/meetings/constants';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../routes/routeRegistry';
 import type { Hall } from '../features/venues/types';
@@ -29,6 +31,8 @@ export function VenueDetails() {
   const { user } = useAuth();
 
   const { venue, loading, error } = useVenueDetails(id ?? null);
+  const { request } = useMeetingRequest(requestId ?? undefined);
+  const requestStatus = request ? MEETING_STATUSES[request.status] : null;
   const { shortlistedIds, toggleShortlist } = useShortlist(requestId, user?.id ?? null);
 
   const isShortlisted = !!id && shortlistedIds.includes(id);
@@ -64,7 +68,7 @@ export function VenueDetails() {
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)' }}>
           {error ?? 'The venue you are looking for could not be loaded.'}
         </p>
-        <button className="btn btn-secondary" onClick={() => navigate(-1 as unknown as string)}>
+        <button className="btn btn-secondary" onClick={() => navigate(-1 as any)}>
           ← Go Back
         </button>
       </div>
@@ -77,7 +81,7 @@ export function VenueDetails() {
       {/* ─── BACK NAV ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button
-          onClick={() => navigate(-1 as unknown as string)}
+          onClick={() => navigate(-1 as any)}
           style={{
             display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
             color: 'var(--text-muted)', fontSize: 'var(--font-sm)', fontWeight: '600',
@@ -105,7 +109,10 @@ export function VenueDetails() {
         {requestId && (
           <button
             id="venue-shortlist-btn"
-            onClick={() => toggleShortlist(id)}
+            onClick={(e) => {
+              e.preventDefault();
+              toggleShortlist(id).catch(console.error);
+            }}
             style={{
               display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
               padding: 'var(--space-3) var(--space-5)',
@@ -117,7 +124,23 @@ export function VenueDetails() {
               fontSize: 'var(--font-sm)',
               fontFamily: 'var(--font-family)',
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
             }}
           >
             {isShortlisted
@@ -127,6 +150,61 @@ export function VenueDetails() {
           </button>
         )}
       </div>
+
+      {requestId && (
+        <div className="card" style={{ padding: 'var(--space-5)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 'var(--space-4)', alignItems: 'center' }}>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Linked meeting request</span>
+                <strong style={{ fontSize: '0.95rem' }}>{request?.request_number ?? requestId}</strong>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700 }}>{request?.meeting_name ?? 'Request not found'}</span>
+                {request ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '6px 10px', borderRadius: '999px', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {requestStatus?.label ?? request.status}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => navigate(ROUTES.meetingRequests)}
+              >
+                Back to Requests
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => navigate(`${ROUTES.venueExplorer}?requestId=${requestId}`)}
+              >
+                Review shortlists
+              </button>
+            </div>
+          </div>
+          {request ? (
+            <div style={{ marginTop: '1.25rem', display: 'grid', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Date range</span>
+                <strong>{new Date(request.start_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })} – {new Date(request.end_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Expected / Guaranteed</span>
+                <strong>{request.expected_pax} / {request.guaranteed_pax}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>City</span>
+                <strong>{request.cities?.city_name ?? request.target_city_name ?? 'Any'}</strong>
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>
+              The venue is being viewed with a request context, but the linked meeting request could not be loaded.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ─── HERO IMAGE ─── */}
       <div style={{

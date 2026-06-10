@@ -2,7 +2,6 @@ export type MeetingStatus =
   | 'DRAFT'
   | 'SUBMITTED'
   | 'SHORTLISTED'
-  | 'QUOTATION_RECEIVED'
   | 'VENUE_FINALIZED'
   | 'BOOKED'
   | 'COMPLETED'
@@ -14,7 +13,7 @@ export interface MeetingRequest {
   meeting_name: string;
   division_id: string;
   meeting_type_id: string;
-  city_id: string;
+  city_id: string | null;
   zone: string;
   start_date: string;
   end_date: string;

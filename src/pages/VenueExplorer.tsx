@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
@@ -12,10 +12,13 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useVenues, useVenueFilters, useShortlist } from '../features/venues/hooks';
 import { useMeetingRequest } from '../features/meetings/hooks';
+import { MEETING_STATUSES } from '../features/meetings/constants';
 import { useAuth } from '../contexts/AuthContext';
+import { ROUTES } from '../routes/routeRegistry';
 import type { VenueCardData, VenueSearchFilters } from '../features/venues/types';
 
 const CAPACITY_OPTIONS = [
@@ -27,6 +30,10 @@ const CAPACITY_OPTIONS = [
 ];
 
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=800&q=80';
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export function VenueExplorer() {
   const navigate = useNavigate();
@@ -54,24 +61,27 @@ export function VenueExplorer() {
   };
 
   // Meeting request context for the planning panel
-  const { request } = useMeetingRequest(requestId ?? undefined);
+  const { request, loading: requestLoading } = useMeetingRequest(requestId ?? undefined);
+  const requestStatus = request ? MEETING_STATUSES[request.status] : null;
 
   const selectedCapacity = CAPACITY_OPTIONS[selectedCapacityIdx];
 
-  const filters: VenueSearchFilters = {
+  const filters: VenueSearchFilters = useMemo(() => ({
     searchQuery,
     cityId: selectedCityId,
     categoryCode: selectedCategoryCode,
     capacityMin: selectedCapacity.min,
     capacityMax: selectedCapacity.max,
     requestId: requestId ?? undefined,
-  };
+  }), [searchQuery, selectedCityId, selectedCategoryCode, selectedCapacity, requestId]);
 
-  const { venues, loading: venuesLoading, error: venuesError } = useVenues(filters);
+  const skip = !!requestId && !hasSearched;
+  const { venues, loading: venuesLoading, error: venuesError } = useVenues(filters, skip);
   const { cities, categories, loading: filtersLoading } = useVenueFilters();
   const { shortlistedIds, toggleShortlist } = useShortlist(requestId, user?.id ?? null);
 
   useEffect(() => {
+    // Don't run if request is still loading or hasSearched is true
     if (!requestId || !request || hasSearched) return;
 
     if (request.city_id) {
@@ -338,7 +348,7 @@ export function VenueExplorer() {
             </div>
           )}
 
-          {venuesLoading ? (
+          {(venuesLoading || requestLoading) ? (
             <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
               {[1, 2, 3].map((index) => (
                 <div key={index} className="card animate-pulse" style={{ height: '360px', background: 'var(--surface-2)' }} />
@@ -398,7 +408,9 @@ export function VenueExplorer() {
                     isShortlisted={isShortlisted}
                     isInCompare={isInCompare}
                     hasRequestContext={!!requestId}
-                    onShortlist={() => toggleShortlist(venue.id)}
+                    onShortlist={async () => {
+                      await toggleShortlist(venue.id);
+                    }}
                     onCompare={() => toggleCompare(venue)}
                     onView={() => navigate(`/venue-explorer/${venue.id}${requestId ? `?requestId=${requestId}` : ''}`)}
                   />
@@ -422,16 +434,48 @@ export function VenueExplorer() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>City</span>
-                <strong>{request?.cities?.city_name ?? request?.target_city_name ?? 'Any'}</strong>
+            {requestLoading ? (
+              <div style={{ padding: 'var(--space-4)', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <RefreshCw size={20} className="spin" style={{ marginBottom: '8px', color: 'var(--primary)' }} />
+                <p style={{ fontSize: 'var(--font-sm)' }}>Loading request info...</p>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Expected PAX</span>
-                <strong>{request?.expected_pax ?? '—'}</strong>
+            ) : request ? (
+              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Status</span>
+                  <strong>{requestStatus?.label ?? request.status}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>City</span>
+                  <strong>{request.cities?.city_name ?? request.target_city_name ?? 'Any'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Date Range</span>
+                  <strong>{formatDate(request.start_date)} – {formatDate(request.end_date)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Expected PAX</span>
+                  <strong>{request.expected_pax}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Guaranteed PAX</span>
+                  <strong>{request.guaranteed_pax}</strong>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+                <p style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
+                  Start from a meeting request so venue discovery stays aligned to your event requirements. Shortlist venues to move directly into booking creation.
+                </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate(ROUTES.meetingRequests)}
+                  style={{ width: '100%', padding: '14px 18px' }}
+                >
+                  Choose a request first
+                </button>
+              </div>
+            )}
 
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)', display: 'grid', gap: 'var(--space-3)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
@@ -716,7 +760,10 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
         {hasRequestContext && (
           <button
             id={`shortlist-btn-${venue.id}`}
-            onClick={onShortlist}
+            onClick={(e) => {
+              e.preventDefault();
+              onShortlist();
+            }}
             title={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
             style={{
               position: 'absolute', 
@@ -731,10 +778,27 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
               alignItems: 'center', 
               justifyContent: 'center',
               boxShadow: 'var(--shadow-md)',
-              transition: 'all 0.2s',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               cursor: 'pointer',
               backdropFilter: 'blur(4px)',
               border: 'none',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.1)';
+              e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.transform = 'scale(1.1)';
+              e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = 'var(--shadow-md)';
             }}
           >
             <Bookmark size={18} fill={isShortlisted ? '#fff' : 'none'} />

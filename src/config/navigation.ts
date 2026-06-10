@@ -36,13 +36,6 @@ export const navigationConfig: NavigationItem[] = [
     iconName: 'Search',
     roles: [ROLES.SALES_HEAD]
   },
-  // Venue Comparison: Sales Head can compare shortlisted venues
-  {
-    name: 'Venue Comparison',
-    path: ROUTES.venueComparison,
-    iconName: 'ArrowLeftRight',
-    roles: [ROLES.SALES_HEAD]
-  },
   // My Shortlists: Sales Head only
   {
     name: 'My Shortlists',

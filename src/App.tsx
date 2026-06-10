@@ -10,7 +10,6 @@ import { MeetingRequestForm } from './pages/MeetingRequestForm';
 import { Hotels } from './pages/Hotels';
 import { VenueExplorer } from './pages/VenueExplorer';
 import { VenueDetails } from './pages/VenueDetails';
-import { VenueComparison } from './pages/VenueComparison';
 import { MyShortlists } from './pages/MyShortlists';
 import { Bookings } from './pages/Bookings';
 import { BookingCreate } from './pages/BookingCreate';
@@ -24,6 +23,9 @@ import { PaymentCreate } from './pages/PaymentCreate';
 import { PaymentDetails } from './pages/PaymentDetails';
 import { Finance } from './pages/Finance';
 import { Reports } from './pages/Reports';
+import { Rooming } from './pages/Rooming';
+import { RoomingDetails } from './pages/RoomingDetails';
+import { UserSettings } from './pages/UserSettings';
 import { VenueBulkImport } from './pages/VenueBulkImport';
 import { DemoTools } from './pages/DemoTools';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -118,13 +120,6 @@ export default function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path={ROUTES.venueComparison} element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <VenueComparison />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
 
               <Route path={ROUTES.myShortlists} element={
                 <ProtectedRoute>
@@ -190,6 +185,22 @@ export default function App() {
                 </ProtectedRoute>
               } />
 
+              <Route path={ROUTES.rooming} element={
+                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD, ROLES.VIEWER]}>
+                  <AppLayout>
+                    <Rooming />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.roomingDetails} element={
+                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD, ROLES.VIEWER]}>
+                  <AppLayout>
+                    <RoomingDetails />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
               <Route path={ROUTES.payments} element={
                 <ProtectedRoute>
                   <AppLayout>
@@ -226,6 +237,14 @@ export default function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <Reports />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.users} element={
+                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                  <AppLayout>
+                    <UserSettings />
                   </AppLayout>
                 </ProtectedRoute>
               } />

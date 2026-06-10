@@ -4,7 +4,6 @@ export const MEETING_STATUSES: Record<MeetingStatus, { label: string; badgeType:
   DRAFT: { label: 'Draft', badgeType: 'info' },
   SUBMITTED: { label: 'Submitted', badgeType: 'warning' },
   SHORTLISTED: { label: 'Shortlisted', badgeType: 'info' },
-  QUOTATION_RECEIVED: { label: 'Quote Received', badgeType: 'info' },
   VENUE_FINALIZED: { label: 'Venue Finalized', badgeType: 'success' },
   BOOKED: { label: 'Booked', badgeType: 'success' },
   COMPLETED: { label: 'Completed', badgeType: 'success' },

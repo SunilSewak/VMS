@@ -211,12 +211,7 @@ export function seedDemoData(force = false): void {
     },
   ]);
 
-  // ─── Quotations ──────────────────────────────────────────────────────────────
-  demoSet(DEMO_COLLECTIONS.QUOTATIONS, [
-    { id: 'quot-001', request_id: IDS.REQ_001, hotel_id: IDS.HOT_MUM1, amount: 485000, currency: 'INR', status: 'PENDING', submitted_at: '2024-01-20T10:00:00Z' },
-    { id: 'quot-002', request_id: IDS.REQ_001, hotel_id: IDS.HOT_MUM2, amount: 520000, currency: 'INR', status: 'PENDING', submitted_at: '2024-01-21T11:00:00Z' },
-    { id: 'quot-003', request_id: IDS.REQ_002, hotel_id: IDS.HOT_DEL1, amount: 1250000, currency: 'INR', status: 'APPROVED', submitted_at: '2024-01-28T09:00:00Z' },
-  ]);
+
 
   // ─── Bookings ────────────────────────────────────────────────────────────────
   demoSet(DEMO_COLLECTIONS.BOOKINGS, [

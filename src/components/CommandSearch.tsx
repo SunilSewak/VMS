@@ -6,7 +6,7 @@ import { ROUTES } from '../routes/routeRegistry';
 interface SearchResultItem {
   id: string;
   title: string;
-  category: 'Hotels' | 'Halls' | 'Requests' | 'Bookings' | 'Invoices';
+  category: 'Hotels' | 'Halls' | 'Bookings' | 'Invoices';
   subtitle: string;
   path: string;
 }

@@ -37,7 +37,8 @@ export function useNavigate() {
 
 export function useLocation() {
   const ctx = useContext(RouterContext);
-  return { pathname: ctx ? ctx.path : '/' };
+  const pathname = ctx ? ctx.path.split('?')[0] : '/';
+  return { pathname };
 }
 
 export function useSearchParams(): [URLSearchParams, (params: URLSearchParams) => void] {
@@ -84,7 +85,8 @@ function matchPath(pattern: string, path: string): boolean {
 
 export function Routes({ children }: { children: React.ReactNode }) {
   const ctx = useContext(RouterContext);
-  const currentPath = ctx ? ctx.path : '/';
+  const fullPath = ctx ? ctx.path : '/';
+  const currentPath = fullPath.split('?')[0];
 
   let match: React.ReactNode = null;
   React.Children.forEach(children, (child) => {

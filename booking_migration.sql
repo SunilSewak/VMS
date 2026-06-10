@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS bookings (
   meeting_request_id uuid NOT NULL,
   hotel_id uuid NOT NULL,
   hall_id uuid,
-  approved_commercial_id uuid NOT NULL,
   status text NOT NULL CHECK (status IN ('REQUESTED', 'UNDER_REVIEW', 'CONFIRMED', 'CANCELLED', 'COMPLETED')),
   check_in_date date NOT NULL,
   check_out_date date NOT NULL,
@@ -26,7 +25,6 @@ CREATE TABLE IF NOT EXISTS bookings (
   CONSTRAINT bookings_meeting_request_fkey FOREIGN KEY (meeting_request_id) REFERENCES meeting_requests (id) ON DELETE RESTRICT,
   CONSTRAINT bookings_hotel_fkey FOREIGN KEY (hotel_id) REFERENCES hotels (id) ON DELETE RESTRICT,
   CONSTRAINT bookings_hall_fkey FOREIGN KEY (hall_id) REFERENCES halls (id) ON DELETE RESTRICT,
-  CONSTRAINT bookings_approved_commercial_fkey FOREIGN KEY (approved_commercial_id) REFERENCES users (id) ON DELETE RESTRICT,
   CONSTRAINT bookings_confirmed_by_fkey FOREIGN KEY (confirmed_by) REFERENCES users (id) ON DELETE SET NULL,
   CONSTRAINT bookings_created_by_fkey FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT,
   CONSTRAINT bookings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL
@@ -37,7 +35,7 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS request_id uuid;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS meeting_request_id uuid;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS hotel_id uuid;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS hall_id uuid;
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS approved_commercial_id uuid;
+
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status text;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS check_in_date date;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS check_out_date date;
@@ -55,7 +53,7 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_by uuid;
 CREATE INDEX IF NOT EXISTS idx_bookings_request_id ON bookings (request_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_request_id ON bookings (request_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_meeting_request_id ON bookings (meeting_request_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_approved_commercial_id ON bookings (approved_commercial_id);
+
 CREATE INDEX IF NOT EXISTS idx_bookings_hotel_id ON bookings (hotel_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings (status);
 CREATE INDEX IF NOT EXISTS idx_bookings_created_by ON bookings (created_by);

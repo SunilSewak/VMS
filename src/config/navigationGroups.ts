@@ -52,12 +52,6 @@ export const navigationGroups: NavigationGroup[] = [
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
       },
       {
-        name: 'Venue Comparison',
-        path: ROUTES.venueComparison,
-        iconName: 'ArrowLeftRight',
-        roles: [ROLES.SALES_HEAD]
-      },
-      {
         name: 'My Shortlists',
         path: ROUTES.myShortlists,
         iconName: 'Bookmark',
@@ -84,10 +78,10 @@ export const navigationGroups: NavigationGroup[] = [
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
       },
       {
-        name: 'Rooming',
-        path: '#',
+        name: 'Accommodation',
+        path: ROUTES.rooming,
         iconName: 'Building',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD, ROLES.VIEWER]
       },
       {
         name: 'Event Execution',

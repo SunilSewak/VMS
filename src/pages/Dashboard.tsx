@@ -34,7 +34,7 @@ export function Dashboard() {
             Operations Control Panel
           </h3>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>
-            Real-time status of Ajanta venue requests, approvals, and contract negotiations.
+            Real-time status of Ajanta venue requests, approvals, and bookings.
           </p>
         </div>
 
@@ -108,16 +108,16 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Vendor Statuses */}
+          {/* Venue Availability & Bookings */}
           <div className="card">
             <h4 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-4)', color: 'var(--text-main)' }}>
-              Active Vendor Negotiations
+              Venue Availability & Bookings
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               {[
-                { hotel: 'Taj Lands End, Mumbai', status: 'Quote Received', color: 'var(--status-success)' },
-                { hotel: 'Grand Hyatt, Goa', status: 'Negotiation In Progress', color: 'var(--status-info)' },
-                { hotel: 'JW Marriott, Pune', status: 'Awaiting Contract Sign', color: 'var(--status-warning)' }
+                { hotel: 'Taj Lands End, Mumbai', status: 'Availability Confirmed', color: 'var(--status-success)' },
+                { hotel: 'Grand Hyatt, Goa', status: 'Awaiting Venue Check', color: 'var(--status-info)' },
+                { hotel: 'JW Marriott, Pune', status: 'Booking Draft Created', color: 'var(--status-warning)' }
               ].map((v, idx) => (
                 <div key={idx} style={{
                   padding: 'var(--space-3)',
@@ -174,7 +174,7 @@ export function Dashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
                 <div style={{ padding: 'var(--space-2) var(--space-3)', backgroundColor: 'var(--background)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', display: 'flex', justifyContent: 'space-between' }}>
                   <span>Q3 Cycle Meeting (Goa)</span>
-                  <strong style={{ color: 'var(--status-warning)' }}>Awaiting Quotes</strong>
+                  <strong style={{ color: 'var(--status-warning)' }}>Awaiting Check</strong>
                 </div>
                 <div style={{ padding: 'var(--space-2) var(--space-3)', backgroundColor: 'var(--background)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', display: 'flex', justifyContent: 'space-between' }}>
                   <span>Regional Cycle Meet (Mumbai)</span>
@@ -212,20 +212,20 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Widget 2: Venue Awaiting Quotation */}
+          {/* Widget 2: Venue Availability Pending */}
           <div className="card" style={{ borderLeft: '4px solid var(--status-warning)' }}>
             <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
               <FileClock size={20} style={{ color: 'var(--status-warning)', flexShrink: 0 }} />
               <div>
-                <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)' }}>Awaiting Quotation</h4>
+                <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)' }}>Availability Pending</h4>
                 <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 var(--space-3)' }}>
-                  Novotel Juhu meeting is missing its proposal. Follow up with vendor contact.
+                  Novotel Juhu meeting is awaiting confirmation on venue availability.
                 </p>
                 <button 
-                  onClick={() => alert('Sending automated reminder email to Novotel reservation desk...')}
+                  onClick={() => alert('Sending automated reminder to admin queue for availability check...')}
                   style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
-                  Ping Vendor <MessageSquare size={12} />
+                  Ping Admin <MessageSquare size={12} />
                 </button>
               </div>
             </div>
@@ -240,7 +240,7 @@ export function Dashboard() {
                 <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 var(--space-3)' }}>
                   Goa Cycle Meet quota is approved. Confirm booking with advance payment.
                 </p>
-                <Link to={ROUTES.bookings} style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Link to={ROUTES.bookingNew} style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   Issue Booking <ArrowRight size={12} />
                 </Link>
               </div>
