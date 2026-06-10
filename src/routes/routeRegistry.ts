@@ -13,7 +13,7 @@ export const ROUTES = {
   bookingDetails: "/bookings/:id",
   bookingReview: "/bookings/:id/review",
   invoices: "/invoices",
-  invoiceNew: "/invoices/new",
+  invoiceUpload: "/invoices/upload",
   invoiceDetails: "/invoices/:id",
   payments: "/payments",
   paymentNew: "/payments/new",

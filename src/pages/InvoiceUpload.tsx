@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft, FileText, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getBookings } from '../features/bookings/bookingService';
 import { createInvoice } from '../features/invoices/invoiceService';
+import { uploadInvoiceDocument } from '../features/invoices/invoiceDocumentService';
 import type { InvoiceCreateInput } from '../features/invoices/types';
 import type { Booking } from '../features/bookings/types';
 import { ROUTES } from '../routes/routeRegistry';
 
-export function InvoiceCreate() {
+export function InvoiceUpload() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ export function InvoiceCreate() {
   const [taxAmount, setTaxAmount] = useState('0');
   const [paxBilled, setPaxBilled] = useState('0');
   const [remarks, setRemarks] = useState('');
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -67,11 +69,15 @@ export function InvoiceCreate() {
       (Number(taxAmount) || 0)
   );
 
-  const handleCreate = async () => {
+  const handleUpload = async () => {
     if (!user) return;
 
     setSubmitError(null);
 
+    if (!invoiceFile) {
+      setSubmitError('Vendor invoice file is required.');
+      return;
+    }
     if (!bookingId) {
       setSubmitError('Booking is required.');
       return;
@@ -108,10 +114,20 @@ export function InvoiceCreate() {
 
     setSaving(true);
     try {
+      // 1. Create the invoice metadata record
       const invoice = await createInvoice(payload, user);
+
+      // 2. Upload the primary invoice file
+      try {
+        await uploadInvoiceDocument(invoice.id, 'PRIMARY_INVOICE', invoiceFile, user);
+      } catch (uploadErr: any) {
+        console.error('Metadata created, but file upload failed:', uploadErr);
+        throw new Error(`Invoice details saved, but failed to upload invoice file: ${uploadErr.message || uploadErr}`);
+      }
+
       navigate(`${ROUTES.invoiceDetails.replace(':id', invoice.id)}?created=true`);
     } catch (error: any) {
-      setSubmitError(error?.message ?? 'Unable to create invoice.');
+      setSubmitError(error?.message ?? 'Unable to upload invoice.');
     } finally {
       setSaving(false);
     }
@@ -127,9 +143,9 @@ export function InvoiceCreate() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'fadeIn 0.3s ease' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
         <div>
-          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, margin: 0 }}>Create Invoice</h1>
+          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, margin: 0 }}>Upload Invoice</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: '0.5rem' }}>
-            Submit invoice details for booking charges and services.
+            Upload vendor invoice file and enter bill details to start verification.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -151,7 +167,30 @@ export function InvoiceCreate() {
         <div style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: '1fr 320px' }}>
           <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
             <div style={{ display: 'grid', gap: '1.25rem' }}>
-              {/* Section A: Invoice Details */}
+              {/* Section A: Upload Invoice File */}
+              <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Upload size={18} /> Vendor Invoice File
+                </h2>
+                
+                <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Upload File (PDF/Image) *</label>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(event) => setInvoiceFile(event.target.files?.[0] ?? null)}
+                    style={{
+                      width: '100%',
+                      padding: '0.9rem 1rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Section B: Invoice Details */}
               <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
                 <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem' }}>Invoice Details</h2>
                 
@@ -197,7 +236,7 @@ export function InvoiceCreate() {
                 </div>
               </div>
 
-              {/* Section B: Charge Breakdown */}
+              {/* Section C: Charge Breakdown */}
               <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
                 <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem' }}>Charge Breakdown</h2>
 
@@ -261,7 +300,7 @@ export function InvoiceCreate() {
                 </div>
               </div>
 
-              {/* Section C: Operational Data */}
+              {/* Section D: Operational Data */}
               <div style={{ paddingBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem' }}>Operational Data</h2>
 
@@ -308,7 +347,7 @@ export function InvoiceCreate() {
               {/* Actions */}
               <div style={{ display: 'flex', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
                 <button
-                  onClick={handleCreate}
+                  onClick={handleUpload}
                   disabled={saving}
                   style={{
                     flex: 1,
@@ -322,7 +361,7 @@ export function InvoiceCreate() {
                     opacity: saving ? 0.6 : 1,
                   }}
                 >
-                  {saving ? 'Creating...' : 'Create Invoice'}
+                  {saving ? 'Uploading...' : 'Upload Invoice'}
                 </button>
                 <Link
                   to={ROUTES.invoices}

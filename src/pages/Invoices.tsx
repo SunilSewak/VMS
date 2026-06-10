@@ -135,7 +135,7 @@ export function Invoices() {
     return null;
   }
 
-  const canCreateInvoice = user.role === ROLES.ADMIN || user.role === ROLES.SUPER_ADMIN;
+  const canUploadInvoice = user.role === ROLES.ADMIN || user.role === ROLES.SUPER_ADMIN;
 
   return (
     <div>
@@ -148,9 +148,9 @@ export function Invoices() {
                 Review and manage invoice submissions, verify charges, and process approvals.
               </p>
             </div>
-            {canCreateInvoice ? (
+            {canUploadInvoice ? (
               <Link
-                to={ROUTES.invoiceNew}
+                to={ROUTES.invoiceUpload}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -164,7 +164,7 @@ export function Invoices() {
                   textDecoration: 'none',
                 }}
               >
-                <Plus size={16} /> Create invoice
+                <Plus size={16} /> Upload Invoice
               </Link>
             ) : null}
           </div>
@@ -220,10 +220,10 @@ export function Invoices() {
         <div style={{ padding: '3rem 0', color: 'var(--danger)' }}>{error}</div>
       ) : filteredInvoices.length === 0 ? (
         <EmptyState
-          title={invoices.length === 0 ? 'No invoices available' : 'No invoices matched your filters'}
+          title={invoices.length === 0 ? 'No invoices uploaded yet' : 'No invoices matched your filters'}
           description={
             invoices.length === 0
-              ? 'No invoices have been submitted yet. Create an invoice when ready.'
+              ? 'No invoices uploaded yet. Upload a vendor invoice to begin verification.'
               : 'Try clearing the search or selecting a different status filter.'
           }
           icon={<DollarSign size={48} style={{ color: 'var(--primary)' }} />}

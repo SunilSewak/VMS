@@ -3,12 +3,6 @@ import type { Invoice, InvoiceCreateInput, InvoiceUpdateInput, InvoiceValidation
 import type { UserProfile } from '../../types';
 import { ROLES } from '../../auth/permissions';
 
-function generateInvoiceNumber(): string {
-  const year = new Date().getFullYear();
-  const sequence = Math.floor(100000 + Math.random() * 900000);
-  return `INV-${year}-${sequence}`;
-}
-
 export async function getInvoices(user: UserProfile): Promise<Invoice[]> {
   let query = (supabase as any)
     .from('invoices')
@@ -144,7 +138,6 @@ export async function downloadInvoiceDocument(document: InvoiceDocument): Promis
 export async function createInvoice(input: InvoiceCreateInput, user: UserProfile): Promise<Invoice> {
   const payload = {
     ...input,
-    invoice_number: generateInvoiceNumber(),
     status: 'RECEIVED',
     created_by: user.id,
     created_at: new Date().toISOString(),

@@ -16,7 +16,7 @@ import { BookingCreate } from './pages/BookingCreate';
 import { BookingDetails } from './pages/BookingDetails';
 import { BookingReview } from './pages/BookingReview';
 import { Invoices } from './pages/Invoices';
-import { InvoiceCreate } from './pages/InvoiceCreate';
+import { InvoiceUpload } from './pages/InvoiceUpload';
 import { InvoiceDetails } from './pages/InvoiceDetails';
 import { Payments } from './pages/Payments';
 import { PaymentCreate } from './pages/PaymentCreate';
@@ -169,10 +169,10 @@ export default function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path={ROUTES.invoiceNew} element={
+              <Route path={ROUTES.invoiceUpload} element={
                 <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                   <AppLayout>
-                    <InvoiceCreate />
+                    <InvoiceUpload />
                   </AppLayout>
                 </ProtectedRoute>
               } />

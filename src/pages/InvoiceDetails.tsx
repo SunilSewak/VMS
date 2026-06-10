@@ -76,7 +76,7 @@ export function InvoiceDetails() {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const successMessage = searchParams.get('created') ? 'Invoice created successfully.' : null;
+  const successMessage = searchParams.get('created') ? 'Invoice uploaded successfully.' : null;
   const canManageWorkflow = user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN;
   const canDeleteDocuments = user?.role === ROLES.SUPER_ADMIN;
 
