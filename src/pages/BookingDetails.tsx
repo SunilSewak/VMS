@@ -36,12 +36,16 @@ export function BookingDetails() {
   const [planLoading, setPlanLoading] = useState(false);
   const successMessage = searchParams.get('created') ? 'Booking created successfully.' : null;
 
+  // Redirect immediately if there is no usable ID — avoids a dead-end error screen.
   useEffect(() => {
     if (!id || id === 'undefined' || id === ':id') {
-      setError(`Booking ID is missing. (Received: ${String(id)})`);
-      setLoading(false);
-      return;
+      navigate(ROUTES.bookings);
     }
+  }, [id, navigate]);
+
+  // Load booking data (only runs when id is valid; the redirect above handles the invalid case).
+  useEffect(() => {
+    if (!id || id === 'undefined' || id === ':id') return;
 
     let mounted = true;
 
@@ -79,6 +83,11 @@ export function BookingDetails() {
       mounted = false;
     };
   }, [id]);
+
+  // While redirect to /bookings is pending, render nothing so the screen doesn't flash.
+  if (!id || id === 'undefined' || id === ':id') {
+    return null;
+  }
 
   const canReview = user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN;
 

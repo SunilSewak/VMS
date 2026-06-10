@@ -8,6 +8,8 @@ import type {
   AccommodationUtilizationUpdateInput,
 } from './types';
 
+const TABLE = 'accommodation_plans';
+
 function mapPlanRecordToAccommodationPlan(record: any): AccommodationPlan {
   return {
     ...record,
@@ -23,7 +25,7 @@ function mapPlanRecordToAccommodationPlan(record: any): AccommodationPlan {
 
 export async function getAccommodationPlans(_user: UserProfile, filters?: AccommodationFilters): Promise<AccommodationPlan[]> {
   const query = (supabase as any)
-    .from('rooming_plans')
+    .from(TABLE)
     .select('*, bookings!inner(booking_reference, hotel_id, meeting_request_id)');
 
   if (filters?.status) {
@@ -46,7 +48,7 @@ export async function getAccommodationPlans(_user: UserProfile, filters?: Accomm
 
 export async function getAccommodationPlanById(id: string): Promise<AccommodationPlan> {
   const { data, error } = await (supabase as any)
-    .from('rooming_plans')
+    .from(TABLE)
     .select('*, bookings!inner(booking_reference, hotel_id, meeting_request_id)')
     .eq('id', id)
     .single();
@@ -71,8 +73,9 @@ export async function createAccommodationPlan(input: AccommodationPlanCreateInpu
   };
 
   const { data, error } = await (supabase as any)
-    .from('rooming_plans')
+    .from(TABLE)
     .insert([payload])
+    .select()
     .single();
 
   if (error) {
@@ -84,9 +87,10 @@ export async function createAccommodationPlan(input: AccommodationPlanCreateInpu
 
 export async function updateAccommodationPlan(id: string, input: AccommodationPlanUpdateInput, user: UserProfile): Promise<AccommodationPlan> {
   const { data, error } = await (supabase as any)
-    .from('rooming_plans')
+    .from(TABLE)
     .update({ ...input, updated_by: user.id, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .select()
     .single();
 
   if (error) {
@@ -101,7 +105,7 @@ export async function updateAccommodationUtilization(
   input: AccommodationUtilizationUpdateInput
 ): Promise<AccommodationPlan> {
   const { data, error } = await (supabase as any)
-    .from('rooming_plans')
+    .from(TABLE)
     .update({
       single_rooms_actual: input.single_rooms_actual,
       double_rooms_actual: input.double_rooms_actual,
@@ -112,6 +116,7 @@ export async function updateAccommodationUtilization(
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
+    .select()
     .single();
 
   if (error) {
@@ -122,7 +127,7 @@ export async function updateAccommodationUtilization(
 }
 
 export async function deleteAccommodationPlan(id: string): Promise<void> {
-  const { error } = await (supabase as any).from('rooming_plans').delete().eq('id', id);
+  const { error } = await (supabase as any).from(TABLE).delete().eq('id', id);
   if (error) {
     throw new Error(error.message || 'Failed to delete accommodation plan');
   }
@@ -130,10 +135,10 @@ export async function deleteAccommodationPlan(id: string): Promise<void> {
 
 export async function getAccommodationPlanByBookingId(bookingId: string): Promise<AccommodationPlan | null> {
   const { data, error } = await (supabase as any)
-    .from('rooming_plans')
+    .from(TABLE)
     .select('*, bookings!inner(booking_reference, hotel_id, meeting_request_id)')
     .eq('booking_id', bookingId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return null;
