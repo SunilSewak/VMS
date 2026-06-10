@@ -64,6 +64,7 @@ export async function createBooking(input: BookingCreateInput, user: UserProfile
     .single();
 
   if (error) throw new Error(error.message);
+  if (!data) throw new Error('Booking was created but no data was returned. Please check the bookings list.');
   return data as Booking;
 }
 
