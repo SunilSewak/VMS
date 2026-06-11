@@ -18,6 +18,7 @@ const supabaseVenueApi = {
   removeFromShortlist: supabaseApi.removeFromShortlist,
   fetchShortlistedIds: supabaseApi.fetchShortlistedIds,
   fetchMyShortlists: supabaseApi.fetchMyShortlists,
+  fetchShortlistsForRequest: supabaseApi.fetchShortlistsForRequest,
   searchVenues: supabaseApi.searchVenues,
 };
 
@@ -30,6 +31,7 @@ const demoVenueApi = {
   removeFromShortlist: demoRepository.removeFromShortlist,
   fetchShortlistedIds: demoRepository.getShortlistedIds,
   fetchMyShortlists: demoRepository.getMyShortlists,
+  fetchShortlistsForRequest: demoRepository.getShortlistsByRequest,
   searchVenues: async (filters: VenueSearchFilters) => {
     const hotels = await demoRepository.getHotels();
     // Apply client-side filters
@@ -106,3 +108,6 @@ export const fetchShortlistedIds = (requestId: string): Promise<string[]> =>
 
 export const fetchMyShortlists = (userId: string): Promise<VenueShortlist[]> =>
   getVenueApi().fetchMyShortlists(userId);
+
+export const fetchShortlistsForRequest = (requestId: string): Promise<VenueShortlist[]> =>
+  getVenueApi().fetchShortlistsForRequest(requestId);

@@ -3,6 +3,7 @@ export type MeetingStatus =
   | 'VENUES_SHORTLISTED'
   | 'SUBMITTED_TO_ADMIN'
   | 'AVAILABILITY_CHECK'
+  | 'VENUE_UNAVAILABLE'
   | 'BOOKED'
   | 'COMPLETED'
   | 'CLOSED'
@@ -33,6 +34,8 @@ export interface MeetingRequest {
   status: MeetingStatus;
   created_at: string;
   created_by?: string;
+  availability_rejection_reason?: string | null;
+  alternative_venue_suggestion?: string | null;
 
   // Custom city fallback (when city not in known list)
   target_city_name?: string | null;

@@ -52,6 +52,8 @@ function getWorkflowStage(status: string): number {
     case 'VENUE_FINALIZED':
     case 'AVAILABILITY_CHECK':
       return 2;
+    case 'VENUE_UNAVAILABLE':
+      return 1;
     case 'BOOKED':
       return 3;
     case 'INVOICE_RECEIVED':
@@ -74,6 +76,7 @@ function getAccentColor(status: string): string {
     case 'VENUES_SHORTLISTED': case 'SHORTLISTED':return '#8b5cf6';
     case 'SUBMITTED_TO_ADMIN': case 'SUBMITTED':
     case 'AVAILABILITY_CHECK': case 'VENUE_FINALIZED': return '#f59e0b';
+    case 'VENUE_UNAVAILABLE':                    return '#ef4444';
     case 'BOOKED':                                return '#10b981';
     case 'INVOICE_RECEIVED': case 'VERIFIED':
     case 'APPROVED':                              return '#3b82f6';
@@ -135,6 +138,9 @@ function getActionConfig(status: string, role: AppRole): ActionConfig {
     case 'VENUE_FINALIZED':
       return { label: 'Track Status', icon: <Clock size={14} />, variant: 'muted',
         onClick: (req, nav) => nav(`/meeting-requests/${req.id}`) };
+    case 'VENUE_UNAVAILABLE':
+      return { label: 'Choose New Venue', icon: <Search size={14} />, variant: 'primary',
+        onClick: (req, nav) => nav(`${ROUTES.venueExplorer}?requestId=${req.id}`) };
     case 'BOOKED':
       return { label: 'View Booking', icon: <CheckCircle2 size={14} />, variant: 'success',
         onClick: (req, nav) => nav(`/meeting-requests/${req.id}`) };

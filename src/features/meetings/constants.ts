@@ -5,6 +5,7 @@ export const MEETING_STATUSES: Record<MeetingStatus, { label: string; badgeType:
   VENUES_SHORTLISTED: { label: 'Venues Selected', badgeType: 'info' },
   SUBMITTED_TO_ADMIN: { label: 'Awaiting Admin Review', badgeType: 'warning' },
   AVAILABILITY_CHECK: { label: 'Availability Check', badgeType: 'warning' },
+  VENUE_UNAVAILABLE: { label: 'Venue Unavailable', badgeType: 'danger' },
   BOOKED: { label: 'Venue Confirmed', badgeType: 'success' },
   COMPLETED: { label: 'Event Completed', badgeType: 'success' },
   CLOSED: { label: 'Closed', badgeType: 'danger' },

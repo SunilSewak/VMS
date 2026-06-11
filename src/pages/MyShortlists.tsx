@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   MapPin,
@@ -7,6 +8,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useMyShortlists } from '../features/venues/hooks';
+import { removeFromShortlist } from '../features/venues/venueService';
 import { useAuth } from '../contexts/AuthContext';
 import type { VenueShortlist, Hotel, VenuePhoto } from '../features/venues/types';
 import { ROUTES } from '../routes/routeRegistry';
@@ -27,10 +29,28 @@ export function MyShortlists() {
   const requestId = searchParams.get('requestId');
   const { user } = useAuth();
   const { shortlists, loading, error } = useMyShortlists(user?.id ?? null);
+  const [displayShortlists, setDisplayShortlists] = useState<VenueShortlist[]>([]);
+
+  useEffect(() => {
+    setDisplayShortlists(shortlists);
+  }, [shortlists]);
 
   const filteredShortlists = requestId
-    ? shortlists.filter((item) => item.request_id === requestId)
-    : shortlists;
+    ? displayShortlists.filter((item) => item.request_id === requestId)
+    : displayShortlists;
+
+  const handleRemoveRecommendation = async (requestId: string, hotelId: string) => {
+    if (!window.confirm('Remove this venue recommendation?')) return;
+    const before = displayShortlists;
+    setDisplayShortlists((prev) => prev.filter((item) => item.request_id !== requestId || item.hotel_id !== hotelId));
+
+    try {
+      await removeFromShortlist(requestId, hotelId);
+    } catch (e: any) {
+      setDisplayShortlists(before);
+      alert('Failed to remove recommendation: ' + (e?.message ?? 'Unknown error'));
+    }
+  };
 
   // Group shortlists by request_id
   const grouped = filteredShortlists.reduce<Record<string, VenueShortlist[]>>((acc, s) => {
@@ -57,13 +77,13 @@ export function MyShortlists() {
               <Bookmark size={22} />
             </div>
             <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: '800', color: 'var(--text-main)' }}>
-              My Shortlists
+              Recommended Venues
             </h1>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', maxWidth: '480px' }}>
             {requestId
-              ? 'Venues shortlisted for the selected meeting request. Review or convert the shortlist into a booking.'
-              : "Venues you've shortlisted across all your meeting requests. Review and explore further."}
+              ? 'Venue recommendations for the selected meeting request. Review recommendations and keep the request aligned to event needs.'
+              : 'Venue recommendations you have made across all your meeting requests. Review and update recommendations.'}
           </p>
         </div>
 
@@ -95,14 +115,14 @@ export function MyShortlists() {
       )}
 
       {/* ─── EMPTY STATE ─── */}
-      {!loading && !error && shortlists.length === 0 && (
+      {!loading && !error && displayShortlists.length === 0 && (
         <div className="card" style={{ padding: 'var(--space-16)', textAlign: 'center' }}>
           <Bookmark size={56} style={{ color: 'var(--text-light)', marginBottom: 'var(--space-5)', opacity: 0.5 }} />
           <h3 style={{ fontWeight: '800', fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-3)' }}>
-            No Shortlists Yet
+            No Recommendations Yet
           </h3>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-md)', maxWidth: '420px', margin: '0 auto var(--space-6)' }}>
-            When you shortlist venues from a Meeting Request, they will appear here for easy revisiting.
+            When you recommend venues for a Meeting Request, they will appear here for review and next steps.
           </p>
           <button
             className="btn btn-primary"
@@ -115,7 +135,7 @@ export function MyShortlists() {
       )}
 
       {/* ─── GROUPED SHORTLISTS ─── */}
-      {!loading && !error && shortlists.length > 0 && (
+      {!loading && !error && displayShortlists.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
           {Object.entries(grouped).map(([requestId, items]) => (
             <section key={requestId}>
@@ -136,7 +156,7 @@ export function MyShortlists() {
                   Request #{requestId.slice(0, 8).toUpperCase()}
                 </div>
                 <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
-                  {items.length} venue{items.length !== 1 ? 's' : ''} shortlisted
+{items.length} venue recommendation{items.length !== 1 ? 's' : ''}
                 </span>
               </div>
 
@@ -146,7 +166,7 @@ export function MyShortlists() {
                     key={item.id}
                     shortlist={item}
                     onView={() => navigate(`/venue-explorer/${item.hotel_id}?requestId=${requestId}`)}
-                    onCreate={() => navigate(`${ROUTES.bookingNew}?requestId=${requestId}&hotelId=${item.hotel_id}`)}
+                    onRemove={() => handleRemoveRecommendation(item.request_id, item.hotel_id)}
                   />
                 ))}
               </div>
@@ -159,7 +179,7 @@ export function MyShortlists() {
 }
 
 // ─── SHORTLIST CARD ───
-function ShortlistCard({ shortlist, onView, onCreate }: { shortlist: VenueShortlist; onView: () => void; onCreate: () => void }) {
+function ShortlistCard({ shortlist, onView, onRemove }: { shortlist: VenueShortlist; onView: () => void; onRemove: () => void }) {
   const hotel = shortlist.hotels;
   const photoUrl = getVenuePhoto(hotel);
   const city = (hotel as any)?.cities?.city_name ?? '—';
@@ -256,15 +276,15 @@ function ShortlistCard({ shortlist, onView, onCreate }: { shortlist: VenueShortl
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                onCreate();
+                onRemove();
               }}
               style={{
                 width: '100%',
                 padding: '0.85rem 1rem',
                 borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--primary)',
-                background: 'var(--primary)',
-                color: '#fff',
+                border: '1px solid var(--danger)',
+                background: 'var(--surface)',
+                color: 'var(--danger)',
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
@@ -273,7 +293,7 @@ function ShortlistCard({ shortlist, onView, onCreate }: { shortlist: VenueShortl
                 cursor: 'pointer',
               }}
             >
-              Create booking
+              Remove recommendation
             </button>
           </div>
         </div>

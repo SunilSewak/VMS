@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useState, useEffect } from 'react';
-import { UserPlus, Edit2, Trash2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import { ResponsiveDataTable, ColumnDefinition } from '../components/ResponsiveDataTable';
 import { UserEditModal } from '../components/UserEditModal';
 import { UserRegisterModal } from '../components/UserRegisterModal';
@@ -18,18 +17,10 @@ export function UserSettings() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const isSuperAdmin = currentUser?.role === ROLES.SUPER_ADMIN;
-
-  const togglePasswordReveal = (id: string) => {
-    setRevealedPasswords(prev => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
 
   // Fetch users on mount
   useEffect(() => {
@@ -113,8 +104,8 @@ export function UserSettings() {
 
   const columns: ColumnDefinition<AppUser>[] = [
     {
-      header: 'Full Name',
-      accessor: (row) => <strong>{row.full_name}</strong>,
+      header: 'Name',
+      accessor: (row) => <strong>{row.employee_name}</strong>,
       priority: 'always',
       mobileLabel: 'Name'
     },
@@ -126,15 +117,27 @@ export function UserSettings() {
     },
     {
       header: 'Role Profile',
-      accessor: (row) => <span className="badge badge-info">{row.role.replace('_', ' ')}</span>,
+      accessor: (row) => {
+        const roleCode = row.role || row.roles?.role_code;
+        const roleLabel = roleCode
+          ? roleCode.replace(/^ROLE_/, '').replace('_', ' ')
+          : 'Unknown';
+        return <span className="badge badge-info">{roleLabel}</span>;
+      },
       priority: 'always',
       mobileLabel: 'Role'
     },
     {
-      header: 'Department',
-      accessor: (row) => row.department || '-',
+      header: 'Division',
+      accessor: (row) => (
+        row.division_name
+          ? row.division_name
+          : row.division_id
+            ? row.division_id
+            : <span style={{ color: 'var(--text-muted)' }}>Unassigned</span>
+      ),
       priority: 'tablet-desktop',
-      mobileLabel: 'Department'
+      mobileLabel: 'Division'
     },
     {
       header: 'Account Status',
@@ -148,35 +151,6 @@ export function UserSettings() {
     },
   ];
 
-  if (isSuperAdmin) {
-    columns.splice(columns.length, 0, {
-      header: 'Password',
-      accessor: (row) => {
-        const isRevealed = Boolean(revealedPasswords[row.id]);
-        const hasPassword = Boolean(row.password);
-
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span style={{ fontFamily: 'monospace', letterSpacing: '0.03em', color: hasPassword ? 'var(--text-main)' : 'var(--text-muted)' }}>
-              {hasPassword ? (isRevealed ? row.password : '********') : '-'}
-            </span>
-            {hasPassword && (
-              <button
-                type="button"
-                aria-label={isRevealed ? 'Hide password' : 'Show password'}
-                onClick={() => togglePasswordReveal(row.id)}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                {isRevealed ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            )}
-          </div>
-        );
-      },
-      priority: 'tablet-desktop',
-      mobileLabel: 'Password'
-    });
-  }
 
   columns.push({
       header: 'Actions',
@@ -220,9 +194,8 @@ export function UserSettings() {
       ),
       priority: 'always',
       mobileLabel: 'Actions'
-    }
-  ];
-
+    });
+  
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       {/* Header */}
@@ -364,7 +337,6 @@ export function UserSettings() {
       <UserEditModal
         user={selectedUser}
         isOpen={isEditModalOpen}
-        isSuperAdmin={isSuperAdmin}
         onClose={() => {
           setIsEditModalOpen(false);
           setSelectedUser(null);

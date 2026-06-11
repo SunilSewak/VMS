@@ -182,14 +182,16 @@ export function Dashboard() {
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => navigate(ROUTES.meetingRequests)}
-              className="btn btn-primary"
-              style={{ width: '100%' }}
-            >
-              <span>Create New Request</span>
-              <ArrowRight size={14} />
-            </button>
+            {role !== ROLES.ADMIN && role !== ROLES.SUPER_ADMIN && (
+              <button
+                onClick={() => navigate(ROUTES.meetingRequests)}
+                className="btn btn-primary"
+                style={{ width: '100%' }}
+              >
+                <span>Create New Request</span>
+                <ArrowRight size={14} />
+              </button>
+            )}
           </div>
 
         </div>

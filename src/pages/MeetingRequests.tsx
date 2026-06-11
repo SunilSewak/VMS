@@ -38,6 +38,7 @@ const STATUS_FILTER_OPTIONS: Array<{ value: MeetingStatus | ''; label: string }>
   { value: 'VENUES_SHORTLISTED', label: 'Venue Selection'     },
   { value: 'SUBMITTED_TO_ADMIN', label: 'Availability Check'  },
   { value: 'AVAILABILITY_CHECK', label: 'Availability Check (In Progress)' },
+  { value: 'VENUE_UNAVAILABLE',  label: 'Venue Unavailable'   },
   { value: 'BOOKED',             label: 'Booking Confirmed'   },
   { value: 'COMPLETED',          label: 'Completed'           },
   { value: 'CLOSED',             label: 'Closed'              },
@@ -246,10 +247,12 @@ export function MeetingRequests() {
             ))}
           </div>
 
-          <button className="btn btn-primary" onClick={() => navigate(ROUTES.meetingRequestNew)}>
-            <Plus size={16} />
-            <span>New Request</span>
-          </button>
+          {userRole !== ROLES.ADMIN && userRole !== ROLES.SUPER_ADMIN && (
+            <button className="btn btn-primary" onClick={() => navigate(ROUTES.meetingRequestNew)}>
+              <Plus size={16} />
+              <span>New Request</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -329,7 +332,9 @@ export function MeetingRequests() {
           </p>
           <p style={{ fontSize: 'var(--font-sm)' }}>
             {requests.length === 0
-              ? 'Click "New Request" to create your first draft.'
+              ? (userRole === ROLES.ADMIN
+                ? 'No meeting requests available. Requestors should create requests from the request creation workflow.'
+                : 'Click "New Request" to create your first draft.')
               : 'Try clearing the search or selecting a different stage.'}
           </p>
         </div>

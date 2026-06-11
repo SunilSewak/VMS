@@ -1,7 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { MeetingRequest, Division, City, MeetingType, MeetingStatus } from './types';
-import { UserProfile } from '../../types';
-import { ROLES } from '../../auth/permissions';
+import { AppRole, ROLES } from '../../auth/permissions';
 
 // Fetch all active divisions
 export async function getDivisions(): Promise<Division[]> {
@@ -40,7 +39,7 @@ export async function getMeetingTypes(): Promise<MeetingType[]> {
 }
 
 // Fetch meeting requests based on role
-export async function getMeetingRequests(user: UserProfile): Promise<MeetingRequest[]> {
+export async function getMeetingRequests(userId: string, role: AppRole): Promise<MeetingRequest[]> {
   let query = (supabase as any)
     .from('meeting_requests')
     .select(`
@@ -55,10 +54,9 @@ export async function getMeetingRequests(user: UserProfile): Promise<MeetingRequ
     `);
 
   // Role-based access logic:
-  // SALES_HEAD: only see their own requests or division requests.
-  // We check if created_by is user.id.
-  if (user.role === ROLES.SALES_HEAD) {
-    query = query.eq('created_by', user.id);
+  // SALES_HEAD: only see their own requests.
+  if (role === ROLES.SALES_HEAD) {
+    query = query.eq('created_by', userId);
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -95,7 +93,7 @@ function generateRequestNumber(): string {
 // Create a new meeting request
 export async function createMeetingRequest(
   input: Omit<MeetingRequest, 'id' | 'request_number' | 'status' | 'created_at' | 'created_by'>,
-  user: UserProfile,
+  userId: string,
   status: MeetingStatus = 'DRAFT'
 ): Promise<MeetingRequest> {
   const reqNum = generateRequestNumber();
@@ -103,7 +101,7 @@ export async function createMeetingRequest(
     ...input,
     request_number: reqNum,
     status,
-    created_by: user.id
+    created_by: userId
   };
 
   // Debug: Log the payload before insert

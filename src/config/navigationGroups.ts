@@ -32,7 +32,7 @@ export const navigationGroups: NavigationGroup[] = [
     roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD, ROLES.FINANCE],
     submenus: [
       {
-        name: 'Meetings',
+        name: 'My Meeting Requests',
         path: ROUTES.meetingRequests,
         iconName: 'Calendar',
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
@@ -69,25 +69,25 @@ export const navigationGroups: NavigationGroup[] = [
     id: 'operations',
     name: 'Operations',
     iconName: 'CalendarRange',
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD],
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
     submenus: [
       {
         name: 'Bookings',
         path: ROUTES.bookings,
         iconName: 'CalendarCheck',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
       },
       {
         name: 'Accommodation',
         path: ROUTES.rooming,
         iconName: 'Building',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD, ROLES.VIEWER]
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.VIEWER]
       },
       {
         name: 'Event Execution',
         path: '#',
         iconName: 'Activity',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
       }
     ]
   },

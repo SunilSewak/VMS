@@ -12,6 +12,7 @@ export const ROUTES = {
   bookingNew: "/bookings/new",
   bookingDetails: "/bookings/:id",
   bookingReview: "/bookings/:id/review",
+  bookingWorkspace: "/bookings/:id/workspace",
   invoices: "/invoices",
   invoiceUpload: "/invoices/upload",
   invoiceDetails: "/invoices/:id",

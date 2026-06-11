@@ -4,31 +4,11 @@ import { ArrowLeft, Building2, ClipboardList, CheckCircle2, MapPin, Users } from
 import { useAuth } from '../contexts/AuthContext';
 import { useMeetingRequests } from '../features/meetings/hooks';
 import { updateMeetingRequest } from '../features/meetings/meetingService';
-import { useVenues, useVenueDetails, useMyShortlists } from '../features/venues/hooks';
+import { useVenueDetails, useMyShortlists } from '../features/venues/hooks';
 import { createBooking } from '../features/bookings/bookingService';
 import type { BookingCreateInput } from '../features/bookings/types';
 import { ROUTES } from '../routes/routeRegistry';
 import { EmptyState } from '../components/EmptyState';
-
-/**
- * BookingCreate — Execution-Only Booking Creation Page
- * 
- * ARCHITECTURAL REQUIREMENT:
- * - Bookings must ALWAYS originate from a Meeting Request
- * - This page MUST be accessed with a valid ?requestId=<id> query parameter
- * - No standalone booking creation is allowed
- * - Booking workflow:
- *   Meeting Request → Venue Selection → Create Booking
- * 
- * Access Routes (ONLY):
- * - MeetingRequestForm.tsx → Create Booking (with requestId)
- * - MyShortlists.tsx → Book Now (with requestId & hotelId)
- * - VenueDetails.tsx → Create Booking (with requestId & hotelId)
- * 
- * Guard: Redirects to Meeting Requests if no requestId provided
- */
-
-const DEFAULT_VENUE_FILTERS = { searchQuery: '', cityId: 'all', categoryCode: 'all' };
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString('en-IN', {
@@ -45,8 +25,6 @@ export function BookingCreate() {
   const requestIdParam = searchParams.get('requestId') ?? undefined;
   const hotelIdParam = searchParams.get('hotelId') ?? undefined;
 
-  // Guard: Redirect if no requestId provided
-  // Bookings must always originate from a Meeting Request
   useEffect(() => {
     if (!requestIdParam) {
       navigate(ROUTES.bookingNew.includes(':') ? ROUTES.meetingRequests : ROUTES.bookings);
@@ -55,19 +33,18 @@ export function BookingCreate() {
 
   const [meetingRequestId, setMeetingRequestId] = useState<string>(requestIdParam ?? '');
   const [hotelId, setHotelId] = useState<string>(hotelIdParam ?? '');
-
-  const { requests, loading: requestsLoading, error: requestsError } = useMeetingRequests();
-  const { venues, loading: venuesLoading, error: venuesError } = useVenues(DEFAULT_VENUE_FILTERS);
-  const { venue: selectedHotel, loading: selectedHotelLoading } = useVenueDetails(hotelId ?? null);
   const [hallId, setHallId] = useState<string>('');
-  const [checkInDate, setCheckInDate] = useState('');
-  const [checkOutDate, setCheckOutDate] = useState('');
-  const [roomsBooked, setRoomsBooked] = useState('0');
+  const [singleOccupancyPax, setSingleOccupancyPax] = useState('0');
+  const [doubleOccupancyPax, setDoubleOccupancyPax] = useState('0');
+  const [tripleOccupancyPax, setTripleOccupancyPax] = useState('0');
   const [hallsBooked, setHallsBooked] = useState('0');
-  const [expectedPax, setExpectedPax] = useState('0');
   const [specialRequirements, setSpecialRequirements] = useState('');
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const { requests, loading: requestsLoading, error: requestsError } = useMeetingRequests();
+  const { venue: selectedHotel, loading: selectedHotelLoading } = useVenueDetails(hotelId ?? null);
+  const { shortlists, loading: shortlistsLoading } = useMyShortlists(user?.id ?? null);
 
   useEffect(() => {
     if (requestIdParam) {
@@ -86,34 +63,10 @@ export function BookingCreate() {
     [requests, meetingRequestId]
   );
 
-  const { shortlists, loading: shortlistsLoading } = useMyShortlists(user?.id ?? null);
-
   const requestShortlists = useMemo(
-    () => meetingRequestId ? shortlists.filter((item) => item.request_id === meetingRequestId) : [],
+    () => (meetingRequestId ? shortlists.filter((item) => item.request_id === meetingRequestId) : []),
     [shortlists, meetingRequestId]
   );
-
-  const hotelOptions = useMemo(() => {
-    const shortlistedOptions = requestShortlists.map((item) => ({
-      id: item.hotel_id,
-      name: item.hotels?.hotel_name ?? item.hotel_id,
-    }));
-
-    const baseOptions = selectedHotel ? [{ id: selectedHotel.id, name: selectedHotel.hotel_name }] : [];
-    if (meetingRequestId && requestShortlists.length > 0) {
-      return [
-        ...baseOptions,
-        ...shortlistedOptions.filter((option) => option.id !== selectedHotel?.id),
-      ];
-    }
-
-    return [
-      ...baseOptions,
-      ...venues
-        .filter((venue) => venue.hotelId !== (selectedHotel?.id ?? ''))
-        .map((venue) => ({ id: venue.hotelId, name: venue.hotelName })),
-    ];
-  }, [venues, selectedHotel, meetingRequestId, requestShortlists]);
 
   useEffect(() => {
     if (meetingRequestId && requestShortlists.length === 1 && !hotelId) {
@@ -123,28 +76,33 @@ export function BookingCreate() {
 
   useEffect(() => {
     if (!selectedMeetingRequest) return;
-    if (!checkInDate) setCheckInDate(selectedMeetingRequest.start_date);
-    if (!checkOutDate) setCheckOutDate(selectedMeetingRequest.end_date);
-    if (Number(expectedPax) <= 0) setExpectedPax(String(selectedMeetingRequest.expected_pax));
-    if (Number(roomsBooked) === 0 && selectedMeetingRequest.rooms_required) {
-      setRoomsBooked(String(selectedMeetingRequest.rooms_required));
+    if (!selectedHotel && requestShortlists.length === 1) {
+      setHotelId(requestShortlists[0].hotel_id);
     }
-  }, [selectedMeetingRequest]);
-
-  const validMeetingRequest = !!meetingRequestId && selectedMeetingRequest;
-  const validHotel = !!hotelId && (hotelOptions.some((option) => option.id === hotelId) || !!selectedHotel);
+  }, [requestShortlists, selectedHotel, selectedMeetingRequest]);
 
   const selectedHotelDetails = useMemo(() => {
     if (selectedHotel && selectedHotel.id === hotelId) return selectedHotel;
     return null;
   }, [hotelId, selectedHotel]);
 
+  const validMeetingRequest = !!selectedMeetingRequest;
+  const validHotel = !!hotelId && !!selectedHotelDetails;
+
   const availableHalls = selectedHotelDetails?.halls ?? [];
+  const totalPax = selectedMeetingRequest?.expected_pax ?? 0;
+  const allocatedPax = Number(singleOccupancyPax) + Number(doubleOccupancyPax) + Number(tripleOccupancyPax);
+  const roomsBookedCount = useMemo(() => {
+    const singleRooms = Math.max(0, Math.ceil(Number(singleOccupancyPax) / 1));
+    const doubleRooms = Math.max(0, Math.ceil(Number(doubleOccupancyPax) / 2));
+    const tripleRooms = Math.max(0, Math.ceil(Number(tripleOccupancyPax) / 3));
+    return singleRooms + doubleRooms + tripleRooms;
+  }, [singleOccupancyPax, doubleOccupancyPax, tripleOccupancyPax]);
 
   const handleCreate = async () => {
     if (!user) return;
-
     setSubmitError(null);
+
     if (!meetingRequestId) {
       setSubmitError('Meeting request is required.');
       return;
@@ -153,20 +111,20 @@ export function BookingCreate() {
       setSubmitError('Venue selection is required.');
       return;
     }
-    if (!checkInDate || !checkOutDate) {
-      setSubmitError('Check-in and check-out dates are required.');
+    if (!selectedMeetingRequest) {
+      setSubmitError('Unable to find the requested meeting.');
       return;
     }
-    if (new Date(checkOutDate) <= new Date(checkInDate)) {
-      setSubmitError('Check-out must be after check-in.');
+    if (allocatedPax <= 0) {
+      setSubmitError('Allocated pax must be greater than zero.');
       return;
     }
-    if (Number(roomsBooked) < 0) {
-      setSubmitError('Rooms required must be zero or greater.');
+    if (totalPax > 0 && allocatedPax > totalPax) {
+      setSubmitError('Allocated pax cannot exceed total expected pax.');
       return;
     }
-    if (Number(expectedPax) <= 0) {
-      setSubmitError('Expected pax must be greater than zero.');
+    if (Number(hallsBooked) < 0) {
+      setSubmitError('Halls booked must be zero or greater.');
       return;
     }
 
@@ -174,11 +132,11 @@ export function BookingCreate() {
       meeting_request_id: meetingRequestId,
       hotel_id: hotelId,
       hall_id: hallId || null,
-      check_in_date: checkInDate,
-      check_out_date: checkOutDate,
-      rooms_booked: Number(roomsBooked),
+      check_in_date: selectedMeetingRequest.start_date,
+      check_out_date: selectedMeetingRequest.end_date,
+      rooms_booked: roomsBookedCount,
       halls_booked: Number(hallsBooked),
-      expected_pax: Number(expectedPax),
+      expected_pax: totalPax || allocatedPax,
       special_requirements: specialRequirements.trim() || null,
     };
 
@@ -202,7 +160,7 @@ export function BookingCreate() {
     return null;
   }
 
-  const loading = requestsLoading || venuesLoading || selectedHotelLoading || shortlistsLoading;
+  const loading = requestsLoading || selectedHotelLoading || shortlistsLoading;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'fadeIn 0.3s ease' }}>
@@ -210,7 +168,7 @@ export function BookingCreate() {
         <div>
           <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, margin: 0 }}>Create Booking</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: '0.5rem' }}>
-            Link a meeting request to a shortlisted venue and raise a booking request for review.
+            Create a booking from a processed meeting request. Known values are shown as a summary, and only operational decisions are required.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -228,60 +186,77 @@ export function BookingCreate() {
         <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
           <div style={{ display: 'grid', gap: '1.25rem' }}>
             <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Meeting Request *</label>
-              <select
-                value={meetingRequestId}
-                onChange={(event) => setMeetingRequestId(event.target.value)}
-                style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-              >
-                <option value="">Select a meeting request</option>
-                {requests.map((request) => (
-                  <option key={request.id} value={request.id}>
-                    {request.request_number} — {request.meeting_name}
-                  </option>
-                ))}
-              </select>
-              {requestIdParam && !validMeetingRequest ? (
-                <div style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>
-                  The meeting request could not be loaded. Choose another request.
-                </div>
-              ) : null}
-            </div>
-
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Venue *
-                {meetingRequestId && requestShortlists.length > 0 ? ' (choose from shortlisted venues)' : ''}
-              </label>
-              <select
-                value={hotelId}
-                onChange={(event) => setHotelId(event.target.value)}
-                style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-              >
-                <option value="">Select a venue</option>
-                {hotelOptions.map((option) => (
-                  <option key={option.id} value={option.id}>{option.name}</option>
-                ))}
-              </select>
+              <div style={{ display: 'grid', gap: '0.25rem' }}>
+                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Meeting Request</span>
+                <strong>{selectedMeetingRequest ? `${selectedMeetingRequest.request_number} � ${selectedMeetingRequest.meeting_name}` : 'None selected'}</strong>
+              </div>
+              <div style={{ display: 'grid', gap: '0.25rem' }}>
+                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Venue</span>
+                <strong>{selectedHotelDetails?.hotel_name ?? 'None selected'}</strong>
+              </div>
+              <div style={{ display: 'grid', gap: '0.25rem' }}>
+                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Dates</span>
+                <strong>{selectedMeetingRequest ? `${formatDate(selectedMeetingRequest.start_date)} ? ${formatDate(selectedMeetingRequest.end_date)}` : '-'}</strong>
+              </div>
               {meetingRequestId && (
                 <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.85rem' }}>
                   <div style={{ color: requestShortlists.length > 0 ? 'var(--text-success)' : 'var(--text-muted)' }}>
                     {requestShortlists.length > 0
-                      ? `${requestShortlists.length} shortlisted venue${requestShortlists.length !== 1 ? 's' : ''} available for this request.`
-                      : 'No venues shortlisted yet for this meeting request. Visit the venue explorer to shortlist options.'}
+                      ? `${requestShortlists.length} recommended venue${requestShortlists.length !== 1 ? 's' : ''} available for this request.`
+                      : 'No venues recommended yet for this meeting request. Visit the venue explorer to recommend options.'}
                   </div>
-                  {!requestShortlists.length && (
+                  {!hotelId && (
                     <button
                       type="button"
                       className="btn btn-secondary"
                       onClick={() => navigate(`${ROUTES.venueExplorer}?requestId=${meetingRequestId}`)}
                       style={{ width: 'fit-content', padding: '0.65rem 1rem', fontSize: '0.85rem' }}
                     >
-                      Open Venue Explorer
+                      Choose a recommended venue
                     </button>
                   )}
                 </div>
               )}
+            </div>
+
+            <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: '1fr 1fr' }}>
+              <div>
+                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Single Occupancy Pax</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={singleOccupancyPax}
+                  onChange={(event) => setSingleOccupancyPax(event.target.value)}
+                  style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Double Occupancy Pax</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={doubleOccupancyPax}
+                  onChange={(event) => setDoubleOccupancyPax(event.target.value)}
+                  style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: '1fr 1fr' }}>
+              <div>
+                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Triple Occupancy Pax</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={tripleOccupancyPax}
+                  onChange={(event) => setTripleOccupancyPax(event.target.value)}
+                  style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                />
+              </div>
+              <div style={{ display: 'grid', gap: '0.25rem' }}>
+                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Allocated Pax / Total Pax</span>
+                <strong>{allocatedPax} / {totalPax || allocatedPax}</strong>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -294,53 +269,9 @@ export function BookingCreate() {
               >
                 <option value="">Select a hall (optional)</option>
                 {availableHalls.map((hall) => (
-                  <option key={hall.id} value={hall.id}>{hall.hall_name} — {hall.capacity} pax</option>
+                  <option key={hall.id} value={hall.id}>{hall.hall_name} � {hall.capacity} pax</option>
                 ))}
               </select>
-            </div>
-
-            <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: '1fr 1fr' }}>
-              <div>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Check-in *</label>
-                <input
-                  type="date"
-                  value={checkInDate}
-                  onChange={(event) => setCheckInDate(event.target.value)}
-                  style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Check-out *</label>
-                <input
-                  type="date"
-                  value={checkOutDate}
-                  onChange={(event) => setCheckOutDate(event.target.value)}
-                  style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: '1fr 1fr' }}>
-              <div>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Rooms required *</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={roomsBooked}
-                  onChange={(event) => setRoomsBooked(event.target.value)}
-                  style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Expected pax *</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={expectedPax}
-                  onChange={(event) => setExpectedPax(event.target.value)}
-                  style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-                />
-              </div>
             </div>
 
             <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: '1fr 1fr' }}>
@@ -387,7 +318,7 @@ export function BookingCreate() {
                 cursor: saving || loading || !validMeetingRequest || !validHotel ? 'not-allowed' : 'pointer',
               }}
             >
-              {saving ? 'Creating booking…' : 'Create booking request'}
+              {saving ? 'Creating booking�' : 'Create booking request'}
             </button>
           </div>
         </section>
@@ -401,15 +332,15 @@ export function BookingCreate() {
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div style={{ display: 'grid', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Selected request</span>
-                <strong>{selectedMeetingRequest ? `${selectedMeetingRequest.request_number} · ${selectedMeetingRequest.meeting_name}` : 'None selected'}</strong>
+                <strong>{selectedMeetingRequest ? `${selectedMeetingRequest.request_number} � ${selectedMeetingRequest.meeting_name}` : 'None selected'}</strong>
               </div>
               <div style={{ display: 'grid', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Selected venue</span>
-                <strong>{hotelOptions.find((option) => option.id === hotelId)?.name ?? 'None selected'}</strong>
+                <strong>{selectedHotelDetails?.hotel_name ?? 'None selected'}</strong>
               </div>
               <div style={{ display: 'grid', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Dates</span>
-                <strong>{checkInDate ? formatDate(checkInDate) : '-'} → {checkOutDate ? formatDate(checkOutDate) : '-'}</strong>
+                <strong>{selectedMeetingRequest ? `${formatDate(selectedMeetingRequest.start_date)} ? ${formatDate(selectedMeetingRequest.end_date)}` : '-'}</strong>
               </div>
             </div>
           </section>
@@ -420,7 +351,7 @@ export function BookingCreate() {
               <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 700, margin: 0 }}>Workflow notes</h2>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.7 }}>
-              This booking is being created against a meeting request and should be linked to a shortlisted venue for this event.
+              This booking is being created against a meeting request and should be linked to a recommended venue for this event.
             </p>
             <div style={{ display: 'grid', gap: '0.5rem', marginTop: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -436,19 +367,19 @@ export function BookingCreate() {
         </aside>
       </div>
 
-      {(requestsError || venuesError) && !loading ? (
+      {requestsError && !loading ? (
         <div className="card" style={{ padding: 'var(--space-5)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
           <h3 style={{ margin: 0, fontWeight: 700 }}>Unable to load required data</h3>
           <p style={{ color: 'var(--text-muted)', marginTop: '0.75rem' }}>
-            {requestsError ?? venuesError}
+            {requestsError}
           </p>
         </div>
       ) : null}
 
-      {!loading && venues.length === 0 ? (
+      {!loading && !selectedHotelDetails ? (
         <EmptyState
-          title="No venues available"
-          description="It looks like there are no venues to book right now. Please add venues or choose another request."
+          title="No venue selected"
+          description="This booking needs a recommended venue linked to the meeting request. Please choose a venue from the request workflow."
           icon={<Building2 size={48} style={{ color: 'var(--primary)' }} />}
         />
       ) : null}

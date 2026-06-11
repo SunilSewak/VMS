@@ -178,3 +178,17 @@ export async function fetchMyShortlists(userId: string): Promise<VenueShortlist[
   if (error) throw new Error(error.message);
   return (data ?? []) as VenueShortlist[];
 }
+
+// Fetch all shortlists for a given request (includes hotel details)
+export async function fetchShortlistsForRequest(requestId: string): Promise<VenueShortlist[]> {
+  const { data, error } = await supabase
+    .from('venue_shortlists')
+    .select(`
+      id, request_id, hotel_id, hall_id, shortlisted_by, shortlisted_at,
+      hotels ( id, hotel_name, address, cities ( city_name ), hotel_categories ( category_name ), venue_photos ( storage_path, display_order, photo_type ) )
+    `)
+    .eq('request_id', requestId)
+    .order('shortlisted_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as VenueShortlist[];
+}

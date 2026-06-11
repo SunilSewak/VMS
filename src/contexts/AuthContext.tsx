@@ -30,14 +30,29 @@ interface AppUser {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function mapSupabaseUserToProfile(supabaseUser: SupabaseUser, role: AppRole): UserProfile {
+function mapSupabaseUserToProfile(supabaseUser: SupabaseUser, role: AppRole, employeeName?: string): UserProfile {
+  const normalizedName = supabaseUser.user_metadata?.full_name || employeeName || supabaseUser.email || 'User';
+
   return {
     id: supabaseUser.id,
     email: supabaseUser.email ?? '',
-    full_name: supabaseUser.user_metadata?.full_name ?? supabaseUser.email ?? 'User',
+    full_name: normalizedName,
     role,
     created_at: supabaseUser.created_at ?? new Date().toISOString(),
   };
+}
+
+function normalizeRoleCode(roleCode?: string): AppRole {
+  if (!roleCode) {
+    return ROLES.VIEWER;
+  }
+
+  const normalizedRole = roleCode.toUpperCase().replace(/^ROLE_/, '');
+  if (Object.values(ROLES).includes(normalizedRole as AppRole)) {
+    return normalizedRole as AppRole;
+  }
+
+  return ROLES.VIEWER;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -78,19 +93,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           
           // Determine the role - use database role if available, fallback to metadata
-          let role: AppRole;
-          if (appUser?.roles?.role_code) {
-            const dbRoleCode = appUser.roles.role_code;
-            if (dbRoleCode === 'ROLE_SUPER_ADMIN') {
-              role = ROLES.SUPER_ADMIN;
-            } else {
-              role = dbRoleCode as AppRole;
-            }
-          } else {
-            role = (authUser.user_metadata?.role as AppRole) ?? ROLES.VIEWER;
-          }
+          const role: AppRole = appUser?.roles?.role_code
+            ? normalizeRoleCode(appUser.roles.role_code)
+            : normalizeRoleCode(authUser.user_metadata?.role as string);
           
-          setUser(mapSupabaseUserToProfile(authUser, role));
+          setUser(mapSupabaseUserToProfile(authUser, role, appUser?.employee_name));
         }
       } catch (err) {
         console.error('Failed to restore session:', err);
@@ -130,19 +137,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           
           // Determine the role - use database role if available, fallback to metadata
-          let role: AppRole;
-          if (appUser?.roles?.role_code) {
-            const dbRoleCode = appUser.roles.role_code;
-            if (dbRoleCode === 'ROLE_SUPER_ADMIN') {
-              role = ROLES.SUPER_ADMIN;
-            } else {
-              role = dbRoleCode as AppRole;
-            }
-          } else {
-            role = (authUser.user_metadata?.role as AppRole) ?? ROLES.VIEWER;
-          }
+          const role: AppRole = appUser?.roles?.role_code
+            ? normalizeRoleCode(appUser.roles.role_code)
+            : normalizeRoleCode(authUser.user_metadata?.role as string);
           
-          setUser(mapSupabaseUserToProfile(authUser, role));
+          setUser(mapSupabaseUserToProfile(authUser, role, appUser?.employee_name));
         } else {
           setUser(null);
         }
@@ -191,17 +190,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Determine the role - use database role if available, fallback to metadata
         let role: AppRole;
         if (appUser?.roles?.role_code) {
-          const dbRoleCode = appUser.roles.role_code;
-          if (dbRoleCode === 'ROLE_SUPER_ADMIN') {
-            role = ROLES.SUPER_ADMIN;
-          } else {
-            role = dbRoleCode as AppRole;
-          }
+          role = normalizeRoleCode(appUser.roles.role_code);
         } else {
-          role = (supabaseUser.user_metadata?.role as AppRole) ?? ROLES.VIEWER;
+          role = normalizeRoleCode(supabaseUser.user_metadata?.role as string);
         }
         
-        setUser(mapSupabaseUserToProfile(supabaseUser, role));
+        setUser(mapSupabaseUserToProfile(supabaseUser, role, appUser?.employee_name));
       }
     } catch (err: any) {
       console.error('Login failed:', err);

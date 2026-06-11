@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { ROLES } from '../auth/permissions';
+import { getDivisions } from '../features/meetings/meetingService';
 import type { AppUser, AppUserUpdateInput } from '../features/users/types';
+import type { Division } from '../features/meetings/types';
 
 interface UserEditModalProps {
   user: AppUser | null;
   isOpen: boolean;
-  isSuperAdmin: boolean;
   onClose: () => void;
   onSave: (id: string, updates: AppUserUpdateInput) => Promise<void>;
   isLoading?: boolean;
@@ -15,71 +16,77 @@ interface UserEditModalProps {
 export function UserEditModal({
   user,
   isOpen,
-  isSuperAdmin,
   onClose,
   onSave,
   isLoading = false,
 }: UserEditModalProps) {
-  const [fullName, setFullName] = useState('');
+  const [employeeName, setEmployeeName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<string>(ROLES.VIEWER);
-  const [department, setDepartment] = useState('');
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [divisionId, setDivisionId] = useState('');
+  const [divisions, setDivisions] = useState<Division[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   // Populate form when user changes
   useEffect(() => {
     if (user) {
-      setFullName(user.full_name || '');
+      setEmployeeName(user.employee_name || '');
       setEmail(user.email || '');
       setRole(user.role || ROLES.VIEWER);
-      setDepartment(user.department || '');
       setStatus(user.status as 'ACTIVE' | 'INACTIVE' || 'ACTIVE');
-      setPassword('');
-      setShowPassword(false);
+      setDivisionId(user.division_id || '');
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadDivisions = async () => {
+      try {
+        const data = await getDivisions();
+        setDivisions(data || []);
+      } catch (err) {
+        console.error('Failed to load divisions:', err);
+      }
+    };
+
+    loadDivisions();
+  }, [isOpen]);
 
   const handleSave = async () => {
     if (!user) return;
 
-    setSaving(true);
     setError(null);
 
     try {
-      if (!fullName.trim()) {
-        setError('Full name is required');
-        setSaving(false);
+      if (!employeeName.trim()) {
+        setError('Name is required');
         return;
       }
 
       if (!email.trim()) {
         setError('Email is required');
-        setSaving(false);
+        return;
+      }
+
+      if (role === ROLES.SALES_HEAD && !divisionId) {
+        setError('Division is required for Sales Head users.');
         return;
       }
 
       const updates: AppUserUpdateInput = {
-        full_name: fullName.trim(),
+        employee_name: employeeName.trim(),
         email: email.trim(),
         role: role as any,
-        department: department.trim() || null,
+        division_id: divisionId || null,
         status,
       };
-
-      if (password.trim() && isSuperAdmin) {
-        updates.password = password.trim();
-      }
 
       await onSave(user.id, updates);
       onClose();
     } catch (err) {
       setError((err as Error).message || 'Failed to save user');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -183,12 +190,12 @@ export function UserEditModal({
                 color: 'var(--text-main)',
               }}
             >
-              Full Name
+              Employee Name
             </label>
             <input
               type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              value={employeeName}
+              onChange={(e) => setEmployeeName(e.target.value)}
               disabled={isLoading}
               style={{
                 width: '100%',
@@ -261,7 +268,7 @@ export function UserEditModal({
                 color: 'var(--text-main)',
               }}
             >
-              {Object.entries(ROLES).map(([key, value]) => (
+              {Object.entries(ROLES).map(([_, value]) => (
                 <option key={value} value={value}>
                   {value.replace('_', ' ')}
                 </option>
@@ -269,7 +276,7 @@ export function UserEditModal({
             </select>
           </div>
 
-          {/* Department */}
+          {/* Division */}
           <div>
             <label
               style={{
@@ -280,12 +287,11 @@ export function UserEditModal({
                 color: 'var(--text-main)',
               }}
             >
-              Department
+              Division
             </label>
-            <input
-              type="text"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
+            <select
+              value={divisionId}
+              onChange={(e) => setDivisionId(e.target.value)}
               disabled={isLoading}
               style={{
                 width: '100%',
@@ -296,8 +302,12 @@ export function UserEditModal({
                 fontSize: 'var(--font-sm)',
                 color: 'var(--text-main)',
               }}
-              placeholder="Enter department (optional)"
-            />
+            >
+              <option value="">Select Division</option>
+              {divisions.map((division) => (
+                <option key={division.id} value={division.id}>{division.division_name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Status */}
@@ -345,62 +355,6 @@ export function UserEditModal({
             </div>
           </div>
 
-          {/* Password (Super Admin only) */}
-          {isSuperAdmin && (
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: 'var(--font-sm)',
-                  fontWeight: 600,
-                  marginBottom: 'var(--space-2)',
-                  color: 'var(--text-main)',
-                }}
-              >
-                Password (Leave blank to keep current)
-              </label>
-              <div
-                style={{
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 2.5rem 0.75rem 0.75rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border)',
-                    backgroundColor: 'var(--background)',
-                    fontSize: 'var(--font-sm)',
-                    color: 'var(--text-main)',
-                  }}
-                  placeholder="Enter new password (optional)"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '0.75rem',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--text-muted)',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Buttons */}

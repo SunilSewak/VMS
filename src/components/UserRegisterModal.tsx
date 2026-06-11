@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { X, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { ROLES } from '../auth/permissions';
 import type { AppUserCreateInput } from '../features/users/types';
+import { getDivisions } from '../features/meetings/meetingService';
+import type { Division } from '../features/meetings/types';
 
 interface UserRegisterModalProps {
   isOpen: boolean;
@@ -11,20 +13,34 @@ interface UserRegisterModalProps {
 }
 
 export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }: UserRegisterModalProps) {
-  const [fullName, setFullName] = useState('');
+  const [employeeName, setEmployeeName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<string>(ROLES.VIEWER);
-  const [department, setDepartment] = useState('');
-  const [password, setPassword] = useState('');
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
-  const [showPassword, setShowPassword] = useState(false);
+  const [divisionId, setDivisionId] = useState('');
+  const [divisions, setDivisions] = useState<Division[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadDivisions = async () => {
+      try {
+        const data = await getDivisions();
+        setDivisions(data || []);
+      } catch (err) {
+        console.error('Failed to load divisions:', err);
+      }
+    };
+
+    loadDivisions();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
-    if (!fullName.trim()) {
-      setError('Full name is required');
+    if (!employeeName.trim()) {
+      setError('Name is required');
       return;
     }
 
@@ -33,29 +49,26 @@ export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }
       return;
     }
 
-    if (!password.trim()) {
-      setError('Password is required');
+    if (role === ROLES.SALES_HEAD && !divisionId) {
+      setError('Division is required for Sales Head users.');
       return;
     }
 
     setError(null);
 
     await onSave({
-      full_name: fullName.trim(),
+      employee_name: employeeName.trim(),
       email: email.trim(),
       role: role as any,
-      department: department.trim() || null,
+      division_id: divisionId || null,
       status,
-      password: password.trim(),
     });
 
-    setFullName('');
+    setEmployeeName('');
     setEmail('');
-    setDepartment('');
-    setPassword('');
+    setDivisionId('');
     setStatus('ACTIVE');
     setRole(ROLES.VIEWER);
-    setShowPassword(false);
     onClose();
   };
 
@@ -101,11 +114,11 @@ export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }
 
         <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontWeight: 600, color: 'var(--text-main)' }}>Full Name</label>
+            <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontWeight: 600, color: 'var(--text-main)' }}>Employee Name</label>
             <input
               type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              value={employeeName}
+              onChange={(e) => setEmployeeName(e.target.value)}
               disabled={isLoading}
               style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: 'var(--background)', fontSize: 'var(--font-sm)' }}
               placeholder="Enter full name"
@@ -139,36 +152,18 @@ export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontWeight: 600, color: 'var(--text-main)' }}>Department</label>
-            <input
-              type="text"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
+            <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontWeight: 600, color: 'var(--text-main)' }}>Division</label>
+            <select
+              value={divisionId}
+              onChange={(e) => setDivisionId(e.target.value)}
               disabled={isLoading}
               style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: 'var(--background)', fontSize: 'var(--font-sm)' }}
-              placeholder="Enter department"
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontWeight: 600, color: 'var(--text-main)' }}>Password</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                style={{ width: '100%', padding: '0.75rem 2.5rem 0.75rem 0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: 'var(--background)', fontSize: 'var(--font-sm)' }}
-                placeholder="Create a password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((current) => !current)}
-                style={{ position: 'absolute', top: '50%', right: '0.75rem', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            >
+              <option value="">Select Division</option>
+              {divisions.map((division) => (
+                <option key={division.id} value={division.id}>{division.division_name}</option>
+              ))}
+            </select>
           </div>
 
           <div>

@@ -15,6 +15,7 @@ import { Bookings } from './pages/Bookings';
 import { BookingCreate } from './pages/BookingCreate';
 import { BookingDetails } from './pages/BookingDetails';
 import { BookingReview } from './pages/BookingReview';
+import { BookingWorkspace } from './pages/BookingWorkspace';
 import { Invoices } from './pages/Invoices';
 import { InvoiceUpload } from './pages/InvoiceUpload';
 import { InvoiceDetails } from './pages/InvoiceDetails';
@@ -138,7 +139,7 @@ export default function App() {
               } />
 
               <Route path={ROUTES.bookingNew} element={
-                <ProtectedRoute allowedRoles={[ROLES.SALES_HEAD, ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                   <AppLayout>
                     <BookingCreate />
                   </AppLayout>
@@ -157,6 +158,14 @@ export default function App() {
                 <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                   <AppLayout>
                     <BookingReview />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path={ROUTES.bookingWorkspace} element={
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                  <AppLayout>
+                    <BookingWorkspace />
                   </AppLayout>
                 </ProtectedRoute>
               } />

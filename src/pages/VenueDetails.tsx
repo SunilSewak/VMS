@@ -18,6 +18,7 @@ import { useShortlist } from '../features/venues/hooks';
 import { useMeetingRequest } from '../features/meetings/hooks';
 import { MEETING_STATUSES } from '../features/meetings/constants';
 import { useAuth } from '../contexts/AuthContext';
+import { ROLES } from '../auth/permissions';
 import { ROUTES } from '../routes/routeRegistry';
 import type { Hall } from '../features/venues/types';
 
@@ -33,6 +34,7 @@ export function VenueDetails() {
   const { venue, loading, error } = useVenueDetails(id ?? null);
   const { request } = useMeetingRequest(requestId ?? undefined);
   const requestStatus = request ? MEETING_STATUSES[request.status] : null;
+  const canCreateBooking = user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN;
   const { shortlistedIds, toggleShortlist } = useShortlist(requestId, user?.id ?? null);
 
   const isShortlisted = !!id && shortlistedIds.includes(id);
@@ -97,7 +99,7 @@ export function VenueDetails() {
           <ArrowLeft size={16} /> Back to Results
         </button>
 
-        {requestId && (
+        {requestId && canCreateBooking && (
           <button
             className="btn btn-primary"
             onClick={() => navigate(`${ROUTES.bookingNew}?requestId=${requestId}&hotelId=${id}`)}
@@ -144,8 +146,8 @@ export function VenueDetails() {
             }}
           >
             {isShortlisted
-              ? <><CheckCircle2 size={16} /> Shortlisted</>
-              : <><Bookmark size={16} /> Add to Shortlist</>
+              ? <><CheckCircle2 size={16} /> Recommended</>
+              : <><Bookmark size={16} /> Recommend venue</>
             }
           </button>
         )}
@@ -179,7 +181,7 @@ export function VenueDetails() {
                 className="btn btn-primary"
                 onClick={() => navigate(`${ROUTES.venueExplorer}?requestId=${requestId}`)}
               >
-                Review shortlists
+                Review recommendations
               </button>
             </div>
           </div>

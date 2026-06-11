@@ -421,7 +421,7 @@ export function VenueExplorer() {
                         if (newCount === 0 && request.status === 'VENUES_SHORTLISTED') {
                           await updateMeetingRequest(request.id, {}, 'DRAFT');
                           requestRefresh();
-                        } else if (newCount > 0 && request.status === 'DRAFT') {
+                        } else if (newCount > 0 && (request.status === 'DRAFT' || request.status === 'VENUE_UNAVAILABLE')) {
                           await updateMeetingRequest(request.id, {}, 'VENUES_SHORTLISTED');
                           requestRefresh();
                         }
@@ -481,7 +481,7 @@ export function VenueExplorer() {
             ) : (
               <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
                 <p style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                  Start from a meeting request so venue discovery stays aligned to your event requirements. Shortlist venues to move directly into booking creation.
+                  Start from a meeting request so venue discovery stays aligned to your event requirements. Recommend venues to move directly into the official recommendation workflow.
                 </p>
                 <button
                   className="btn btn-primary"
@@ -499,24 +499,24 @@ export function VenueExplorer() {
                 <strong>{venues.length}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Shortlisted Venues</span>
+                <span style={{ color: 'var(--text-muted)' }}>Recommended Venues</span>
                 <strong>{shortlistedIds.length}</strong>
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              {shortlistedIds.length > 0 && (request?.status === 'DRAFT' || request?.status === 'VENUES_SHORTLISTED') && (
+              {shortlistedIds.length > 0 && (request?.status === 'DRAFT' || request?.status === 'VENUES_SHORTLISTED' || request?.status === 'VENUE_UNAVAILABLE') && (
                 <button
                   id="submit-shortlist-btn"
                   onClick={async () => {
                     if (!request) return;
-                    if (!window.confirm('Are you sure you want to submit your shortlisted venues to Admin? This request will become read-only.')) return;
+                    if (!window.confirm('Are you sure you want to submit your recommended venues to Admin? This request will become read-only.')) return;
                     try {
                       await updateMeetingRequest(request.id, {}, 'SUBMITTED_TO_ADMIN');
                       requestRefresh();
-                      alert('Shortlisted venues submitted successfully to Admin!');
+                      alert('Recommended venues submitted successfully to Admin!');
                     } catch (e: any) {
-                      alert('Failed to submit shortlisted venues: ' + e.message);
+                      alert('Failed to submit recommended venues: ' + e.message);
                     }
                   }}
                   style={{
@@ -530,7 +530,7 @@ export function VenueExplorer() {
                     fontWeight: '700',
                   }}
                 >
-                  Send Request to Admin
+                  Submit Recommendations
                 </button>
               )}
               {shortlistedIds.length > 0 && (
@@ -541,14 +541,14 @@ export function VenueExplorer() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                     padding: '14px 16px',
                     borderRadius: 'var(--radius-xl)',
-                    border: '1px solid ' + (request?.status === 'SUBMITTED_TO_ADMIN' || request?.status === 'AVAILABILITY_CHECK' || request?.status === 'BOOKED' ? 'var(--primary)' : 'var(--border)'),
-                    background: request?.status === 'SUBMITTED_TO_ADMIN' || request?.status === 'AVAILABILITY_CHECK' || request?.status === 'BOOKED' ? 'var(--primary)' : 'transparent',
-                    color: request?.status === 'SUBMITTED_TO_ADMIN' || request?.status === 'AVAILABILITY_CHECK' || request?.status === 'BOOKED' ? '#fff' : 'var(--primary)',
+                    border: '1px solid ' + (request?.status === 'SUBMITTED_TO_ADMIN' || request?.status === 'AVAILABILITY_CHECK' || request?.status === 'BOOKED' || request?.status === 'VENUE_UNAVAILABLE' ? 'var(--primary)' : 'var(--border)'),
+                    background: request?.status === 'SUBMITTED_TO_ADMIN' || request?.status === 'AVAILABILITY_CHECK' || request?.status === 'BOOKED' || request?.status === 'VENUE_UNAVAILABLE' ? 'var(--primary)' : 'transparent',
+                    color: request?.status === 'SUBMITTED_TO_ADMIN' || request?.status === 'AVAILABILITY_CHECK' || request?.status === 'BOOKED' || request?.status === 'VENUE_UNAVAILABLE' ? '#fff' : 'var(--primary)',
                     cursor: 'pointer',
                     fontWeight: '700',
                   }}
                 >
-                  View Shortlisted Venues
+                  View Recommendations
                 </button>
               )}
               <button
@@ -806,7 +806,7 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
               e.preventDefault();
               onShortlist();
             }}
-            title={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
+            title={isShortlisted ? 'Remove recommendation' : 'Recommend venue'}
             style={{
               position: 'absolute', 
               top: '12px', 
@@ -922,7 +922,7 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
             fontWeight: '600',
           }}>
             <CheckCircle2 size={16} /> 
-            <span>Added to Shortlist</span>
+            <span>Recommended</span>
           </div>
         )}
 

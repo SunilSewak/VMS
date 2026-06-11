@@ -24,7 +24,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   CheckCircle2, AlertCircle, Clock, MapPin, Calendar, 
-  Users, DoorOpen, Eye, Briefcase 
+  Users, DoorOpen, Eye 
 } from 'lucide-react';
 import type { Booking } from '../features/bookings/types';
 import { ROUTES } from '../routes/routeRegistry';
@@ -156,7 +156,7 @@ export function BookingCard({ booking }: BookingCardProps) {
           '0 1px 8px rgba(0,0,0,0.06), 0 0 0 1px var(--border)';
         (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
       }}
-      onClick={() => navigate(ROUTES.bookingDetails.replace(':id', booking.id))}
+      onClick={() => navigate(ROUTES.bookingWorkspace.replace(':id', booking.id))}
     >
       {/* ── Header ────────────────────────────────────────────────── */}
       <div style={{ padding: '1.1rem 1.2rem', borderBottom: '1px solid var(--border)' }}>
@@ -354,15 +354,76 @@ export function BookingCard({ booking }: BookingCardProps) {
         </div>
       </div>
 
-      {/* ── Footer CTA ────────────────────────────────────────────── */}
-      <div style={{ borderTop: '1px solid var(--border)', padding: '0.75rem 1.2rem', background: 'var(--background)' }}>
+      {/* ── Quick Actions ────────────────────────────────────────────── */}
+      <div style={{ borderTop: '1px solid var(--border)', padding: '0.75rem 1.2rem', background: 'var(--background)', display: 'grid', gridTemplateColumns: invoiceStatus === 'PENDING' ? '1fr' : paymentStatus !== 'COMPLETED' ? '1fr' : '1fr', gap: '0.5rem' }}>
+        {invoiceStatus === 'PENDING' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.bookingWorkspace.replace(':id', booking.id) + '?tab=invoice');
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              padding: '0.6rem 1rem',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              background: '#f59e0b',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.opacity = '0.9';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.opacity = '1';
+            }}
+          >
+            Upload Invoice
+          </button>
+        )}
+        {paymentStatus !== 'COMPLETED' && invoiceStatus !== 'PENDING' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.bookingWorkspace.replace(':id', booking.id) + '?tab=payment');
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              padding: '0.6rem 1rem',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              background: '#3b82f6',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.opacity = '0.9';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.opacity = '1';
+            }}
+          >
+            Record Payment
+          </button>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            navigate(ROUTES.bookingDetails.replace(':id', booking.id));
+            navigate(ROUTES.bookingWorkspace.replace(':id', booking.id));
           }}
           style={{
-            width: '100%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -385,7 +446,7 @@ export function BookingCard({ booking }: BookingCardProps) {
           }}
         >
           <Eye size={13} />
-          View Booking
+          Manage Booking
         </button>
       </div>
     </div>

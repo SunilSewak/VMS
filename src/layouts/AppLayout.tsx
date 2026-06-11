@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
+import { ROUTES } from '../routes/routeRegistry';
 import { getNavigationGroupsForRole } from '../config/navigationGroups';
 import { NavigationDropdown } from '../components/NavigationDropdown';
 import { CommandSearch } from '../components/CommandSearch';
+import { getNotifications, removeNotification } from '../lib/notificationStorage';
 import * as LucideIcons from 'lucide-react';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -12,7 +14,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState(() => getNotifications());
   const [commandSearchOpen, setCommandSearchOpen] = useState(false);
+
+  useEffect(() => {
+    setNotifications(getNotifications());
+
+    const handleStorageSync = () => setNotifications(getNotifications());
+    window.addEventListener('storage', handleStorageSync);
+    return () => window.removeEventListener('storage', handleStorageSync);
+  }, []);
+
+  const handleDismissNotification = (id: string) => {
+    removeNotification(id);
+    setNotifications(getNotifications());
+  };
 
   // Dynamic Lucide icon resolver
   const renderIcon = (name: string) => {
@@ -149,7 +165,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Notifications Dropdown */}
           <div style={{ position: 'relative' }}>
             <button 
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={() => {
+                const next = !showNotifications;
+                setShowNotifications(next);
+                if (next) setNotifications(getNotifications());
+              }}
               style={{
                 color: 'var(--text-muted)',
                 padding: 'var(--space-2)',
@@ -169,7 +189,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 width: '8px',
                 height: '8px',
                 borderRadius: 'var(--radius-full)',
-                backgroundColor: 'var(--status-danger)'
+                backgroundColor: notifications.length ? 'var(--status-danger)' : 'transparent'
               }} />
             </button>
             
@@ -178,7 +198,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 position: 'absolute',
                 top: '45px',
                 right: 0,
-                width: '280px',
+                width: '320px',
                 backgroundColor: 'var(--surface)',
                 border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-md)',
@@ -189,10 +209,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <h4 style={{ fontSize: 'var(--font-sm)', fontWeight: '600', marginBottom: 'var(--space-2)' }}>
                   Notifications
                 </h4>
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--space-2)' }}>
-                  <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>
-                    No pending venue action requests.
-                  </p>
+                <div style={{ maxHeight: '240px', overflowY: 'auto', display: 'grid', gap: '0.75rem' }}>
+                  {notifications.length === 0 ? (
+                    <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>
+                      No pending venue action requests.
+                    </p>
+                  ) : notifications.map((note) => (
+                    <div key={note.id} style={{ padding: '0.85rem', borderRadius: '12px', background: 'var(--background)', border: '1px solid var(--border)' }}>
+                      <p style={{ margin: 0, fontSize: '0.82rem', lineHeight: 1.4, color: 'var(--text-main)' }}>{note.message}</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.6rem' }}>
+                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{new Date(note.created_at).toLocaleString()}</span>
+                        <button
+                          onClick={() => handleDismissNotification(note.id)}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '10px' }}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -293,8 +328,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         }}>
           <div style={{ display: 'flex', gap: 'var(--space-1)', height: '100%' }}>
             {navigationGroups.map((group) => {
-              // Check if group has active submenu
-              const isGroupActive = location.pathname.split('?')[0].startsWith(group.submenus[0]?.path.split('?')[0] || '');
+              const currentPath = location.pathname.split('?')[0];
+              const isGroupActive = group.submenus.length > 0
+                ? currentPath.startsWith(group.submenus[0]?.path.split('?')[0] || '')
+                : currentPath === ROUTES.dashboard;
+
               return (
                 <NavigationDropdown
                   key={group.id}
@@ -357,7 +395,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <nav style={{ flex: 1, padding: 'var(--space-4) var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               {navigationGroups.map((group) => {
                 const groupHasAccess = group.roles.includes(user?.role || 'VIEWER');
-                if (!groupHasAccess || group.submenus.length === 0) return null;
+                if (!groupHasAccess) return null;
+
+                if (group.submenus.length === 0) {
+                  return (
+                    <Link
+                      key={group.id}
+                      to={ROUTES.dashboard}
+                      onClick={() => setMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-3)',
+                        padding: 'var(--space-3) var(--space-4)',
+                        borderRadius: 'var(--radius-md)',
+                        color: '#38bdf8',
+                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                        fontWeight: '600',
+                        fontSize: 'var(--font-size-sm)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}
+                    >
+                      {renderIcon(group.iconName)}
+                      <span>{group.name}</span>
+                    </Link>
+                  );
+                }
 
                 return (
                   <div key={group.id}>

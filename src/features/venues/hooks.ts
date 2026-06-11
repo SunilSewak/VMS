@@ -9,6 +9,7 @@ import {
   removeFromShortlist,
   fetchShortlistedIds,
   fetchMyShortlists,
+  fetchShortlistsForRequest,
 } from './venueService';
 
 // Hook: Fetch cities and categories for filter dropdowns
@@ -171,6 +172,27 @@ export function useMyShortlists(userId: string | null) {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [userId]);
+
+  return { shortlists, loading, error };
+}
+
+// Hook: Fetch all shortlists for a specific meeting request
+export function useRequestShortlists(requestId: string | null) {
+  const [shortlists, setShortlists] = useState<VenueShortlist[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!requestId) {
+      setShortlists([]);
+      return;
+    }
+    setLoading(true);
+    fetchShortlistsForRequest(requestId)
+      .then(setShortlists)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [requestId]);
 
   return { shortlists, loading, error };
 }

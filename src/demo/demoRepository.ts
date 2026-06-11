@@ -260,6 +260,7 @@ export interface DemoRepository {
   addToShortlist(requestId: string, hotelId: string, userId: string): Promise<void>;
   removeFromShortlist(requestId: string, hotelId: string): Promise<void>;
   getMyShortlists(userId: string): Promise<any[]>;
+  getShortlistsByRequest(requestId: string): Promise<any[]>;
 
 
 
@@ -420,6 +421,18 @@ export const demoRepository: DemoRepository = {
     const hotels = demoGet<DemoHotel>(DEMO_COLLECTIONS.HOTELS);
     return all
       .filter((s) => s.shortlisted_by === userId)
+      .map((s) => ({
+        ...s,
+        hotels: hotels.find((h) => h.id === s.hotel_id) ?? null,
+      }))
+      .sort((a, b) => (a.shortlisted_at > b.shortlisted_at ? -1 : 1));
+  },
+
+  async getShortlistsByRequest(requestId: string) {
+    const all = demoGet<DemoVenueShortlist & { shortlisted_by: string }>(DEMO_COLLECTIONS.SHORTLISTS);
+    const hotels = demoGet<DemoHotel>(DEMO_COLLECTIONS.HOTELS);
+    return all
+      .filter((s) => s.request_id === requestId)
       .map((s) => ({
         ...s,
         hotels: hotels.find((h) => h.id === s.hotel_id) ?? null,
