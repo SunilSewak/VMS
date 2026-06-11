@@ -30,7 +30,16 @@ import type { AppRole } from '../auth/permissions';
 import { ROLES } from '../auth/permissions';
 
 // ─── Workflow stages ────────────────────────────────────────────────────────
-const WORKFLOW_STAGES = [
+// Sales Head sees only: Request → Venue → Availability → Booking
+const SALES_HEAD_WORKFLOW_STAGES = [
+  { key: 'request',      label: 'Request'      },
+  { key: 'venue',        label: 'Venue'        },
+  { key: 'availability', label: 'Availability' },
+  { key: 'booking',      label: 'Booking'      },
+] as const;
+
+// Admin sees full workflow: Request → Venue → Availability → Booking → Invoice → Payment
+const ADMIN_WORKFLOW_STAGES = [
   { key: 'request',      label: 'Request'      },
   { key: 'venue',        label: 'Venue'        },
   { key: 'availability', label: 'Availability' },
@@ -39,8 +48,24 @@ const WORKFLOW_STAGES = [
   { key: 'payment',      label: 'Payment'      },
 ] as const;
 
-/** Maps any DB status string to a 0-based stage index. */
-function getWorkflowStage(status: string): number {
+/**
+ * Returns the appropriate workflow stages array based on user role.
+ * Sales Head: 4 stages ending at Booking
+ * Admin: 6 stages including Invoice and Payment
+ */
+function getWorkflowStagesForRole(role: AppRole) {
+  const isAdmin = role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN;
+  return isAdmin ? ADMIN_WORKFLOW_STAGES : SALES_HEAD_WORKFLOW_STAGES;
+}
+
+/** 
+ * Maps any DB status string to a 0-based stage index.
+ * For Sales Head: max stage = 3 (Booking)
+ * For Admin: max stage = 5 (Payment)
+ */
+function getWorkflowStage(status: string, role: AppRole): number {
+  const isAdmin = role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN;
+  
   switch (status) {
     case 'DRAFT':
       return 0;
@@ -59,11 +84,13 @@ function getWorkflowStage(status: string): number {
     case 'INVOICE_RECEIVED':
     case 'VERIFIED':
     case 'APPROVED':
-      return 4;
+      // Sales Head sees this as Booking stage (3), Admin sees Invoice (4)
+      return isAdmin ? 4 : 3;
     case 'PAID':
     case 'COMPLETED':
     case 'CLOSED':
-      return 5;
+      // Sales Head sees this as Booking stage (3), Admin sees Payment (5)
+      return isAdmin ? 5 : 3;
     default:
       return 0;
   }
@@ -151,10 +178,13 @@ function getActionConfig(status: string, role: AppRole): ActionConfig {
 }
 
 // ─── Compact Workflow Stepper ───────────────────────────────────────────────
-function WorkflowStepper({ currentStage }: { currentStage: number }) {
+function WorkflowStepper({ currentStage, userRole }: { currentStage: number; userRole: AppRole }) {
+  // Select appropriate workflow stages based on role
+  const stages = getWorkflowStagesForRole(userRole);
+  
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
-      {WORKFLOW_STAGES.map((stage, idx) => {
+      {stages.map((stage, idx) => {
         const isCompleted = idx < currentStage;
         const isCurrent   = idx === currentStage;
 
@@ -191,7 +221,7 @@ function WorkflowStepper({ currentStage }: { currentStage: number }) {
             </div>
 
             {/* Connector line (skip after last dot) */}
-            {idx < WORKFLOW_STAGES.length - 1 && (
+            {idx < stages.length - 1 && (
               <div
                 style={{
                   flex:           1,
@@ -230,7 +260,7 @@ export function MeetingRequestCard({
   const actionConfig  = getActionConfig(request.status, userRole);
   const accentColor   = getAccentColor(request.status);
   const badgeStyle    = BADGE_STYLES[statusConfig.badgeType] ?? BADGE_STYLES.info;
-  const currentStage  = getWorkflowStage(request.status);
+  const currentStage  = getWorkflowStage(request.status, userRole);
 
   const startDate = new Date(request.start_date).toLocaleDateString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -332,7 +362,7 @@ export function MeetingRequestCard({
         </div>
 
         {/* Compact workflow stepper */}
-        <WorkflowStepper currentStage={currentStage} />
+        <WorkflowStepper currentStage={currentStage} userRole={userRole} />
       </div>
 
       {/* ── Footer CTA ────────────────────────────────────────────────── */}

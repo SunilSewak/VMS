@@ -100,10 +100,13 @@ export function useVenueDetails(id: string | null) {
 }
 
 // Hook: Manage shortlisting for a given request
+// Enforces max 3 venues per request limit
 export function useShortlist(requestId: string | null, userId: string | null) {
   const [shortlistedIds, setShortlistedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const initialized = useRef(false);
+
+  const MAX_SHORTLIST = 3;
 
   useEffect(() => {
     if (!requestId) {
@@ -124,9 +127,17 @@ export function useShortlist(requestId: string | null, userId: string | null) {
 
   const toggleShortlist = useCallback(async (hotelId: string) => {
     if (!requestId || !userId) return;
+    
     console.log('Toggle Shortlist - Hotel ID:', hotelId);
     console.log('Toggle Shortlist - Shortlisted IDs Before:', shortlistedIds);
+    
     const isCurrentlyShortlisted = shortlistedIds.includes(hotelId);
+    
+    // Check limit when adding
+    if (!isCurrentlyShortlisted && shortlistedIds.length >= MAX_SHORTLIST) {
+      throw new Error(`Maximum ${MAX_SHORTLIST} venues can be shortlisted per request`);
+    }
+    
     // Optimistic update
     setShortlistedIds((prev) => {
       const result = isCurrentlyShortlisted 
@@ -135,6 +146,7 @@ export function useShortlist(requestId: string | null, userId: string | null) {
       console.log('Toggle Shortlist - Shortlisted IDs After Optimistic Update:', result);
       return result;
     });
+    
     try {
       if (isCurrentlyShortlisted) {
         await removeFromShortlist(requestId, hotelId);
@@ -150,12 +162,21 @@ export function useShortlist(requestId: string | null, userId: string | null) {
       setShortlistedIds((prev) =>
         isCurrentlyShortlisted ? [...prev, hotelId] : prev.filter((id) => id !== hotelId)
       );
+      throw e; // Re-throw to let UI handle
     }
     setLoading(false);
     console.log('Toggle Shortlist - Final Shortlisted IDs:', shortlistedIds);
   }, [requestId, userId, shortlistedIds]);
 
-  return { shortlistedIds, toggleShortlist, loading };
+  return { 
+    shortlistedIds, 
+    toggleShortlist, 
+    loading,
+    shortlistCount: shortlistedIds.length,
+    canAddMore: shortlistedIds.length < MAX_SHORTLIST,
+    maxReached: shortlistedIds.length >= MAX_SHORTLIST,
+    maxShortlist: MAX_SHORTLIST,
+  };
 }
 
 // Hook: Fetch all shortlists for the current user

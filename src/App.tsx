@@ -1,10 +1,11 @@
 import './styles/theme.css';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import { AuthProvider, ProtectedRoute } from './contexts/AuthContext';
+import { AuthProvider, ProtectedRoute, useAuth } from './contexts/AuthContext';
 import { DemoProvider } from './contexts/DemoContext';
 import { AppLayout } from './layouts/AppLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
+import { SalesHeadHome } from './pages/SalesHeadHome';
 import { MeetingRequests } from './pages/MeetingRequests';
 import { MeetingRequestForm } from './pages/MeetingRequestForm';
 import { Hotels } from './pages/Hotels';
@@ -34,12 +35,21 @@ import { ROUTES } from './routes/routeRegistry';
 import { ROLES } from './auth/permissions';
 import { useEffect } from 'react';
 
-// Redirect helper component
+// Redirect helper component with role-based routing
 function RedirectToDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
   useEffect(() => {
-    navigate(ROUTES.dashboard);
-  }, [navigate]);
+    // Sales Head lands on Home workspace
+    if (user?.role === ROLES.SALES_HEAD) {
+      navigate(ROUTES.home);
+    } else {
+      // All other roles land on Dashboard
+      navigate(ROUTES.dashboard);
+    }
+  }, [navigate, user]);
+  
   return null;
 }
 
@@ -57,6 +67,14 @@ export default function App() {
               <Route path="/" element={<RedirectToDashboard />} />
 
               {/* Protected Application Routes */}
+              <Route path={ROUTES.home} element={
+                <ProtectedRoute allowedRoles={[ROLES.SALES_HEAD]}>
+                  <AppLayout>
+                    <SalesHeadHome />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
               <Route path={ROUTES.dashboard} element={
                 <ProtectedRoute>
                   <AppLayout>

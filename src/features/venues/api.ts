@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { getZoneForCity, ZONES } from '../../constants/zones';
 import type {
   Hotel,
   VenueCardViewModel,
@@ -30,6 +31,7 @@ export async function fetchCategories(): Promise<HotelCategory[]> {
 
 // Search venues with filters — returns card-ready data
 // Joins: hotel_categories, cities, venue_photos (primary), halls (for MAX capacity)
+// Implements zone-based filtering with city override logic
 export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCardViewModel[]> {
   let query = supabase
     .from('hotels')
@@ -46,9 +48,29 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
     .eq('status', 'ACTIVE')
     .is('is_deleted', false);
 
-  // Filter by city
+  // RULE 3: City takes precedence over zone (city always wins)
   if (filters.cityId && filters.cityId !== 'all') {
+    // City filter selected - use it exclusively
     query = query.eq('city_id', filters.cityId);
+  } else if (filters.zone && filters.zone !== 'all') {
+    // RULE 1: Zone selected only - filter by cities in that zone
+    // First fetch all cities to build zone filter
+    const { data: allCities } = await supabase
+      .from('cities')
+      .select('id, city_name');
+    
+    if (allCities) {
+      const citiesInZone = allCities
+        .filter(city => getZoneForCity(city.city_name) === filters.zone)
+        .map(city => city.id);
+      
+      if (citiesInZone.length > 0) {
+        query = query.in('city_id', citiesInZone);
+      } else {
+        // No cities in zone - return empty results
+        return [];
+      }
+    }
   }
 
   // Filter by category

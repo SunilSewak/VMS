@@ -20,6 +20,7 @@ import { updateMeetingRequest } from '../features/meetings/meetingService';
 import { MEETING_STATUSES } from '../features/meetings/constants';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../routes/routeRegistry';
+import { ZONE_OPTIONS } from '../constants/zones';
 import type { VenueCardData, VenueSearchFilters } from '../features/venues/types';
 
 const CAPACITY_OPTIONS = [
@@ -47,8 +48,10 @@ export function VenueExplorer() {
   const [searchQuery, setSearchQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCityId, setSelectedCityId] = useState('all');
+  const [selectedZone, setSelectedZone] = useState('all'); // Zone filter
   const [selectedCategoryCode, setSelectedCategoryCode] = useState('all');
   const [selectedCapacityIdx, setSelectedCapacityIdx] = useState(0);
+  const [shortlistError, setShortlistError] = useState<string | null>(null);
 
   const [compareList, setCompareList] = useState<VenueCardData[]>([]);
   const [showCompareMatrix, setShowCompareMatrix] = useState(false);
@@ -70,28 +73,45 @@ export function VenueExplorer() {
   const filters: VenueSearchFilters = useMemo(() => ({
     searchQuery,
     cityId: selectedCityId,
+    zone: selectedZone !== 'all' ? selectedZone : undefined,
     categoryCode: selectedCategoryCode,
     capacityMin: selectedCapacity.min,
     capacityMax: selectedCapacity.max,
     requestId: requestId ?? undefined,
-  }), [searchQuery, selectedCityId, selectedCategoryCode, selectedCapacity, requestId]);
+  }), [searchQuery, selectedCityId, selectedZone, selectedCategoryCode, selectedCapacity, requestId]);
 
   const skip = !!requestId && !hasSearched;
   const { venues, loading: venuesLoading, error: venuesError } = useVenues(filters, skip);
   const { cities, categories, loading: filtersLoading } = useVenueFilters();
-  const { shortlistedIds, toggleShortlist } = useShortlist(requestId, user?.id ?? null);
+  const { shortlistedIds, toggleShortlist, shortlistCount, canAddMore, maxReached, maxShortlist } = useShortlist(requestId, user?.id ?? null);
 
   useEffect(() => {
-    // Don't run if request is still loading or hasSearched is true
+    // CRITICAL FIX: Auto-populate filters from meeting request context
     if (!requestId || !request || hasSearched) return;
 
+    console.log('[VenueExplorer] Auto-populating filters from request:', request);
+
+    // Set city filter (CRITICAL - ensures only selected city venues appear)
     if (request.city_id) {
+      console.log('[VenueExplorer] Setting cityId filter:', request.city_id);
       setSelectedCityId(request.city_id);
     }
 
+    // Set zone filter
+    if (request.zone) {
+      console.log('[VenueExplorer] Setting zone filter:', request.zone);
+      setSelectedZone(request.zone);
+    }
+
+    // Set capacity filter based on expected pax
     setSelectedCapacityIdx(getCapacityIndex(request.expected_pax));
+    
+    // Set search text (cosmetic only)
     setSearchInput(request.cities?.city_name ?? request.target_city_name ?? '');
     setSearchQuery(request.cities?.city_name ?? request.target_city_name ?? '');
+    
+    // Force search execution immediately
+    console.log('[VenueExplorer] Forcing search execution');
     setHasSearched(true);
   }, [requestId, request, hasSearched]);
 

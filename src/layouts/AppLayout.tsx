@@ -329,9 +329,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div style={{ display: 'flex', gap: 'var(--space-1)', height: '100%' }}>
             {navigationGroups.map((group) => {
               const currentPath = location.pathname.split('?')[0];
-              const isGroupActive = group.submenus.length > 0
-                ? currentPath.startsWith(group.submenus[0]?.path.split('?')[0] || '')
-                : currentPath === ROUTES.dashboard;
+              let isGroupActive = false;
+              
+              if (group.submenus.length > 0) {
+                // For groups with submenus, check if any submenu path matches
+                isGroupActive = group.submenus.some(sub => currentPath.startsWith(sub.path.split('?')[0]));
+              } else {
+                // For standalone items, check exact or default path
+                if (group.id === 'home') {
+                  isGroupActive = currentPath === ROUTES.home;
+                } else if (group.id === 'dashboard') {
+                  isGroupActive = currentPath === ROUTES.dashboard;
+                }
+              }
 
               return (
                 <NavigationDropdown
@@ -398,10 +408,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 if (!groupHasAccess) return null;
 
                 if (group.submenus.length === 0) {
+                  // Standalone links (Home, Dashboard)
+                  const standalonePath = group.id === 'home' ? ROUTES.home : 
+                                        group.id === 'dashboard' ? ROUTES.dashboard : '/';
+                  
                   return (
                     <Link
                       key={group.id}
-                      to={ROUTES.dashboard}
+                      to={standalonePath}
                       onClick={() => setMobileMenuOpen(false)}
                       style={{
                         display: 'flex',

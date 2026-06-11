@@ -7,6 +7,7 @@ import { useRequestShortlists } from '../features/venues/hooks';
 import { ROUTES } from '../routes/routeRegistry';
 import { ROLES } from '../auth/permissions';
 import { MeetingRequest } from '../features/meetings/types';
+import { Search, AlertCircle } from 'lucide-react';
 
 function Panel({ children }: { children: React.ReactNode }) {
   return (
@@ -402,6 +403,93 @@ export function MeetingRequestForm() {
 
               {error && (
                 <div style={{ color: 'var(--status-danger)', fontWeight: 600 }}>{error}</div>
+              )}
+
+              {/* Explore Matching Venues - Request-Driven Discovery */}
+              {request && (
+                <div style={{ 
+                  marginTop: 'var(--space-4)', 
+                  padding: 'var(--space-4)', 
+                  background: 'var(--background)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border)',
+                }}>
+                  <h4 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <Search size={18} style={{ color: 'var(--primary)' }} />
+                    Venue Discovery
+                  </h4>
+                  
+                  {(() => {
+                    // Check mandatory fields for venue exploration
+                    const hasZone = !!request.zone;
+                    const hasCity = !!request.city_id;
+                    const hasMeetingType = !!request.meeting_type_id;
+                    const hasResidentialFlag = request.residential_flag !== null && request.residential_flag !== undefined;
+                    const hasPax = !!request.expected_pax;
+                    
+                    const canExplore = hasZone && hasCity && hasMeetingType && hasResidentialFlag && hasPax;
+                    
+                    if (!canExplore) {
+                      const missingFields = [];
+                      if (!hasZone) missingFields.push('Zone');
+                      if (!hasCity) missingFields.push('City');
+                      if (!hasMeetingType) missingFields.push('Meeting Type');
+                      if (!hasResidentialFlag) missingFields.push('Residential/Non-Residential');
+                      if (!hasPax) missingFields.push('Expected Pax');
+                      
+                      return (
+                        <>
+                          <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>
+                            Complete the required fields to search for matching venues.
+                          </p>
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'flex-start', 
+                            gap: 'var(--space-2)',
+                            padding: 'var(--space-3)',
+                            background: '#fef2f2',
+                            borderRadius: 'var(--radius-md)',
+                            marginBottom: 'var(--space-3)',
+                          }}>
+                            <AlertCircle size={16} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                            <div>
+                              <p style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: '#b91c1c', marginBottom: '4px' }}>
+                                Missing required fields:
+                              </p>
+                              <p style={{ fontSize: 'var(--font-xs)', color: '#991b1b' }}>
+                                {missingFields.join(', ')}
+                              </p>
+                            </div>
+                          </div>
+                          <button 
+                            className="btn btn-secondary"
+                            disabled
+                            style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                          >
+                            <Search size={16} />
+                            Explore Matching Venues
+                          </button>
+                        </>
+                      );
+                    }
+                    
+                    return (
+                      <>
+                        <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>
+                          Discover venues that match your meeting requirements. Filters will be automatically applied based on your request details.
+                        </p>
+                        <button 
+                          className="btn btn-primary"
+                          onClick={() => navigate(`${ROUTES.venueExplorer}?requestId=${request.id}`)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+                        >
+                          <Search size={16} />
+                          Explore Matching Venues
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
               )}
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>

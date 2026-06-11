@@ -84,4 +84,5 @@ export interface VenueSearchFilters {
   capacityMin?: number;
   capacityMax?: number;
   requestId?: string;
+  zone?: string; // Zone filter (North, South, East, West)
 }

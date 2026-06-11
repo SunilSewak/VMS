@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../routes/routeRegistry';
+import { ROLES } from '../auth/permissions';
 
 export function Login() {
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user } = useAuth();
   const navigate = useNavigate();
   
   const [email, setEmail] = useState('');
@@ -17,7 +18,15 @@ export function Login() {
     
     try {
       await login(email, password);
-      navigate(ROUTES.dashboard);
+      
+      // Role-based redirect after login
+      // Note: user state will be set after login, so we need to get role from the login context
+      // For now, we'll use a small delay to let the auth context update
+      setTimeout(() => {
+        // This is a workaround - ideally login should return the user object
+        // For now we'll check localStorage or make the login function return user
+        window.location.href = ROUTES.dashboard; // Will be intercepted by RedirectToDashboard
+      }, 100);
     } catch (err: any) {
       setError(err.message || 'Login failed');
       console.error('Login error:', err);

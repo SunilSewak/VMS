@@ -1,4 +1,5 @@
 export const ROUTES = {
+  home: "/home",
   dashboard: "/dashboard",
   meetingRequests: "/meeting-requests",
   meetingRequestNew: "/meeting-requests/new",

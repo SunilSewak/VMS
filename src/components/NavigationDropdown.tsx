@@ -14,6 +14,16 @@ export function NavigationDropdown({ group, isActive }: NavigationDropdownProps)
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
+  // Determine if this is a standalone link (no submenus) or a dropdown
+  const isStandalone = group.submenus.length === 0;
+  
+  // Get standalone link path
+  const getStandalonePath = () => {
+    if (group.id === 'home') return '/home';
+    if (group.id === 'dashboard') return '/dashboard';
+    return '/';
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -61,38 +71,73 @@ export function NavigationDropdown({ group, isActive }: NavigationDropdownProps)
         position: 'relative',
         height: '100%'
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={!isStandalone ? handleMouseEnter : undefined}
+      onMouseLeave={!isStandalone ? handleMouseLeave : undefined}
     >
-      {/* Top-level menu item */}
-      <button
-        onClick={handleToggleExpanded}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-          padding: '0 var(--space-4)',
-          height: '100%',
-          backgroundColor: 'transparent',
-          border: 'none',
-          color: isActive || isHovered || isSubmenuActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
-          fontWeight: isHovered || isActive || isSubmenuActive ? '600' : '500',
-          fontSize: 'var(--font-size-md)',
-          cursor: 'pointer',
-          transition: 'all var(--transition-fast)',
-          borderBottom: isActive || isSubmenuActive ? '3px solid #38bdf8' : '3px solid transparent'
-        }}
-      >
-        {renderIcon(group.iconName)}
-        <span>{group.name}</span>
-        <LucideIcons.ChevronDown
-          size={14}
+      {/* Top-level menu item - Link for standalone, button for dropdown */}
+      {isStandalone ? (
+        <Link
+          to={getStandalonePath()}
           style={{
-            transition: 'transform 0.2s',
-            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            padding: '0 var(--space-4)',
+            height: '100%',
+            backgroundColor: 'transparent',
+            border: 'none',
+            color: isActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
+            fontWeight: isActive ? '600' : '500',
+            fontSize: 'var(--font-size-md)',
+            cursor: 'pointer',
+            transition: 'all var(--transition-fast)',
+            borderBottom: isActive ? '3px solid #38bdf8' : '3px solid transparent',
+            textDecoration: 'none',
           }}
-        />
-      </button>
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.fontWeight = '600';
+          }}
+          onMouseLeave={(e) => {
+            if (!isActive) {
+              e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+              e.currentTarget.style.fontWeight = '500';
+            }
+          }}
+        >
+          {renderIcon(group.iconName)}
+          <span>{group.name}</span>
+        </Link>
+      ) : (
+        <button
+          onClick={handleToggleExpanded}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            padding: '0 var(--space-4)',
+            height: '100%',
+            backgroundColor: 'transparent',
+            border: 'none',
+            color: isActive || isHovered || isSubmenuActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
+            fontWeight: isHovered || isActive || isSubmenuActive ? '600' : '500',
+            fontSize: 'var(--font-size-md)',
+            cursor: 'pointer',
+            transition: 'all var(--transition-fast)',
+            borderBottom: isActive || isSubmenuActive ? '3px solid #38bdf8' : '3px solid transparent'
+          }}
+        >
+          {renderIcon(group.iconName)}
+          <span>{group.name}</span>
+          <LucideIcons.ChevronDown
+            size={14}
+            style={{
+              transition: 'transform 0.2s',
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+            }}
+          />
+        </button>
+      )}
 
       {/* Dropdown menu */}
       {isExpanded && group.submenus.length > 0 && (

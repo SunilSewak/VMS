@@ -19,10 +19,17 @@ export interface NavigationGroup {
 // Business Process Navigation Configuration
 export const navigationGroups: NavigationGroup[] = [
   {
+    id: 'home',
+    name: 'Home',
+    iconName: 'Home',
+    roles: [ROLES.SALES_HEAD],
+    submenus: []
+  },
+  {
     id: 'dashboard',
     name: 'Dashboard',
     iconName: 'LayoutDashboard',
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD, ROLES.FINANCE, ROLES.VIEWER],
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.FINANCE, ROLES.VIEWER],
     submenus: []
   },
   {
