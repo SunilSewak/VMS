@@ -104,6 +104,19 @@ export function MeetingRequests() {
     });
   }, [requests, statusFilter, searchText]);
 
+  // ── Queue Summary Counts (for Admin) ──────────────────────────────────────
+  const queueSummary = useMemo(() => {
+    return {
+      awaitingReview: requests.filter(r => r.status === 'SUBMITTED_TO_ADMIN' || r.status === 'DRAFT').length,
+      venueEvaluation: requests.filter(r => r.status === 'VENUES_SHORTLISTED' || r.status === 'SHORTLISTED' || r.status === 'AVAILABILITY_CHECK').length,
+      bookingPending: requests.filter(r => r.status === 'VENUE_UNAVAILABLE').length, // Placeholder - adjust to actual booking pending status
+      invoicePending: requests.filter(r => r.status === 'BOOKED').length,
+      paymentPending: requests.filter(r => r.status === 'COMPLETED').length, // Placeholder - adjust to actual payment pending status
+    };
+  }, [requests]);
+
+  const isAdmin = userRole === ROLES.ADMIN || userRole === ROLES.SUPER_ADMIN;
+
   // ── Table columns (available to all roles in table view) ──────────────────
   const tableColumns: ColumnDefinition<MeetingRequest>[] = [
     {
@@ -214,10 +227,12 @@ export function MeetingRequests() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
         <div>
           <h3 style={{ fontSize: 'var(--font-xl)', fontWeight: 700, marginBottom: 'var(--space-1)' }}>
-            Meeting Requests
+            {isAdmin ? 'Request Processing Queue' : 'Meeting Requests'}
           </h3>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>
-            Track requests and their current workflow stage.
+            {isAdmin 
+              ? 'Review and process venue requests awaiting action.' 
+              : 'Track requests and their current workflow stage.'}
           </p>
         </div>
 
@@ -266,6 +281,45 @@ export function MeetingRequests() {
         }}>
           <AlertTriangle size={16} />
           <span>{actionError || error}</span>
+        </div>
+      )}
+
+      {/* ── Queue Summary Strip (Admin only) ─────────────────────────── */}
+      {isAdmin && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 'var(--space-3)',
+          padding: 'var(--space-4)',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+        }}>
+          <QueueSummaryItem
+            label="Awaiting Review"
+            count={queueSummary.awaitingReview}
+            color="#F59E0B"
+          />
+          <QueueSummaryItem
+            label="Venue Evaluation"
+            count={queueSummary.venueEvaluation}
+            color="#3B82F6"
+          />
+          <QueueSummaryItem
+            label="Booking Pending"
+            count={queueSummary.bookingPending}
+            color="#8B5CF6"
+          />
+          <QueueSummaryItem
+            label="Invoice Pending"
+            count={queueSummary.invoicePending}
+            color="#EC4899"
+          />
+          <QueueSummaryItem
+            label="Payment Pending"
+            count={queueSummary.paymentPending}
+            color="#10B981"
+          />
         </div>
       )}
 
@@ -377,6 +431,48 @@ export function MeetingRequests() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// QUEUE SUMMARY ITEM COMPONENT
+// ═══════════════════════════════════════════════════════════════════════
+
+interface QueueSummaryItemProps {
+  label: string;
+  count: number;
+  color: string;
+}
+
+function QueueSummaryItem({ label, count, color }: QueueSummaryItemProps) {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 'var(--space-2)',
+      padding: 'var(--space-3)',
+      borderLeft: `4px solid ${color}`,
+      background: 'var(--background)',
+      borderRadius: 'var(--radius-md)',
+    }}>
+      <div style={{
+        fontSize: 'var(--font-xs)',
+        fontWeight: 600,
+        color: 'var(--text-muted)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 'var(--font-xxl)',
+        fontWeight: 700,
+        color: color,
+        lineHeight: 1,
+      }}>
+        {count}
+      </div>
     </div>
   );
 }

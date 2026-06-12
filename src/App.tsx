@@ -8,15 +8,14 @@ import { Dashboard } from './pages/Dashboard';
 import { SalesHeadHome } from './pages/SalesHeadHome';
 import { MeetingRequests } from './pages/MeetingRequests';
 import { MeetingRequestForm } from './pages/MeetingRequestForm';
+import { RequestProcessingWorkspace } from './pages/RequestProcessingWorkspace';
 import { Hotels } from './pages/Hotels';
 import { VenueExplorer } from './pages/VenueExplorer';
 import { VenueDetails } from './pages/VenueDetails';
 import { MyShortlists } from './pages/MyShortlists';
 import { Bookings } from './pages/Bookings';
 import { BookingCreate } from './pages/BookingCreate';
-import { BookingDetails} from './pages/BookingDetails';
 import { BookingDetailsRouter } from './pages/BookingDetailsRouter';
-import { AdminProcessingWorkspace } from './pages/AdminProcessingWorkspace';
 import { BookingReview } from './pages/BookingReview';
 import { BookingWorkspace } from './pages/BookingWorkspace';
 import { Invoices } from './pages/Invoices';
@@ -46,13 +45,49 @@ function RedirectToDashboard() {
     // Sales Head lands on Home workspace
     if (user?.role === ROLES.SALES_HEAD) {
       navigate(ROUTES.home);
-    } else {
-      // All other roles land on Dashboard
+    } 
+    // Admin lands on Meeting Requests (operational workspace)
+    else if (user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN) {
+      navigate(ROUTES.home); // Home will show Meeting Requests for Admin
+    } 
+    // All other roles land on Dashboard
+    else {
       navigate(ROUTES.dashboard);
     }
   }, [navigate, user]);
   
   return null;
+}
+
+// Home Router - Shows different content based on role
+function HomeRouter() {
+  const { user } = useAuth();
+  
+  // Admin/Super Admin: Home = Meeting Requests
+  if (user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN) {
+    return <MeetingRequests />;
+  }
+  
+  // Sales Head: Home = Sales Head Home page
+  if (user?.role === ROLES.SALES_HEAD) {
+    return <SalesHeadHome />;
+  }
+  
+  // Fallback (shouldn't happen due to ProtectedRoute)
+  return <Dashboard />;
+}
+
+// Meeting Request View Router - Shows different content based on role
+function MeetingRequestViewRouter() {
+  const { user } = useAuth();
+  
+  // Admin/Super Admin: View = Processing Workspace
+  if (user?.role === ROLES.ADMIN || user?.role === ROLES.SUPER_ADMIN) {
+    return <RequestProcessingWorkspace />;
+  }
+  
+  // Other roles: View = Form in view mode
+  return <MeetingRequestForm />;
 }
 
 export default function App() {
@@ -69,10 +104,13 @@ export default function App() {
               <Route path="/" element={<RedirectToDashboard />} />
 
               {/* Protected Application Routes */}
+              
+              {/* Home Route - Role-based destination */}
               <Route path={ROUTES.home} element={
-                <ProtectedRoute allowedRoles={[ROLES.SALES_HEAD]}>
+                <ProtectedRoute allowedRoles={[ROLES.SALES_HEAD, ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                   <AppLayout>
-                    <SalesHeadHome />
+                    {/* Admin: Home = Meeting Requests, Sales Head: Home = Sales Head Home */}
+                    <HomeRouter />
                   </AppLayout>
                 </ProtectedRoute>
               } />
@@ -104,7 +142,7 @@ export default function App() {
               <Route path={ROUTES.meetingRequestView} element={
                 <ProtectedRoute>
                   <AppLayout>
-                    <MeetingRequestForm />
+                    <MeetingRequestViewRouter />
                   </AppLayout>
                 </ProtectedRoute>
               } />

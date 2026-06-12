@@ -15,6 +15,8 @@ interface UserRegisterModalProps {
 export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }: UserRegisterModalProps) {
   const [employeeName, setEmployeeName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<string>(ROLES.VIEWER);
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [divisionId, setDivisionId] = useState('');
@@ -49,6 +51,21 @@ export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }
       return;
     }
 
+    if (!password) {
+      setError('Temporary password is required');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     if (role === ROLES.SALES_HEAD && !divisionId) {
       setError('Division is required for Sales Head users.');
       return;
@@ -59,6 +76,7 @@ export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }
     await onSave({
       employee_name: employeeName.trim(),
       email: email.trim(),
+      password: password,
       role: role as any,
       division_id: divisionId || null,
       status,
@@ -66,6 +84,8 @@ export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }
 
     setEmployeeName('');
     setEmail('');
+    setPassword('');
+    setConfirmPassword('');
     setDivisionId('');
     setStatus('ACTIVE');
     setRole(ROLES.VIEWER);
@@ -134,6 +154,30 @@ export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }
               disabled={isLoading}
               style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: 'var(--background)', fontSize: 'var(--font-sm)' }}
               placeholder="Enter email address"
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontWeight: 600, color: 'var(--text-main)' }}>Temporary Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: 'var(--background)', fontSize: 'var(--font-sm)' }}
+              placeholder="Enter temporary password (min 8 characters)"
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontWeight: 600, color: 'var(--text-main)' }}>Confirm Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isLoading}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: 'var(--background)', fontSize: 'var(--font-sm)' }}
+              placeholder="Re-enter password"
             />
           </div>
 

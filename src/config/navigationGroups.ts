@@ -22,27 +22,27 @@ export const navigationGroups: NavigationGroup[] = [
     id: 'home',
     name: 'Home',
     iconName: 'Home',
-    roles: [ROLES.SALES_HEAD],
+    roles: [ROLES.SALES_HEAD, ROLES.ADMIN, ROLES.SUPER_ADMIN],
     submenus: []
   },
   {
     id: 'dashboard',
     name: 'Dashboard',
     iconName: 'LayoutDashboard',
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.FINANCE, ROLES.VIEWER],
+    roles: [ROLES.SUPER_ADMIN, ROLES.FINANCE, ROLES.VIEWER],
     submenus: []
   },
   {
     id: 'planning',
     name: 'Planning',
     iconName: 'FileText',
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD, ROLES.FINANCE],
+    roles: [ROLES.SUPER_ADMIN, ROLES.SALES_HEAD, ROLES.FINANCE],
     submenus: [
       {
         name: 'My Meeting Requests',
         path: ROUTES.meetingRequests,
         iconName: 'Calendar',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
+        roles: [ROLES.SUPER_ADMIN, ROLES.SALES_HEAD]
       }
     ]
   },
@@ -56,18 +56,36 @@ export const navigationGroups: NavigationGroup[] = [
         name: 'Venue Explorer',
         path: ROUTES.venueExplorer,
         iconName: 'Search',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SALES_HEAD]
+        roles: [ROLES.SUPER_ADMIN, ROLES.SALES_HEAD]
       },
       {
         name: 'My Shortlists',
         path: ROUTES.myShortlists,
         iconName: 'Bookmark',
-        roles: [ROLES.SALES_HEAD]
+        roles: [ROLES.SUPER_ADMIN, ROLES.SALES_HEAD]
       },
       {
         name: 'Venue Directory',
         path: ROUTES.hotels,
         iconName: 'List',
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
+      },
+      {
+        name: 'Hotels',
+        path: ROUTES.hotels,
+        iconName: 'Building',
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
+      },
+      {
+        name: 'Halls',
+        path: ROUTES.hotels,
+        iconName: 'DoorOpen',
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
+      },
+      {
+        name: 'Photos',
+        path: ROUTES.hotels,
+        iconName: 'Image',
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
       }
     ]
@@ -83,18 +101,6 @@ export const navigationGroups: NavigationGroup[] = [
         path: ROUTES.bookings,
         iconName: 'CalendarCheck',
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
-      },
-      {
-        name: 'Accommodation',
-        path: ROUTES.rooming,
-        iconName: 'Building',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.VIEWER]
-      },
-      {
-        name: 'Event Execution',
-        path: '#',
-        iconName: 'Activity',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
       }
     ]
   },
@@ -107,7 +113,7 @@ export const navigationGroups: NavigationGroup[] = [
       {
         name: 'Invoices',
         path: ROUTES.invoices,
-        iconName: 'FileInvoice',
+        iconName: 'FileText',
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.FINANCE]
       },
       {
@@ -186,14 +192,25 @@ export function getNavigationGroupsForRole(role: AppRole): NavigationGroup[] {
 
   // Filter groups and submenus based on role permissions
   return navigationGroups
+    .filter(group => {
+      // First check if the role has access to this group
+      if (!group.roles.includes(role)) {
+        return false;
+      }
+      
+      // For groups with submenus, ensure at least one submenu is visible
+      if (group.submenus.length > 0) {
+        const visibleSubmenus = group.submenus.filter(submenu => submenu.roles.includes(role));
+        return visibleSubmenus.length > 0;
+      }
+      
+      // For standalone groups (no submenus), include them
+      return true;
+    })
     .map(group => ({
       ...group,
       submenus: group.submenus.filter(submenu => submenu.roles.includes(role))
-    }))
-    .filter(group => {
-      // Keep groups that have visible submenus OR are standalone (like Dashboard)
-      return group.roles.includes(role) && (group.submenus.length > 0 || group.submenus.length === 0);
-    });
+    }));
 }
 
 export function hasAccessToNavigationGroup(role: AppRole, groupId: string): boolean {

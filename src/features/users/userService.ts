@@ -31,6 +31,7 @@ type RoleRecord = {
 
 interface DbUserWithRole {
   id: string;
+  auth_user_id: string; // ✅ UUID linking to auth.users.id
   email: string;
   employee_name: string;
   role_id?: string | null;
@@ -148,34 +149,74 @@ export async function getUserById(id: string): Promise<AppUser> {
 
 /**
  * Create a new user
+ * 
+ * SECURITY: User creation is handled by a secure Supabase Edge Function
+ * that has access to the service role key (server-side only).
+ * 
+ * Flow:
+ * 1. Frontend calls this function
+ * 2. This function calls Edge Function with user's auth token
+ * 3. Edge Function verifies admin permissions
+ * 4. Edge Function creates auth user with service role key
+ * 5. Edge Function creates public.users record
+ * 6. Returns success/failure to frontend
  */
 export async function createUser(input: AppUserCreateInput): Promise<AppUser> {
   try {
+    // Validation
     if (input.role === 'SALES_HEAD' && !input.division_id) {
       throw new Error('Division is required for Sales Head users.');
     }
 
-    const roleRecord = await getRoleRecord(input.role);
-
-    const { data, error } = await supabase
-      .from<DbUserWithRole>('users')
-      .insert([
-        {
-          email: input.email,
-          employee_name: input.employee_name,
-          role_id: roleRecord.id,
-          division_id: input.division_id || null,
-          status: input.status || 'ACTIVE',
-        },
-      ])
-      .select(USER_SELECT)
-      .single();
+    // Call Edge Function (supabase.functions.invoke automatically sends auth token)
+    const { data, error } = await supabase.functions.invoke('hyper-processor', {
+      body: {
+        email: input.email,
+        employee_name: input.employee_name,
+        password: input.password,
+        role: input.role,
+        division_id: input.division_id || null,
+        status: input.status || 'ACTIVE',
+      }
+    });
 
     if (error) {
-      throw new Error(error.message);
+      console.error('Edge function error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw new Error(error.message || 'Failed to create user');
     }
 
-    return mapDbUserToAppUser(data as DbUserWithRole);
+    console.log('Edge Function raw response:', data);
+
+    if (!data || !data.success) {
+      const errorMsg = data?.error || 'Failed to create user';
+      console.error('Edge function returned error:', errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    console.log('✅ User created successfully via Edge Function:', {
+      authUserId: data.user.auth_user_id,
+      publicUserId: data.user.id,
+      email: data.user.email,
+      role: data.user.role
+    });
+
+    // Map the response to AppUser format
+    return {
+      id: data.user.id,
+      email: data.user.email,
+      employee_name: data.user.employee_name,
+      role: data.user.role as AppRole,
+      role_id: null,
+      roles: null,
+      division_id: input.division_id || null,
+      division_name: data.user.division_name || null,
+      status: data.user.status,
+      created_at: data.user.created_at,
+      updated_at: null,
+      created_by: null,
+      updated_by: null
+    };
   } catch (error) {
     console.error('Error creating user:', error);
     throw error;

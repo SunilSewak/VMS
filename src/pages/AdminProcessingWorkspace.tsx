@@ -31,6 +31,8 @@ import { WorkflowStatusTracker, mapBookingStatusToWorkflowStage } from '../compo
 import { OperationalKpiCards, deriveKpisFromBooking } from '../components/OperationalKpiCards';
 import { OwnershipAuditPanel } from '../components/OwnershipAuditPanel';
 import { NextActionCard } from '../components/NextActionCard';
+import { WorkflowControlPanel } from '../components/WorkflowControlPanel';
+import { getWorkflowStage } from '../features/workflows/workflowStages';
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
@@ -273,9 +275,17 @@ export function AdminProcessingWorkspace() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          TAB CONTENT
+          TAB CONTENT LAYOUT (Two-Column with Workflow Control Panel)
       ═══════════════════════════════════════════════════════════════════ */}
-      
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 380px',
+        gap: 'var(--space-4)',
+        alignItems: 'start',
+      }}>
+        {/* LEFT COLUMN: Tab Content */}
+        <div style={{ minWidth: 0 }}>
+          
       {/* ─────────────────────────────────────────────────────────────────
           TAB 1: OVERVIEW - OPERATIONAL DASHBOARD
       ───────────────────────────────────────────────────────────────── */}
@@ -659,6 +669,19 @@ export function AdminProcessingWorkspace() {
           </p>
         </div>
       )}
+        </div>
+        
+        {/* RIGHT COLUMN: Workflow Control Panel */}
+        <WorkflowControlPanel
+          currentStage={getWorkflowStage(
+            booking.status,
+            !!booking.invoice_status && booking.invoice_status !== 'PENDING',
+            booking.invoice_status === 'VERIFIED' || booking.invoice_status === 'APPROVED',
+            booking.payment_status === 'COMPLETED'
+          )}
+          onNavigate={(tabId) => setActiveTab(tabId as TabId)}
+        />
+      </div>
     </div>
   );
 }

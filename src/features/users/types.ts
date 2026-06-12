@@ -25,6 +25,7 @@ export interface AppUser {
 export interface AppUserCreateInput {
   email: string;
   employee_name: string;
+  password: string;
   role: AppRole;
   division_id?: string | null;
   status?: UserStatus;
