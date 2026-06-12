@@ -14,7 +14,9 @@ import { VenueDetails } from './pages/VenueDetails';
 import { MyShortlists } from './pages/MyShortlists';
 import { Bookings } from './pages/Bookings';
 import { BookingCreate } from './pages/BookingCreate';
-import { BookingDetails } from './pages/BookingDetails';
+import { BookingDetails} from './pages/BookingDetails';
+import { BookingDetailsRouter } from './pages/BookingDetailsRouter';
+import { AdminProcessingWorkspace } from './pages/AdminProcessingWorkspace';
 import { BookingReview } from './pages/BookingReview';
 import { BookingWorkspace } from './pages/BookingWorkspace';
 import { Invoices } from './pages/Invoices';
@@ -167,7 +169,7 @@ export default function App() {
               <Route path={ROUTES.bookingDetails} element={
                 <ProtectedRoute>
                   <AppLayout>
-                    <BookingDetails />
+                    <BookingDetailsRouter />
                   </AppLayout>
                 </ProtectedRoute>
               } />
