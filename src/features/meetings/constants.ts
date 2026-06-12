@@ -1,4 +1,14 @@
 import { MeetingStatus } from './types';
+import type { ParticipantMix } from '../rooms/types';
+
+export const INITIAL_PARTICIPANT_MIX: ParticipantMix = {
+  so: 0,
+  dm: 0,
+  rsm: 0,
+  ch: 0,
+  ibh: 0,
+  others: 0,
+};
 
 export const MEETING_STATUSES: Record<MeetingStatus, { label: string; badgeType: 'info' | 'warning' | 'success' | 'danger' }> = {
   DRAFT: { label: 'Draft', badgeType: 'info' },
@@ -41,5 +51,7 @@ export const DEFAULT_FORM_VALUES = {
   seating_style: 'Cluster',
   av_requirements: '',
   food_requirements: '',
-  transfer_requirements: ''
+  transfer_requirements: '',
+  // Participant Mix (new architecture)
+  participant_mix: INITIAL_PARTICIPANT_MIX
 };

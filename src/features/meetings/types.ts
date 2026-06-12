@@ -24,8 +24,16 @@ export interface MeetingRequest {
   end_date: string;
   expected_pax: number;
   guaranteed_pax: number;
+  // Participant Mix (NEW - Step 4)
+  participant_so: number;
+  participant_dm: number;
+  participant_rsm: number;
+  participant_ch: number;
+  participant_ibh: number;
+  participant_others: number;
+  // Room requirements
   residential_flag: boolean;
-  rooms_required: number;
+  rooms_required: number; // Deprecated - auto-calculated from participant mix
   halls_required: number;
   seating_style: string;
   av_requirements: string;

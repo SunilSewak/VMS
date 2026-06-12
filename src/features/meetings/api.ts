@@ -48,6 +48,8 @@ export async function getMeetingRequests(userId: string, role: AppRole): Promise
       residential_flag, rooms_required, halls_required, seating_style,
       av_requirements, food_requirements, transfer_requirements, status,
       created_at, created_by,
+      participant_so, participant_dm, participant_rsm,
+      participant_ch, participant_ibh, participant_others,
       divisions ( division_name ),
       meeting_types ( meeting_type_name ),
       cities ( city_name )

@@ -6,8 +6,10 @@ import { createMeetingRequest, updateMeetingRequest } from '../features/meetings
 import { useRequestShortlists } from '../features/venues/hooks';
 import { ROUTES } from '../routes/routeRegistry';
 import { ROLES } from '../auth/permissions';
-import { MeetingRequest } from '../features/meetings/types';
 import { Search, AlertCircle } from 'lucide-react';
+import { ParticipantMixGrid } from '../components/ParticipantMixGrid';
+import { createEmptyParticipantMix, calculateTotalPlannedPax, validateGuaranteedPax } from '../features/rooms/roomCalculator';
+import type { ParticipantMix } from '../features/rooms/types';
 
 function Panel({ children }: { children: React.ReactNode }) {
   return (
@@ -34,6 +36,13 @@ const initialFormState = {
   av_requirements: '',
   food_requirements: '',
   transfer_requirements: '',
+  // Participant Mix fields
+  participant_so: 0,
+  participant_dm: 0,
+  participant_rsm: 0,
+  participant_ch: 0,
+  participant_ibh: 0,
+  participant_others: 0,
 };
 
 export function MeetingRequestForm() {
@@ -46,11 +55,16 @@ export function MeetingRequestForm() {
   const { divisions, cities, meetingTypes, loading: mastersLoading, error: mastersError } = useMeetingMasters();
 
   const [form, setForm] = useState<typeof initialFormState>(initialFormState);
+  const [participantMix, setParticipantMix] = useState<ParticipantMix>(createEmptyParticipantMix());
+  const [guaranteedPaxError, setGuaranteedPaxError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isAdmin = !!(user && (user.role === ROLES.ADMIN || user.role === ROLES.SUPER_ADMIN));
   const canEdit = !isAdmin && (!request || request.status === 'DRAFT');
+
+  // Calculate total planned pax from participant mix
+  const totalPlannedPax = calculateTotalPlannedPax(participantMix);
 
   useEffect(() => {
     if (!request) {
@@ -58,6 +72,7 @@ export function MeetingRequestForm() {
         ...current,
         division_id: user?.division_id ?? current.division_id,
       }));
+      setParticipantMix(createEmptyParticipantMix());
       return;
     }
 
@@ -78,14 +93,73 @@ export function MeetingRequestForm() {
       av_requirements: request.av_requirements || '',
       food_requirements: request.food_requirements || '',
       transfer_requirements: request.transfer_requirements || '',
+      // Load participant mix from request
+      participant_so: request.participant_so ?? 0,
+      participant_dm: request.participant_dm ?? 0,
+      participant_rsm: request.participant_rsm ?? 0,
+      participant_ch: request.participant_ch ?? 0,
+      participant_ibh: request.participant_ibh ?? 0,
+      participant_others: request.participant_others ?? 0,
+    });
+    
+    // Set participant mix state
+    setParticipantMix({
+      so: request.participant_so ?? 0,
+      dm: request.participant_dm ?? 0,
+      rsm: request.participant_rsm ?? 0,
+      ch: request.participant_ch ?? 0,
+      ibh: request.participant_ibh ?? 0,
+      others: request.participant_others ?? 0,
     });
   }, [request, user?.division_id]);
 
   const handleChange = (field: keyof typeof initialFormState, value: string | number | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    
+    // Clear guaranteed pax error when user changes the value
+    if (field === 'guaranteed_pax') {
+      setGuaranteedPaxError(null);
+    }
+  };
+
+  const handleParticipantMixChange = (mix: ParticipantMix) => {
+    setParticipantMix(mix);
+    // Update form state with participant mix values
+    setForm((prev) => ({
+      ...prev,
+      participant_so: mix.so,
+      participant_dm: mix.dm,
+      participant_rsm: mix.rsm,
+      participant_ch: mix.ch,
+      participant_ibh: mix.ibh,
+      participant_others: mix.others,
+    }));
+  };
+
+  const validateForm = (): boolean => {
+    // Validate guaranteed pax
+    const validation = validateGuaranteedPax(form.guaranteed_pax, totalPlannedPax);
+    if (!validation.valid) {
+      setGuaranteedPaxError(validation.error || null);
+      return false;
+    }
+    
+    // Check if participant mix is provided
+    if (totalPlannedPax === 0) {
+      setError('At least one participant is required');
+      return false;
+    }
+    
+    setGuaranteedPaxError(null);
+    setError(null);
+    return true;
   };
 
   const handleSaveDraft = async () => {
+    if (!validateForm()) {
+      return;
+    }
+    
     setSaving(true);
     setError(null);
     try {
@@ -105,6 +179,10 @@ export function MeetingRequestForm() {
   };
 
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+    
     setSaving(true);
     setError(null);
     try {
@@ -288,28 +366,55 @@ export function MeetingRequestForm() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600 }}>Expected Pax</label>
+              {/* Participant Mix Section - Step 4 New Architecture */}
+              <div style={{
+                background: 'var(--background)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 'var(--space-4)',
+                border: '2px solid var(--border)',
+              }}>
+                <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>
+                  Attendance Planning
+                </h3>
+                
+                <ParticipantMixGrid 
+                  value={participantMix}
+                  onChange={handleParticipantMixChange}
+                  disabled={!canEdit}
+                />
+
+                {/* Guaranteed Pax */}
+                <div style={{ marginTop: 'var(--space-4)' }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
+                    Guaranteed Pax
+                  </label>
+                  <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>
+                    Commercial commitment for billing purposes. Must not exceed Total Planned Pax ({totalPlannedPax}).
+                  </p>
                   <input
                     type="number"
                     min={0}
-                    value={form.expected_pax}
-                    onChange={(e) => handleChange('expected_pax', Number(e.target.value))}
-                    disabled={!canEdit}
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600 }}>Guaranteed Pax</label>
-                  <input
-                    type="number"
-                    min={0}
+                    max={totalPlannedPax}
                     value={form.guaranteed_pax}
                     onChange={(e) => handleChange('guaranteed_pax', Number(e.target.value))}
                     disabled={!canEdit}
                     className="input"
+                    placeholder="Enter guaranteed participant count"
+                    style={{ maxWidth: '300px' }}
                   />
+                  {guaranteedPaxError && (
+                    <div style={{
+                      marginTop: 'var(--space-2)',
+                      padding: 'var(--space-2)',
+                      background: '#fef2f2',
+                      border: '1px solid #fca5a5',
+                      borderRadius: 'var(--radius-sm)',
+                      color: '#dc2626',
+                      fontSize: 'var(--font-sm)',
+                    }}>
+                      ⚠ {guaranteedPaxError}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -340,19 +445,7 @@ export function MeetingRequestForm() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600 }}>Rooms Required</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.rooms_required}
-                    onChange={(e) => handleChange('rooms_required', Number(e.target.value))}
-                    disabled={!canEdit}
-                    className="input"
-                    placeholder="Number of rooms"
-                  />
-                </div>
+              <div style={{ display: 'grid', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600 }}>Seating Style</label>
                   <input
