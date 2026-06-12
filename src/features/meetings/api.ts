@@ -48,8 +48,6 @@ export async function getMeetingRequests(userId: string, role: AppRole): Promise
       residential_flag, rooms_required, halls_required, seating_style,
       av_requirements, food_requirements, transfer_requirements, status,
       created_at, created_by,
-      participant_so, participant_dm, participant_rsm,
-      participant_ch, participant_ibh, participant_others,
       divisions ( division_name ),
       meeting_types ( meeting_type_name ),
       cities ( city_name )
@@ -64,7 +62,19 @@ export async function getMeetingRequests(userId: string, role: AppRole): Promise
   const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
-  return data || [];
+  
+  // Add default participant values for backward compatibility
+  const requests = (data || []).map((req: any) => ({
+    ...req,
+    participant_so: req.participant_so || 0,
+    participant_dm: req.participant_dm || 0,
+    participant_rsm: req.participant_rsm || 0,
+    participant_ch: req.participant_ch || 0,
+    participant_ibh: req.participant_ibh || 0,
+    participant_others: req.participant_others || 0,
+  }));
+  
+  return requests;
 }
 
 // Fetch a single meeting request by ID
