@@ -34,8 +34,22 @@ export async function getBookingById(id: string): Promise<Booking> {
   const { data, error } = await (supabase as any)
     .from('bookings')
     .select(`*,
-      meeting_requests ( request_number, meeting_name, status ),
-      hotels ( hotel_name, city_id ),
+      meeting_requests ( 
+        request_number, 
+        meeting_name, 
+        status,
+        start_date,
+        end_date,
+        guaranteed_pax,
+        residential_flag,
+        rooms_required,
+        halls_required,
+        created_by,
+        divisions ( division_name ),
+        meeting_types ( meeting_type_name ),
+        cities ( city_name )
+      ),
+      hotels ( hotel_name, city_id, city_name ),
       halls ( hall_name )
     `)
     .eq('id', id)

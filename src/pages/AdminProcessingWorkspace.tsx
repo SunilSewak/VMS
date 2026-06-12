@@ -19,7 +19,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, FileText, MapPin, DollarSign, 
   TrendingDown, CheckCircle, Receipt, CreditCard,
-  CalendarDays, ClipboardList
+  CalendarDays, ClipboardList, Building2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getBookingById } from '../features/bookings/bookingService';
@@ -27,6 +27,10 @@ import type { Booking } from '../features/bookings/types';
 import { ROUTES } from '../routes/routeRegistry';
 import { ROLES } from '../auth/permissions';
 import { EmptyState } from '../components/EmptyState';
+import { WorkflowStatusTracker, mapBookingStatusToWorkflowStage } from '../components/WorkflowStatusTracker';
+import { OperationalKpiCards, deriveKpisFromBooking } from '../components/OperationalKpiCards';
+import { OwnershipAuditPanel } from '../components/OwnershipAuditPanel';
+import { NextActionCard } from '../components/NextActionCard';
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
@@ -273,11 +277,139 @@ export function AdminProcessingWorkspace() {
       ═══════════════════════════════════════════════════════════════════ */}
       
       {/* ─────────────────────────────────────────────────────────────────
-          TAB 1: OVERVIEW
+          TAB 1: OVERVIEW - OPERATIONAL DASHBOARD
       ───────────────────────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-          {/* Event Summary */}
+        <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+          {/* Section 1: Event Summary Card */}
+          <section style={{
+            padding: 'var(--space-5)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--surface)',
+            border: '2px solid var(--border)',
+          }}>
+            <h3 style={{ 
+              fontSize: 'var(--font-xl)', 
+              fontWeight: 700, 
+              marginBottom: 'var(--space-4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+            }}>
+              <CalendarDays size={24} style={{ color: 'var(--primary)' }} />
+              Event Summary
+            </h3>
+            
+            {/* Event Information */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 'var(--space-4)',
+              marginBottom: 'var(--space-4)',
+            }}>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  MEETING NAME
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
+                  {booking.meeting_requests?.meeting_name || '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  DIVISION
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
+                  {booking.meeting_requests?.divisions?.division_name || '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  MEETING TYPE
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
+                  {booking.meeting_requests?.meeting_types?.meeting_type_name || '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  CITY
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
+                  {booking.meeting_requests?.cities?.city_name || booking.hotels?.city_name || '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  START DATE
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
+                  {formatDate(booking.meeting_requests?.start_date).split(',')[0]}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  END DATE
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
+                  {formatDate(booking.meeting_requests?.end_date).split(',')[0]}
+                </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: '2px', background: 'var(--border)', margin: 'var(--space-4) 0' }} />
+
+            {/* Attendance & Requirements */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: 'var(--space-4)',
+            }}>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  EXPECTED PAX
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 'var(--font-xl)' }}>
+                  {booking.expected_pax || '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  GUARANTEED PAX
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 'var(--font-xl)', color: 'var(--primary)' }}>
+                  {booking.meeting_requests?.guaranteed_pax || '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  ACCOMMODATION
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
+                  {booking.meeting_requests?.residential_flag ? 'Residential' : 'Non-Residential'}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  ROOMS REQUIRED
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
+                  {booking.rooms_booked || booking.meeting_requests?.rooms_required || '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)', fontWeight: 600 }}>
+                  HALLS REQUIRED
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
+                  {booking.meeting_requests?.halls_required || '—'}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 2: Workflow Status Tracker */}
           <section style={{
             padding: 'var(--space-5)',
             borderRadius: 'var(--radius-lg)',
@@ -288,197 +420,117 @@ export function AdminProcessingWorkspace() {
               fontSize: 'var(--font-lg)', 
               fontWeight: 700, 
               marginBottom: 'var(--space-4)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-2)',
             }}>
-              <CalendarDays size={20} style={{ color: 'var(--primary)' }} />
-              Event Information
+              Workflow Progress
             </h3>
+            <WorkflowStatusTracker 
+              currentStage={mapBookingStatusToWorkflowStage(
+                booking.status,
+                false, // hasQuotations - TODO: Add from quotations table
+                false, // isCommercialApproved - TODO: Add from commercials table
+                !!booking.invoice_status && booking.invoice_status !== 'PENDING',
+                booking.invoice_status === 'VERIFIED' || booking.invoice_status === 'APPROVED',
+                booking.payment_status === 'COMPLETED'
+              )}
+            />
+          </section>
+
+          {/* Section 3: Operational KPI Cards */}
+          <OperationalKpiCards {...deriveKpisFromBooking(booking)} />
+
+          {/* Section 4 & 5: Two Column Layout */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 'var(--space-4)',
+          }}>
+            {/* Section 4: Ownership & Audit Panel */}
+            <OwnershipAuditPanel
+              requestOwner={booking.meeting_requests?.created_by ? {
+                name: booking.meeting_requests.created_by,
+                division: booking.meeting_requests.divisions?.division_name || 'Unknown Division',
+              } : undefined}
+              processingOwner={booking.confirmed_by ? {
+                name: booking.confirmed_by,
+              } : undefined}
+              audit={{
+                createdBy: booking.created_by || undefined,
+                createdAt: booking.created_at,
+                updatedBy: booking.updated_by || undefined,
+                updatedAt: booking.updated_at || undefined,
+              }}
+            />
+
+            {/* Venue Info Card */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: 'var(--space-4)',
+              padding: 'var(--space-4)',
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-3)',
             }}>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)' }}>
-                  Meeting Name
+              <h4 style={{
+                fontSize: 'var(--font-md)',
+                fontWeight: 700,
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+              }}>
+                <Building2 size={18} style={{ color: 'var(--primary)' }} />
+                Venue Details
+              </h4>
+              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+                <div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: '4px', fontWeight: 600 }}>
+                    HOTEL
+                  </div>
+                  <div style={{ fontWeight: 600 }}>
+                    {booking.hotels?.hotel_name || '—'}
+                  </div>
                 </div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
-                  {booking.meeting_requests?.meeting_name || '—'}
+                <div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: '4px', fontWeight: 600 }}>
+                    HALL
+                  </div>
+                  <div style={{ fontWeight: 600 }}>
+                    {booking.halls?.hall_name || '—'}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)' }}>
-                  Request Number
+                <div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: '4px', fontWeight: 600 }}>
+                    CHECK-IN
+                  </div>
+                  <div style={{ fontWeight: 600 }}>
+                    {formatDate(booking.check_in_date)}
+                  </div>
                 </div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
-                  {booking.meeting_requests?.request_number || booking.meeting_request_id}
-                </div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)' }}>
-                  Division
-                </div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
-                  {booking.meeting_requests?.divisions?.division_name || '—'}
-                </div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)' }}>
-                  Meeting Type
-                </div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
-                  {booking.meeting_requests?.meeting_types?.meeting_type_name || '—'}
-                </div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)' }}>
-                  City
-                </div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
-                  {booking.meeting_requests?.cities?.city_name || booking.hotels?.city_name || '—'}
-                </div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: 'var(--space-1)' }}>
-                  Zone
-                </div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-md)' }}>
-                  {booking.meeting_requests?.zone || '—'}
+                <div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)', marginBottom: '4px', fontWeight: 600 }}>
+                    CHECK-OUT
+                  </div>
+                  <div style={{ fontWeight: 600 }}>
+                    {formatDate(booking.check_out_date)}
+                  </div>
                 </div>
               </div>
             </div>
-          </section>
-
-          {/* Venue and Dates */}
-          <div style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-            <section style={{
-              padding: 'var(--space-4)',
-              borderRadius: 'var(--radius-lg)',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-2)',
-                marginBottom: 'var(--space-3)',
-              }}>
-                <MapPin size={18} style={{ color: 'var(--primary)' }} />
-                <h4 style={{ margin: 0, fontSize: 'var(--font-md)', fontWeight: 600 }}>
-                  Venue Information
-                </h4>
-              </div>
-              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Hotel</div>
-                  <div style={{ fontWeight: 600 }}>{booking.hotels?.hotel_name || booking.hotel_id}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Hall</div>
-                  <div style={{ fontWeight: 600 }}>{booking.halls?.hall_name || booking.hall_id || '—'}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>City</div>
-                  <div style={{ fontWeight: 600 }}>{booking.hotels?.city_name || '—'}</div>
-                </div>
-              </div>
-            </section>
-
-            <section style={{
-              padding: 'var(--space-4)',
-              borderRadius: 'var(--radius-lg)',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-2)',
-                marginBottom: 'var(--space-3)',
-              }}>
-                <CalendarDays size={18} style={{ color: 'var(--primary)' }} />
-                <h4 style={{ margin: 0, fontSize: 'var(--font-md)', fontWeight: 600 }}>
-                  Booking Timeline
-                </h4>
-              </div>
-              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Check In</div>
-                  <div style={{ fontWeight: 600 }}>{formatDate(booking.check_in_date)}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Check Out</div>
-                  <div style={{ fontWeight: 600 }}>{formatDate(booking.check_out_date)}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Status</div>
-                  <div style={{ fontWeight: 600 }}>{booking.status.replace('_', ' ')}</div>
-                </div>
-              </div>
-            </section>
           </div>
 
-          {/* Participant Information */}
-          <section style={{
-            padding: 'var(--space-4)',
-            borderRadius: 'var(--radius-lg)',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-          }}>
-            <h4 style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--font-md)', fontWeight: 600 }}>
-              Participant Details
-            </h4>
-            <div style={{ display: 'grid', gap: 'var(--space-3)', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Expected Pax</div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-lg)' }}>{booking.expected_pax || '—'}</div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Guaranteed Pax</div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-lg)', color: 'var(--primary)' }}>
-                  {booking.meeting_requests?.guaranteed_pax || '—'}
-                </div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Rooms Booked</div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-lg)' }}>{booking.rooms_booked || '—'}</div>
-              </div>
-            </div>
-          </section>
-
-          {/* Audit Trail */}
-          <section style={{
-            padding: 'var(--space-4)',
-            borderRadius: 'var(--radius-lg)',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-          }}>
-            <h4 style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--font-md)', fontWeight: 600 }}>
-              Audit Trail
-            </h4>
-            <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Created</div>
-                <div style={{ fontWeight: 600 }}>
-                  {formatDate(booking.created_at)}{booking.created_by ? ` • ${booking.created_by}` : ''}
-                </div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Last Updated</div>
-                <div style={{ fontWeight: 600 }}>
-                  {formatDate(booking.updated_at)}{booking.updated_by ? ` • ${booking.updated_by}` : ''}
-                </div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Confirmed</div>
-                <div style={{ fontWeight: 600 }}>
-                  {formatDate(booking.confirmed_at)}{booking.confirmed_by ? ` • ${booking.confirmed_by}` : ''}
-                </div>
-              </div>
-            </div>
-          </section>
+          {/* Section 5: Next Action Card */}
+          <NextActionCard 
+            currentStage={mapBookingStatusToWorkflowStage(
+              booking.status,
+              false,
+              false,
+              !!booking.invoice_status && booking.invoice_status !== 'PENDING',
+              booking.invoice_status === 'VERIFIED' || booking.invoice_status === 'APPROVED',
+              booking.payment_status === 'COMPLETED'
+            )}
+            bookingStatus={booking.status}
+          />
         </div>
       )}
 

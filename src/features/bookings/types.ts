@@ -38,7 +38,21 @@ export interface Booking {
   payment_completed_at?: string | null;
   
   // Relations
-  meeting_requests?: { request_number: string; meeting_name: string; status: string } | null;
+  meeting_requests?: { 
+    request_number: string; 
+    meeting_name: string; 
+    status: string;
+    start_date?: string;
+    end_date?: string;
+    guaranteed_pax?: number;
+    residential_flag?: boolean;
+    rooms_required?: number;
+    halls_required?: number;
+    created_by?: string;
+    divisions?: { division_name: string } | null;
+    meeting_types?: { meeting_type_name: string } | null;
+    cities?: { city_name: string } | null;
+  } | null;
   hotels?: { hotel_name: string; city_id?: string; city_name?: string } | null;
   halls?: { hall_name: string } | null;
 }
