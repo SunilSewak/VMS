@@ -170,28 +170,6 @@ export function MeetingRequestForm() {
       foodRequirements: parseMultiSelectValue(request.food_requirements || ''),
       preferredHotels: parseMultiSelectValue(request.preferred_hotels || ''),
     });
-      preferred_locality: request.preferred_locality || '',
-      venue_preference_notes: request.venue_preference_notes || '',
-      additional_notes: request.additional_notes || '',
-    });
-    
-    // Set participant mix state
-    setParticipantMix({
-      so: request.participant_so ?? 0,
-      dm: request.participant_dm ?? 0,
-      rsm: request.participant_rsm ?? 0,
-      ch: request.participant_ch ?? 0,
-      ibh: request.participant_ibh ?? 0,
-      others: request.participant_others ?? 0,
-    });
-
-    // Parse multi-select fields
-    setMultiSelect({
-      seatingStyles: parseMultiSelectValue(request.seating_style || ''),
-      avRequirements: parseMultiSelectValue(request.av_requirements || ''),
-      foodRequirements: parseMultiSelectValue(request.food_requirements || ''),
-      preferredHotels: parseMultiSelectValue(request.preferred_hotels || ''),
-    });
   }, [request, user?.division_id]);
 
   // Auto-generate meeting name when key fields change
