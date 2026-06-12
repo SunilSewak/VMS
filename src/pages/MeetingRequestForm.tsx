@@ -152,6 +152,28 @@ export function MeetingRequestForm() {
       venue_preference_notes: request.venue_preference_notes || '',
       additional_notes: request.additional_notes || '',
     });
+
+    // Parse participant mix from request
+    setParticipantMix({
+      so: request.participant_so ?? 0,
+      dm: request.participant_dm ?? 0,
+      rsm: request.participant_rsm ?? 0,
+      ch: request.participant_ch ?? 0,
+      ibh: request.participant_ibh ?? 0,
+      others: request.participant_others ?? 0,
+    });
+
+    // Parse multi-select fields from comma-separated strings
+    setMultiSelect({
+      seatingStyles: parseMultiSelectValue(request.seating_style || ''),
+      avRequirements: parseMultiSelectValue(request.av_requirements || ''),
+      foodRequirements: parseMultiSelectValue(request.food_requirements || ''),
+      preferredHotels: parseMultiSelectValue(request.preferred_hotels || ''),
+    });
+      preferred_locality: request.preferred_locality || '',
+      venue_preference_notes: request.venue_preference_notes || '',
+      additional_notes: request.additional_notes || '',
+    });
     
     // Set participant mix state
     setParticipantMix({
@@ -460,13 +482,17 @@ export function MeetingRequestForm() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600 }}>Zone</label>
-                  <input
+                  <select
                     value={form.zone}
                     onChange={(e) => handleChange('zone', e.target.value)}
                     disabled={!canEdit}
                     className="input"
-                    placeholder="Enter zone or area"
-                  />
+                  >
+                    <option value="">Select Zone</option>
+                    {ZONE_OPTIONS.map((zone) => (
+                      <option key={zone.value} value={zone.value}>{zone.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -547,16 +573,19 @@ export function MeetingRequestForm() {
 
               <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600 }}>Accommodation Requirement</label>
-                  <select
-                    value={form.residential_flag ? 'yes' : 'no'}
-                    onChange={(e) => handleChange('residential_flag', e.target.value === 'yes')}
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
+                    Accommodation Requirement
+                  </label>
+                  <RadioGroup
+                    options={[
+                      { value: 'yes', label: 'Residential' },
+                      { value: 'no', label: 'Non-Residential' },
+                    ]}
+                    selectedValue={form.residential_flag ? 'yes' : 'no'}
+                    onChange={(value) => handleChange('residential_flag', value === 'yes')}
                     disabled={!canEdit}
-                    className="input"
-                  >
-                    <option value="no">No</option>
-                    <option value="yes">Yes</option>
-                  </select>
+                    inline={true}
+                  />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600 }}>Hall Requirement</label>
@@ -572,51 +601,71 @@ export function MeetingRequestForm() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600 }}>Seating Style</label>
-                  <input
-                    value={form.seating_style}
-                    onChange={(e) => handleChange('seating_style', e.target.value)}
+              <FormSection 
+                title="Seating & Setup Requirements"
+                description="Select seating arrangements needed for the meeting"
+                icon={<Settings size={20} />}
+              >
+                <div style={{ marginBottom: 'var(--space-4)' }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
+                    Seating Style
+                  </label>
+                  <MultiSelectCheckbox
+                    options={SEATING_STYLES}
+                    selectedValues={multiSelect.seatingStyles}
+                    onChange={(values) => handleMultiSelectChange('seatingStyles', values)}
                     disabled={!canEdit}
-                    className="input"
-                    placeholder="e.g. Theatre, Classroom"
+                    columns={3}
                   />
                 </div>
-              </div>
+              </FormSection>
+
+              <FormSection 
+                title="AV & Technical Requirements"
+                description="Select audio-visual equipment needed"
+                icon={<Settings size={20} />}
+              >
+                <div style={{ marginBottom: 'var(--space-4)' }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
+                    AV Requirements
+                  </label>
+                  <MultiSelectCheckbox
+                    options={AV_REQUIREMENTS}
+                    selectedValues={multiSelect.avRequirements}
+                    onChange={(values) => handleMultiSelectChange('avRequirements', values)}
+                    disabled={!canEdit}
+                    columns={2}
+                  />
+                </div>
+              </FormSection>
+
+              <FormSection 
+                title="Food & Beverage Requirements"
+                description="Select meal services needed"
+                icon={<Utensils size={20} />}
+              >
+                <div style={{ marginBottom: 'var(--space-4)' }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
+                    Food Requirements
+                  </label>
+                  <MultiSelectCheckbox
+                    options={FOOD_REQUIREMENTS}
+                    selectedValues={multiSelect.foodRequirements}
+                    onChange={(values) => handleMultiSelectChange('foodRequirements', values)}
+                    disabled={!canEdit}
+                    columns={3}
+                  />
+                </div>
+              </FormSection>
 
               <div style={{ display: 'grid', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600 }}>AV Requirements</label>
-                  <textarea
-                    value={form.av_requirements}
-                    onChange={(e) => handleChange('av_requirements', e.target.value)}
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--space-2)' }}>Transport Requirements</label>
+                  <RadioGroup
+                    options={TRANSFER_OPTIONS}
+                    selectedValue={form.transfer_requirements}
+                    onChange={(value) => handleChange('transfer_requirements', value)}
                     disabled={!canEdit}
-                    className="input"
-                    rows={3}
-                    placeholder="Describe audio / visual needs"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600 }}>Food Requirements</label>
-                  <textarea
-                    value={form.food_requirements}
-                    onChange={(e) => handleChange('food_requirements', e.target.value)}
-                    disabled={!canEdit}
-                    className="input"
-                    rows={3}
-                    placeholder="Describe catering needs"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600 }}>Transport Requirements</label>
-                  <textarea
-                    value={form.transfer_requirements}
-                    onChange={(e) => handleChange('transfer_requirements', e.target.value)}
-                    disabled={!canEdit}
-                    className="input"
-                    rows={3}
-                    placeholder="Describe transport support needed"
                   />
                 </div>
               </div>
