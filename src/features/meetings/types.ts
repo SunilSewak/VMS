@@ -39,6 +39,11 @@ export interface MeetingRequest {
   av_requirements: string;
   food_requirements: string;
   transfer_requirements: string;
+  // Step 5: Venue Preferences (Optional)
+  preferred_hotels?: string | null; // Comma-separated hotel IDs
+  preferred_locality?: string | null;
+  venue_preference_notes?: string | null;
+  additional_notes?: string | null;
   status: MeetingStatus;
   created_at: string;
   created_by?: string;
