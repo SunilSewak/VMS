@@ -59,7 +59,9 @@ export type HotelCategory = '5_STAR' | '4_STAR' | '3_STAR' | 'BUSINESS' | 'BUDGE
 export type HallType = 'BALLROOM' | 'CONFERENCE' | 'BANQUET' | 'BOARDROOM' | 'THEATRE' | 'OTHER';
 export type IndoorOutdoor = 'INDOOR' | 'OUTDOOR' | 'BOTH';
 export type RoomType = 'SINGLE' | 'DOUBLE' | 'SUITE' | 'DELUXE' | 'PRESIDENTIAL';
-export type OccupancyRuleType = 'MIN_OCCUPANCY' | 'MAX_OCCUPANCY' | 'STANDARD';
+// PHASE 4: Occupancy designations - one matrix per hotel with 4 designation groups
+export type OccupancyRuleType = 'SO' | 'DM' | 'RSM' | 'Senior Manager';
+// Legacy: MIN_OCCUPANCY | 'MAX_OCCUPANCY' | 'STANDARD' (deprecated, kept for compatibility)
 
 export const HOTEL_CATEGORY_OPTIONS: { value: HotelCategory; label: string }[] = [
   { value: '5_STAR', label: '5 Star' },
@@ -124,15 +126,15 @@ export interface Hall {
   hotel_id: string;
   hall_name: string;
   hall_type: HallType;
-  capacity?: number | null;
   floor?: string | null;
-  area_sqft?: number | null;
-  theatre_capacity?: number | null;
-  classroom_capacity?: number | null;
-  u_shape_capacity?: number | null;
-  cluster_capacity?: number | null;
-  boardroom_capacity?: number | null;
-  round_table_capacity?: number | null;
+  // PHASE 5: Seating capacities - multiple formats for different meeting types
+  theatre_capacity?: number | null;     // Rows facing stage
+  classroom_capacity?: number | null;   // Classroom-style with tables
+  u_shape_capacity?: number | null;     // U-shape configuration
+  cluster_capacity?: number | null;     // Multiple cluster groups
+  boardroom_capacity?: number | null;   // Boardroom table
+  round_table_capacity?: number | null; // Round tables
+  area_sqft?: number | null;            // Total area in square feet
   indoor_outdoor: IndoorOutdoor;
   status: VenueStatus;
   created_at: string;
@@ -244,15 +246,15 @@ export interface HallCreateInput {
   hotel_id: string;
   hall_name: string;
   hall_type: HallType;
-  capacity?: number;
   floor?: string;
-  area_sqft?: number;
+  // PHASE 5: Seating capacities
   theatre_capacity?: number;
   classroom_capacity?: number;
   u_shape_capacity?: number;
   cluster_capacity?: number;
   boardroom_capacity?: number;
   round_table_capacity?: number;
+  area_sqft?: number;
   indoor_outdoor?: IndoorOutdoor;
   status?: VenueStatus;
 }
@@ -260,15 +262,15 @@ export interface HallCreateInput {
 export interface HallUpdateInput {
   hall_name?: string;
   hall_type?: HallType;
-  capacity?: number | null;
   floor?: string | null;
-  area_sqft?: number | null;
+  // PHASE 5: Seating capacities
   theatre_capacity?: number | null;
   classroom_capacity?: number | null;
   u_shape_capacity?: number | null;
   cluster_capacity?: number | null;
   boardroom_capacity?: number | null;
   round_table_capacity?: number | null;
+  area_sqft?: number | null;
   indoor_outdoor?: IndoorOutdoor;
   status?: VenueStatus;
 }

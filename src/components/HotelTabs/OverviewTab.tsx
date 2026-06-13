@@ -4,7 +4,31 @@ interface OverviewTabProps {
   hotel: HotelWithRelations;
 }
 
+// PHASE 4: Map occupancy numbers to labels
+function getOccupancyLabel(num?: number | null): string {
+  const mapping: Record<number, string> = {
+    1: 'Single',
+    2: 'Double',
+    3: 'Triple',
+    4: 'Quad',
+  };
+  return num ? mapping[num] || 'Unknown' : 'Not configured';
+}
+
+// PHASE 4: Get occupancy rule value for a designation
+function getOccupancyForDesignation(hotel: HotelWithRelations, designationCode: string): string {
+  const rule = hotel.occupancy_rules?.find(r => r.rule_type === designationCode);
+  return getOccupancyLabel(rule?.min_occupancy);
+}
+
 export function OverviewTab({ hotel }: OverviewTabProps) {
+  const designations = [
+    { code: 'SO', label: 'Sales Officer' },
+    { code: 'DM', label: 'District Manager' },
+    { code: 'RSM', label: 'Regional Sales Manager' },
+    { code: 'Senior Manager', label: 'Senior Manager' },
+  ];
+
   return (
     <div className="space-y-6 p-6">
       {/* Basic Information */}
@@ -98,6 +122,25 @@ export function OverviewTab({ hotel }: OverviewTabProps) {
           </div>
         </div>
       )}
+
+      {/* PHASE 4: Occupancy Policy Summary */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Occupancy Policy</h3>
+        <p className="text-sm text-gray-600 mb-4">Room occupancy assignments by designation (read-only)</p>
+        <div className="bg-gray-50 rounded-lg divide-y">
+          {designations.map(des => (
+            <div key={des.code} className="px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">{des.label} ({des.code})</span>
+              <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded">
+                {getOccupancyForDesignation(hotel, des.code)}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-xs text-gray-500">
+          ℹ️ To edit occupancy assignments, use the <strong>Occupancy Rules</strong> tab
+        </p>
+      </div>
 
       {/* Venue Statistics */}
       <div className="border-t pt-6">

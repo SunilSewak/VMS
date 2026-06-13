@@ -561,3 +561,42 @@ export async function createOccupancyRule(input: OccupancyRuleCreateInput): Prom
     throw error;
   }
 }
+
+export async function updateOccupancyRule(id: string, input: Partial<OccupancyRuleCreateInput>): Promise<OccupancyRule> {
+  try {
+    const updateData: any = {};
+    if (input.rule_type) updateData.rule_type = input.rule_type;
+    if (input.min_occupancy !== undefined) updateData.min_occupancy = input.min_occupancy;
+    if (input.max_occupancy !== undefined) updateData.max_occupancy = input.max_occupancy;
+    if (input.rate_adjustment !== undefined) updateData.rate_adjustment = input.rate_adjustment;
+    if (input.is_active !== undefined) updateData.is_active = input.is_active;
+    updateData.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('hotel_occupancy_rules')
+      .update(updateData)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  } catch (error) {
+    console.error('Error updating occupancy rule:', error);
+    throw error;
+  }
+}
+
+export async function deleteOccupancyRule(id: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('hotel_occupancy_rules')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw new Error(error.message);
+  } catch (error) {
+    console.error('Error deleting occupancy rule:', error);
+    throw error;
+  }
+}
