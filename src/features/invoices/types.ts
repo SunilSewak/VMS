@@ -57,6 +57,22 @@ export interface InvoiceVariance extends InvoiceValidationCheck {
   // Alias for backward compatibility
 }
 
+/**
+ * Persisted variance record — matches the live `invoice_variances` table exactly.
+ * This is the single approved storage shape for Audit Engine findings.
+ */
+export interface InvoiceVarianceRecord {
+  id: string;
+  invoice_id: string;
+  variance_type: string;
+  expected_amount: number | null;
+  actual_amount: number | null;
+  variance_amount: number | null;
+  remarks: string | null;
+}
+
+export type InvoiceVarianceCreateInput = Omit<InvoiceVarianceRecord, 'id'>;
+
 export interface Invoice {
   id: string;
   booking_id: string;

@@ -53,6 +53,9 @@ export const CITY_ZONE_MAP: Record<string, ZONES> = {
   
   // West Zone
   'mumbai': ZONES.WEST,
+  'thane': ZONES.WEST,
+  'mira road': ZONES.WEST,
+  'navi mumbai': ZONES.WEST,
   'pune': ZONES.WEST,
   'ahmedabad': ZONES.WEST,
   'surat': ZONES.WEST,

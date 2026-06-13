@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import type { Invoice, InvoiceCreateInput, InvoiceUpdateInput, InvoiceValidationCheck, InvoiceDocument, InvoiceDocumentType } from './types';
+import type { Invoice, InvoiceCreateInput, InvoiceUpdateInput, InvoiceValidationCheck, InvoiceVarianceRecord, InvoiceVarianceCreateInput, InvoiceDocument, InvoiceDocumentType } from './types';
 import type { UserProfile } from '../../types';
 import { ROLES } from '../../auth/permissions';
 
@@ -218,33 +218,71 @@ export async function rejectInvoice(id: string, reason: string, user: UserProfil
   return data as Invoice;
 }
 
-export async function getInvoiceVariances(invoiceId: string): Promise<InvoiceValidationCheck[]> {
-  const { data, error } = await (supabase as any)
-    .from('invoice_validation_checks')
-    .select('*')
-    .eq('invoice_id', invoiceId)
-    .order('created_at', { ascending: true });
+// ── Invoice Variances (approved schema table: `invoice_variances`) ──────────
+// Persisted Audit Engine findings live here. Columns:
+// id, invoice_id, variance_type, expected_amount, actual_amount, variance_amount, remarks
 
-  if (error) throw new Error(error.message);
-  return (data ?? []) as InvoiceValidationCheck[];
+function mapRecordToCheck(rec: InvoiceVarianceRecord): InvoiceValidationCheck {
+  return {
+    id: rec.id,
+    invoice_id: rec.invoice_id,
+    check_type: (rec.variance_type as InvoiceValidationCheck['check_type']) ?? 'TOTAL_VARIANCE',
+    expected_value: rec.expected_amount ?? '',
+    actual_value: rec.actual_amount ?? '',
+    variance_value: rec.variance_amount ?? '',
+    severity: 'INFO',
+    status: 'PASS',
+    description: rec.remarks ?? '',
+    remarks: rec.remarks ?? null,
+    created_at: '',
+  };
 }
 
-export async function createInvoiceValidationChecks(
-  invoiceId: string,
-  checks: Omit<InvoiceValidationCheck, 'id' | 'created_at'>[]
-): Promise<InvoiceValidationCheck[]> {
-  const payload = checks.map((c) => ({
-    ...c,
-    invoice_id: invoiceId,
-    created_at: new Date().toISOString(),
-  }));
-
+/** Raw persisted variance records, exactly as stored in `invoice_variances`. */
+export async function getInvoiceVarianceRecords(invoiceId: string): Promise<InvoiceVarianceRecord[]> {
   const { data, error } = await (supabase as any)
-    .from('invoice_validation_checks')
-    .insert(payload);
+    .from('invoice_variances')
+    .select('id, invoice_id, variance_type, expected_amount, actual_amount, variance_amount, remarks')
+    .eq('invoice_id', invoiceId);
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as InvoiceValidationCheck[];
+  return (data ?? []) as InvoiceVarianceRecord[];
+}
+
+/** Backward-compatible read returning the validation-check view of persisted variances. */
+export async function getInvoiceVariances(invoiceId: string): Promise<InvoiceValidationCheck[]> {
+  const records = await getInvoiceVarianceRecords(invoiceId);
+  return records.map(mapRecordToCheck);
+}
+
+/** Persist one Audit Engine variance finding to `invoice_variances`. */
+export async function createInvoiceVariance(
+  input: InvoiceVarianceCreateInput
+): Promise<InvoiceVarianceRecord> {
+  const { data, error } = await (supabase as any)
+    .from('invoice_variances')
+    .insert([input])
+    .select('id, invoice_id, variance_type, expected_amount, actual_amount, variance_amount, remarks')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as InvoiceVarianceRecord;
+}
+
+/** Persist a batch of Audit Engine variance findings to `invoice_variances`. */
+export async function createInvoiceVariances(
+  invoiceId: string,
+  records: Omit<InvoiceVarianceCreateInput, 'invoice_id'>[]
+): Promise<InvoiceVarianceRecord[]> {
+  const payload = records.map((r) => ({ ...r, invoice_id: invoiceId }));
+
+  const { data, error } = await (supabase as any)
+    .from('invoice_variances')
+    .insert(payload)
+    .select('id, invoice_id, variance_type, expected_amount, actual_amount, variance_amount, remarks');
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as InvoiceVarianceRecord[];
 }
 
 export async function deleteInvoice(id: string, user: UserProfile): Promise<void> {
