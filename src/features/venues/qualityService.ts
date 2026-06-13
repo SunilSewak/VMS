@@ -2,7 +2,7 @@
 // Calculates venue data quality metrics and readiness scores
 
 import { supabase } from '../../lib/supabase';
-import type { DataQualityIssue, VenueReadinessReport } from './types';
+import type { DataQualityIssue } from './types';
 import { calculateVenueReadinessScore } from './readinessScore';
 
 // ============================================================================

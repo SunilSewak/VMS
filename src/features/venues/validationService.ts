@@ -2,7 +2,7 @@
 // Comprehensive validation rules for venue bulk import
 
 import { supabase } from '../../lib/supabase';
-import type { ImportValidationError, ExcelRow, MultiSheetValidationResult, SheetValidationResult } from './types';
+import type { ImportValidationError, ExcelRow } from './types';
 
 // ============================================================================
 // VALIDATION CONSTANTS

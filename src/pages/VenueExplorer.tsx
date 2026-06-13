@@ -20,7 +20,6 @@ import { updateMeetingRequest } from '../features/meetings/meetingService';
 import { MEETING_STATUSES } from '../features/meetings/constants';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../routes/routeRegistry';
-import { ZONE_OPTIONS } from '../constants/zones';
 import type { VenueCardData, VenueSearchFilters } from '../features/venues/types';
 
 const CAPACITY_OPTIONS = [
@@ -51,7 +50,6 @@ export function VenueExplorer() {
   const [selectedZone, setSelectedZone] = useState('all'); // Zone filter
   const [selectedCategoryCode, setSelectedCategoryCode] = useState('all');
   const [selectedCapacityIdx, setSelectedCapacityIdx] = useState(0);
-  const [shortlistError, setShortlistError] = useState<string | null>(null);
 
   const [compareList, setCompareList] = useState<VenueCardData[]>([]);
   const [showCompareMatrix, setShowCompareMatrix] = useState(false);
@@ -83,7 +81,7 @@ export function VenueExplorer() {
   const skip = !!requestId && !hasSearched;
   const { venues, loading: venuesLoading, error: venuesError } = useVenues(filters, skip);
   const { cities, categories, loading: filtersLoading } = useVenueFilters();
-  const { shortlistedIds, toggleShortlist, shortlistCount, canAddMore, maxReached, maxShortlist } = useShortlist(requestId, user?.id ?? null);
+  const { shortlistedIds, toggleShortlist } = useShortlist(requestId, user?.id ?? null);
 
   useEffect(() => {
     // CRITICAL FIX: Auto-populate filters from meeting request context

@@ -640,13 +640,9 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
               ...(isUpdate && { id: existingHall.id }), // Include ID if updating
               hotel_id: hotelId,
               hall_name: row.hall_name,
-              hall_type: row.hall_type,
-              theatre_capacity: parseInt(row.theatre_capacity || '0'),
               classroom_capacity: parseInt(row.classroom_capacity || '0'),
               u_shape_capacity: parseInt(row.u_shape_capacity || '0'),
               cluster_capacity: parseInt(row.cluster_capacity || '0'),
-              boardroom_capacity: parseInt(row.boardroom_capacity || '0'),
-              reception_capacity: parseInt(row.reception_capacity || '0'),
               status: 'ACTIVE',
             },
             { onConflict: 'hotel_id,hall_name' }

@@ -1,11 +1,11 @@
 import { supabase } from '../../lib/supabase';
-import { getZoneForCity, ZONES } from '../../constants/zones';
+import { getZoneForCity } from '../../constants/zones';
 import type {
-  Hotel,
+  HotelWithRelations,
   VenueCardViewModel,
   VenueSearchFilters,
   VenueShortlist,
-  HotelCategory,
+  HotelCategoryOption,
   City,
 } from './types';
 
@@ -20,7 +20,7 @@ export async function fetchCities(): Promise<City[]> {
 }
 
 // Fetch all hotel categories for filter dropdowns
-export async function fetchCategories(): Promise<HotelCategory[]> {
+export async function fetchCategories(): Promise<HotelCategoryOption[]> {
   const { data, error } = await supabase
     .from('hotel_categories')
     .select('id, category_code, category_name')
@@ -40,13 +40,12 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
       hotel_name,
       address,
       status,
-      hotel_categories ( id, category_code, category_name ),
-      cities ( id, city_name ),
-      venue_photos ( id, photo_type, storage_path, display_order ),
-      halls ( id, capacity )
+      hotel_category,
+      city_id,
+      halls ( id, classroom_capacity, u_shape_capacity, cluster_capacity )
     `)
     .eq('status', 'ACTIVE')
-    .is('is_deleted', false);
+    .is('blacklisted', false);
 
   // RULE 3: City takes precedence over zone (city always wins)
   if (filters.cityId && filters.cityId !== 'all') {
@@ -57,7 +56,7 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
     // First fetch all cities to build zone filter
     const { data: allCities } = await supabase
       .from('cities')
-      .select('id, city_name');
+      .select('id, city_name') as { data: Array<{ id: string; city_name: string }> | null };
     
     if (allCities) {
       const citiesInZone = allCities
@@ -75,38 +74,34 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
 
   // Filter by category
   if (filters.categoryCode && filters.categoryCode !== 'all') {
-    const { data: catData } = await supabase
-      .from('hotel_categories')
-      .select('id')
-      .eq('category_code', filters.categoryCode)
-      .single() as { data: { id: string } | null; error: unknown };
-    if (catData?.id) {
-      query = query.eq('category_id', catData.id);
-    }
+    query = query.eq('hotel_category', filters.categoryCode);
   }
 
   const { data, error } = await query.order('hotel_name');
   if (error) throw new Error(error.message);
 
-  const hotels = (data ?? []) as Hotel[];
+  const hotels = (data ?? []) as HotelWithRelations[];
 
   // Transform into VenueCardViewModel
-  let results: VenueCardViewModel[] = hotels.map((h) => {
+  let results: VenueCardViewModel[] = hotels.map((h: HotelWithRelations) => {
     const halls = h.halls ?? [];
-    const photos = h.venue_photos ?? [];
-    const primaryPhoto = photos
-      .sort((a, b) => (a.display_order ?? 99) - (b.display_order ?? 99))
-      .find((p) => p.photo_type === 'EXTERIOR' || p.display_order === 1);
+    const maxCapacity = halls.length > 0 
+      ? Math.max(...halls.map((hall) => Math.max(
+          hall.classroom_capacity ?? 0,
+          hall.u_shape_capacity ?? 0,
+          hall.cluster_capacity ?? 0
+        )))
+      : 0;
 
     return {
       id: h.id,
       hotelId: h.id,
       hotelName: h.hotel_name,
-      categoryName: h.hotel_categories?.category_name ?? '—',
-      cityName: h.cities?.city_name ?? '—',
+      categoryName: h.hotel_category ?? '—',
+      cityName: h.city?.city_name ?? '—',
       address: h.address ?? '—',
-      primaryImage: primaryPhoto?.storage_path ?? null,
-      largestHallCapacity: halls.length > 0 ? Math.max(...halls.map((hall) => hall.capacity)) : 0,
+      primaryImage: null,
+      largestHallCapacity: maxCapacity,
       hallCount: halls.length,
       shortlisted: false,
     };
@@ -132,21 +127,22 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
 }
 
 // Get full hotel details for the Detail Page
-export async function getVenueById(id: string): Promise<Hotel> {
+export async function getVenueById(id: string): Promise<HotelWithRelations> {
   const { data, error } = await supabase
     .from('hotels')
     .select(`
-      id, hotel_name, address, contact_person, contact_number, email, remarks, status,
-      hotel_categories ( id, category_code, category_name ),
-      cities ( id, city_name ),
-      venue_photos ( id, photo_type, file_name, storage_path, display_order ),
-      halls ( id, hall_name, capacity, area, floor_name, seating_types )
+      id, hotel_name, address, hotel_category, status,
+      sales_contact_name, sales_contact_mobile, sales_contact_email,
+      remarks,
+      city:city_id ( id, city_name ),
+      halls ( id, hotel_id, hall_name, floor, classroom_capacity, u_shape_capacity, cluster_capacity, indoor_outdoor, status ),
+      photos:photos ( id, storage_path, display_order )
     `)
     .eq('id', id)
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Hotel;
+  return data as HotelWithRelations;
 }
 
 // Toggle shortlist: add if not exists, or no-op (removal handled by UI for now)
@@ -193,7 +189,7 @@ export async function fetchMyShortlists(userId: string): Promise<VenueShortlist[
     .from('venue_shortlists')
     .select(`
       id, request_id, hotel_id, hall_id, shortlisted_by, shortlisted_at,
-      hotels ( id, hotel_name, address, cities ( city_name ), hotel_categories ( category_name ), venue_photos ( storage_path, display_order, photo_type ) )
+      hotels ( id, hotel_name, address, city:city_id ( city_name ), hotel_category, photos ( storage_path, display_order ) )
     `)
     .eq('shortlisted_by', userId)
     .order('shortlisted_at', { ascending: false });
@@ -207,7 +203,7 @@ export async function fetchShortlistsForRequest(requestId: string): Promise<Venu
     .from('venue_shortlists')
     .select(`
       id, request_id, hotel_id, hall_id, shortlisted_by, shortlisted_at,
-      hotels ( id, hotel_name, address, cities ( city_name ), hotel_categories ( category_name ), venue_photos ( storage_path, display_order, photo_type ) )
+      hotels ( id, hotel_name, address, city:city_id ( city_name ), hotel_category, photos ( storage_path, display_order ) )
     `)
     .eq('request_id', requestId)
     .order('shortlisted_at', { ascending: false });

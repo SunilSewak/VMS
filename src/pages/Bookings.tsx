@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { getBookings } from '../features/bookings/bookingService';
 import type { Booking, BookingStatus } from '../features/bookings/types';
 import { ROUTES } from '../routes/routeRegistry';
-import { ROLES } from '../auth/permissions';
 import { EmptyState } from '../components/EmptyState';
 import { ResponsiveDataTable, type ColumnDefinition } from '../components/ResponsiveDataTable';
 import { BookingCard } from '../components/BookingCard';
@@ -25,8 +24,6 @@ function loadViewPref(): ViewMode {
 function saveViewPref(v: ViewMode) {
   try { localStorage.setItem(LS_BOOKING_VIEW_KEY, v); } catch { /* no-op */ }
 }
-
-const BOOKING_STATUS_OPTIONS: Array<BookingStatus | ''> = ['', 'CONFIRMED', 'ACTIVE', 'INVOICE_PENDING', 'PAYMENT_PENDING', 'COMPLETED', 'CANCELLED'];
 
 const OPERATIONAL_FILTER_OPTIONS = [
   { value: '', label: 'All Bookings' },
@@ -132,7 +129,6 @@ const columns: ColumnDefinition<Booking>[] = [
 export function Bookings() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [statusFilter, setStatusFilter] = useState<BookingStatus | ''>('');
   const [operationalFilter, setOperationalFilter] = useState<string>('');
   const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewPref);

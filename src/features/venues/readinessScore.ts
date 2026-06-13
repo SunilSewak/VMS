@@ -73,48 +73,38 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
   if (!hotel.hotel_category) recommendations.push('Set hotel category');
 
   // ============================================================================
-  // HALLS CONFIGURATION (25% weight)
+  // HALLS CONFIGURATION (25% weight) - PHASE 5: Hall Master SIMPLIFIED
   // ============================================================================
 
   const hallsCount = hotel.halls?.length || 0;
-  const hallsHaveCapacity = hotel.halls?.filter((h) => h.capacity && h.capacity > 0).length || 0;
-  const hallsHaveDimensions = hotel.halls?.filter((h) => h.length && h.width && h.area).length || 0;
-  const hallsHaveIndoorOutdoor = hotel.halls?.filter((h) => h.indoor_outdoor).length || 0;
+  const hallsWithSeatingCapacity = hotel.halls?.filter((h) => {
+    const hasCapacity =
+      (h.classroom_capacity || 0) > 0 ||
+      (h.u_shape_capacity || 0) > 0 ||
+      (h.cluster_capacity || 0) > 0;
+    return hasCapacity;
+  }).length || 0;
 
   const hallChecks = [
     {
-      name: 'Halls Configured',
+      name: 'Conference Rooms Exist',
       isComplete: hallsCount >= 1,
-      weight: 8,
+      weight: 15,
       actual: hallsCount,
       required: 1,
     },
     {
-      name: 'Capacity Defined',
-      isComplete: hallsHaveCapacity === hallsCount && hallsCount > 0,
-      weight: 8,
-      actual: hallsHaveCapacity,
-      required: hallsCount,
-    },
-    {
-      name: 'Dimensions Set',
-      isComplete: hallsHaveDimensions === hallsCount && hallsCount > 0,
-      weight: 5,
-      actual: hallsHaveDimensions,
-      required: hallsCount,
-    },
-    {
-      name: 'Indoor/Outdoor Type',
-      isComplete: hallsHaveIndoorOutdoor === hallsCount && hallsCount > 0,
-      weight: 4,
-      actual: hallsHaveIndoorOutdoor,
+      name: 'Seating Capacity Defined',
+      isComplete: hallsWithSeatingCapacity === hallsCount && hallsCount > 0,
+      weight: 10,
+      actual: hallsWithSeatingCapacity,
       required: hallsCount,
     },
   ];
 
   hallChecks.forEach((check) => {
     checks.push({
-      category: 'Halls Configuration',
+      category: 'Hall Master',
       name: check.name,
       isComplete: check.isComplete,
       weight: check.weight,
@@ -126,13 +116,10 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
   });
 
   if (hallsCount === 0) {
-    recommendations.push('Add at least one hall to enable bookings');
+    recommendations.push('Add at least one conference room to enable meeting space bookings');
   } else {
-    if (hallsHaveCapacity !== hallsCount) {
-      recommendations.push(`Set capacity for ${hallsCount - hallsHaveCapacity} hall(s)`);
-    }
-    if (hallsHaveDimensions !== hallsCount) {
-      recommendations.push(`Set dimensions for ${hallsCount - hallsHaveDimensions} hall(s)`);
+    if (hallsWithSeatingCapacity !== hallsCount) {
+      recommendations.push(`Set seating capacity for ${hallsCount - hallsWithSeatingCapacity} conference room(s)`);
     }
   }
 

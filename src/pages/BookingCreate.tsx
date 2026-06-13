@@ -188,7 +188,7 @@ export function BookingCreate() {
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div style={{ display: 'grid', gap: '0.25rem' }}>
                 <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Meeting Request</span>
-                <strong>{selectedMeetingRequest ? `${selectedMeetingRequest.request_number} — ${selectedMeetingRequest.meeting_name}` : 'None selected'}</strong>
+                <strong>{selectedMeetingRequest ? `${selectedMeetingRequest.request_number} ï¿½ ${selectedMeetingRequest.meeting_name}` : 'None selected'}</strong>
               </div>
               <div style={{ display: 'grid', gap: '0.25rem' }}>
                 <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Venue</span>
@@ -268,8 +268,8 @@ export function BookingCreate() {
                 style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: availableHalls.length ? 'var(--surface)' : 'var(--background)' }}
               >
                 <option value="">Select a hall (optional)</option>
-                {availableHalls.map((hall) => (
-                  <option key={hall.id} value={hall.id}>{hall.hall_name} — {hall.capacity} pax</option>
+                {availableHalls.map((hall: any) => (
+                  <option key={hall.id} value={hall.id}>{hall.hall_name}</option>
                 ))}
               </select>
             </div>
@@ -318,7 +318,7 @@ export function BookingCreate() {
                 cursor: saving || loading || !validMeetingRequest || !validHotel ? 'not-allowed' : 'pointer',
               }}
             >
-              {saving ? 'Creating booking…' : 'Create booking request'}
+              {saving ? 'Creating bookingï¿½' : 'Create booking request'}
             </button>
           </div>
         </section>
@@ -332,7 +332,7 @@ export function BookingCreate() {
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div style={{ display: 'grid', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Selected request</span>
-                <strong>{selectedMeetingRequest ? `${selectedMeetingRequest.request_number} · ${selectedMeetingRequest.meeting_name}` : 'None selected'}</strong>
+                <strong>{selectedMeetingRequest ? `${selectedMeetingRequest.request_number} ï¿½ ${selectedMeetingRequest.meeting_name}` : 'None selected'}</strong>
               </div>
               <div style={{ display: 'grid', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Selected venue</span>

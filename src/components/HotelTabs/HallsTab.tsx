@@ -32,7 +32,7 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
   }
 
   async function handleDelete(hallId: string) {
-    if (!confirm('Are you sure you want to delete this hall?')) return;
+    if (!confirm('Delete Conference Room?\n\nThis action cannot be undone.')) return;
 
     try {
       await deleteHall(hallId);
@@ -64,7 +64,7 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading halls...</p>
+        <p className="text-gray-500">Loading conference rooms...</p>
       </div>
     );
   }
@@ -74,22 +74,22 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
       {/* Header with Add Button */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-700">Configured Halls</p>
+          <p className="text-sm font-medium text-gray-700">Conference Rooms</p>
           <p className="mt-1 text-2xl font-bold text-gray-900">{halls.length}</p>
         </div>
         <button
           onClick={handleAddHall}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
         >
-          + Add Hall
+          + Add Room
         </button>
       </div>
 
       {/* Halls Grid - Card Layout */}
       {halls.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <p className="text-gray-500 font-medium">No halls configured</p>
-          <p className="text-sm text-gray-400 mt-1">Add a hall to enable meeting space bookings</p>
+          <p className="text-gray-500 font-medium">No conference rooms configured</p>
+          <p className="text-sm text-gray-400 mt-1">Add a conference room to enable meeting space bookings</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -101,10 +101,7 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
               {/* Card Header */}
               <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900 truncate">{hall.hall_name}</h3>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-1 rounded">
-                    {hall.hall_type}
-                  </span>
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <span
                     className={`text-xs font-medium px-2 py-1 rounded ${
                       hall.indoor_outdoor === 'INDOOR'
@@ -116,74 +113,64 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
                   >
                     {hall.indoor_outdoor}
                   </span>
-                </div>
-              </div>
-
-              {/* Card Body - Seating Capacities */}
-              <div className="px-6 py-4 space-y-2">
-                <div className="grid grid-cols-2 gap-3">
-                  {hall.theater_capacity && (
-                    <div className="bg-blue-50 rounded p-2">
-                      <p className="text-xs text-gray-600 font-medium">Theatre</p>
-                      <p className="text-lg font-bold text-blue-700">{hall.theater_capacity}</p>
-                    </div>
-                  )}
-                  {hall.classroom_capacity && (
-                    <div className="bg-green-50 rounded p-2">
-                      <p className="text-xs text-gray-600 font-medium">Classroom</p>
-                      <p className="text-lg font-bold text-green-700">{hall.classroom_capacity}</p>
-                    </div>
-                  )}
-                  {hall.capacity && (
-                    <div className="bg-purple-50 rounded p-2">
-                      <p className="text-xs text-gray-600 font-medium">General</p>
-                      <p className="text-lg font-bold text-purple-700">{hall.capacity}</p>
-                    </div>
-                  )}
-                  {hall.round_table_capacity && (
-                    <div className="bg-orange-50 rounded p-2">
-                      <p className="text-xs text-gray-600 font-medium">Round Table</p>
-                      <p className="text-lg font-bold text-orange-700">{hall.round_table_capacity}</p>
-                    </div>
-                  )}
-                  {hall.cocktail_capacity && (
-                    <div className="bg-pink-50 rounded p-2">
-                      <p className="text-xs text-gray-600 font-medium">Cocktail</p>
-                      <p className="text-lg font-bold text-pink-700">{hall.cocktail_capacity}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Card Details */}
-              <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 space-y-2 text-xs">
-                {hall.area && (
-                  <p className="text-gray-600">
-                    <span className="font-medium">Area:</span> {hall.area} sq.ft
-                  </p>
-                )}
-                {hall.length && hall.width && (
-                  <p className="text-gray-600">
-                    <span className="font-medium">Dimensions:</span> {hall.length} × {hall.width}
-                  </p>
-                )}
-                {hall.height && (
-                  <p className="text-gray-600">
-                    <span className="font-medium">Height:</span> {hall.height} ft
-                  </p>
-                )}
-                <p className="text-gray-600">
-                  <span className="font-medium">Status:</span>{' '}
                   <span
-                    className={`${
+                    className={`text-xs font-medium px-2 py-1 rounded ${
                       hall.status === 'ACTIVE'
-                        ? 'text-green-700'
-                        : 'text-red-700'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700'
                     }`}
                   >
                     {hall.status}
                   </span>
-                </p>
+                </div>
+              </div>
+
+              {/* Card Body - Seating Capacities */}
+              <div className="px-6 py-4 space-y-3">
+                {/* Floor info */}
+                {hall.floor && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Floor:</span>
+                    <span className="font-medium text-gray-900">{hall.floor}</span>
+                  </div>
+                )}
+
+                {/* Seating Capacities - 3 Formats */}
+                <div className="grid grid-cols-3 gap-2">
+                  {hall.classroom_capacity ? (
+                    <div className="bg-blue-50 rounded p-2">
+                      <p className="text-xs text-gray-600 font-medium">Classroom</p>
+                      <p className="text-lg font-bold text-blue-700">{hall.classroom_capacity}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded p-2 opacity-50">
+                      <p className="text-xs text-gray-600 font-medium">Classroom</p>
+                      <p className="text-lg font-bold text-gray-400">—</p>
+                    </div>
+                  )}
+                  {hall.u_shape_capacity ? (
+                    <div className="bg-green-50 rounded p-2">
+                      <p className="text-xs text-gray-600 font-medium">U-Shape</p>
+                      <p className="text-lg font-bold text-green-700">{hall.u_shape_capacity}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded p-2 opacity-50">
+                      <p className="text-xs text-gray-600 font-medium">U-Shape</p>
+                      <p className="text-lg font-bold text-gray-400">—</p>
+                    </div>
+                  )}
+                  {hall.cluster_capacity ? (
+                    <div className="bg-purple-50 rounded p-2">
+                      <p className="text-xs text-gray-600 font-medium">Cluster</p>
+                      <p className="text-lg font-bold text-purple-700">{hall.cluster_capacity}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded p-2 opacity-50">
+                      <p className="text-xs text-gray-600 font-medium">Cluster</p>
+                      <p className="text-lg font-bold text-gray-400">—</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Card Actions */}

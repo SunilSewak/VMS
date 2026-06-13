@@ -1,12 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../routes/routeRegistry';
-import { ROLES } from '../auth/permissions';
 
 export function Login() {
-  const { login, isLoading, user } = useAuth();
-  const navigate = useNavigate();
+  const { login, isLoading } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

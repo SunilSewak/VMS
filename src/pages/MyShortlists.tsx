@@ -10,15 +10,16 @@ import {
 import { useMyShortlists } from '../features/venues/hooks';
 import { removeFromShortlist } from '../features/venues/api';
 import { useAuth } from '../contexts/AuthContext';
-import type { VenueShortlist, Hotel, VenuePhoto } from '../features/venues/types';
+import type { VenueShortlist, Hotel } from '../features/venues/types';
 import { ROUTES } from '../routes/routeRegistry';
 
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=600&q=80';
 
 function getVenuePhoto(hotel: Hotel | null | undefined): string | null {
-  if (!hotel?.venue_photos?.length) return null;
-  const sorted = [...hotel.venue_photos].sort(
-    (a: VenuePhoto, b: VenuePhoto) => (a.display_order ?? 99) - (b.display_order ?? 99)
+  const hotelWithPhotos = hotel as any;
+  if (!hotelWithPhotos?.photos?.length) return null;
+  const sorted = [...hotelWithPhotos.photos].sort(
+    (a: any, b: any) => (a.display_order ?? 99) - (b.display_order ?? 99)
   );
   return sorted[0]?.storage_path ?? null;
 }
@@ -180,10 +181,10 @@ export function MyShortlists() {
 
 // ─── SHORTLIST CARD ───
 function ShortlistCard({ shortlist, onView, onRemove }: { shortlist: VenueShortlist; onView: () => void; onRemove: () => void }) {
-  const hotel = shortlist.hotels;
+  const hotel = shortlist.hotels as any;
   const photoUrl = getVenuePhoto(hotel);
-  const city = (hotel as any)?.cities?.city_name ?? '—';
-  const category = (hotel as any)?.hotel_categories?.category_name ?? '—';
+  const city = hotel?.city?.city_name ?? '—';
+  const category = hotel?.hotel_category ?? '—';
 
   const shortlistedAt = shortlist.shortlisted_at
     ? new Date(shortlist.shortlisted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })

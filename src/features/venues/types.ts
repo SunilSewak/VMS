@@ -125,16 +125,11 @@ export interface Hall {
   id: string;
   hotel_id: string;
   hall_name: string;
-  hall_type: HallType;
   floor?: string | null;
-  // PHASE 5: Seating capacities - multiple formats for different meeting types
-  theatre_capacity?: number | null;     // Rows facing stage
+  // PHASE 5 SIMPLIFIED: Only 3 seating capacities for corporate meetings
   classroom_capacity?: number | null;   // Classroom-style with tables
   u_shape_capacity?: number | null;     // U-shape configuration
   cluster_capacity?: number | null;     // Multiple cluster groups
-  boardroom_capacity?: number | null;   // Boardroom table
-  round_table_capacity?: number | null; // Round tables
-  area_sqft?: number | null;            // Total area in square feet
   indoor_outdoor: IndoorOutdoor;
   status: VenueStatus;
   created_at: string;
@@ -245,32 +240,22 @@ export interface HotelUpdateInput {
 export interface HallCreateInput {
   hotel_id: string;
   hall_name: string;
-  hall_type: HallType;
   floor?: string;
-  // PHASE 5: Seating capacities
-  theatre_capacity?: number;
+  // PHASE 5 SIMPLIFIED: Only 3 seating capacities
   classroom_capacity?: number;
   u_shape_capacity?: number;
   cluster_capacity?: number;
-  boardroom_capacity?: number;
-  round_table_capacity?: number;
-  area_sqft?: number;
   indoor_outdoor?: IndoorOutdoor;
   status?: VenueStatus;
 }
 
 export interface HallUpdateInput {
   hall_name?: string;
-  hall_type?: HallType;
   floor?: string | null;
-  // PHASE 5: Seating capacities
-  theatre_capacity?: number | null;
+  // PHASE 5 SIMPLIFIED: Only 3 seating capacities
   classroom_capacity?: number | null;
   u_shape_capacity?: number | null;
   cluster_capacity?: number | null;
-  boardroom_capacity?: number | null;
-  round_table_capacity?: number | null;
-  area_sqft?: number | null;
   indoor_outdoor?: IndoorOutdoor;
   status?: VenueStatus;
 }

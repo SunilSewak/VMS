@@ -7,7 +7,6 @@ import type {
   Hall,
   AccommodationInventory,
   OccupancyRule,
-  DefaultOccupancyRule,
   VenuePhoto,
   HotelCreateInput,
   HotelUpdateInput,
@@ -216,17 +215,17 @@ export async function getHotelById(id: string): Promise<HotelWithRelations> {
       halls,
       accommodation_inventory: accommodation,
       occupancy_rules: rules,
-      venue_photos: photos,
+      photos: photos,
     };
 
     console.log('=== getHotelById SUCCESS ===');
     console.log('Hotel loaded with:', {
       hotel: result.hotel_name,
       city: result.city?.city_name || 'N/A',
-      halls: result.halls.length,
-      accommodation: result.accommodation_inventory.length,
-      rules: result.occupancy_rules.length,
-      photos: result.venue_photos.length,
+      halls: result.halls?.length || 0,
+      accommodation: result.accommodation_inventory?.length || 0,
+      rules: result.occupancy_rules?.length || 0,
+      photos: result.photos?.length || 0,
       errors: errors.length,
     });
     return result;
@@ -367,16 +366,10 @@ export async function createHall(input: HallCreateInput): Promise<Hall> {
       .insert({
         hotel_id: input.hotel_id,
         hall_name: input.hall_name.trim(),
-        hall_type: input.hall_type,
-        capacity: input.capacity || null,
         floor: input.floor || null,
-        area_sqft: input.area_sqft || null,
-        theatre_capacity: input.theatre_capacity || null,
         classroom_capacity: input.classroom_capacity || null,
         u_shape_capacity: input.u_shape_capacity || null,
         cluster_capacity: input.cluster_capacity || null,
-        boardroom_capacity: input.boardroom_capacity || null,
-        round_table_capacity: input.round_table_capacity || null,
         indoor_outdoor: input.indoor_outdoor || 'INDOOR',
         status: input.status || 'ACTIVE',
       })
@@ -395,16 +388,10 @@ export async function updateHall(id: string, input: HallUpdateInput): Promise<Ha
   try {
     const updateData: any = {};
     if (input.hall_name) updateData.hall_name = input.hall_name.trim();
-    if (input.hall_type) updateData.hall_type = input.hall_type;
-    if (input.capacity !== undefined) updateData.capacity = input.capacity;
     if (input.floor !== undefined) updateData.floor = input.floor;
-    if (input.area_sqft !== undefined) updateData.area_sqft = input.area_sqft;
-    if (input.theatre_capacity !== undefined) updateData.theatre_capacity = input.theatre_capacity;
     if (input.classroom_capacity !== undefined) updateData.classroom_capacity = input.classroom_capacity;
     if (input.u_shape_capacity !== undefined) updateData.u_shape_capacity = input.u_shape_capacity;
     if (input.cluster_capacity !== undefined) updateData.cluster_capacity = input.cluster_capacity;
-    if (input.boardroom_capacity !== undefined) updateData.boardroom_capacity = input.boardroom_capacity;
-    if (input.round_table_capacity !== undefined) updateData.round_table_capacity = input.round_table_capacity;
     if (input.indoor_outdoor) updateData.indoor_outdoor = input.indoor_outdoor;
     if (input.status) updateData.status = input.status;
     updateData.updated_at = new Date().toISOString();

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Hotel, City, HotelCategory, VenueCardViewModel, VenueSearchFilters, VenueShortlist } from './types';
+import type { HotelWithRelations, City, HotelCategoryOption, VenueCardViewModel, VenueSearchFilters, VenueShortlist } from './types';
 import {
   searchVenues,
   getVenueById,
@@ -15,7 +15,7 @@ import {
 // Hook: Fetch cities and categories for filter dropdowns
 export function useVenueFilters() {
   const [cities, setCities] = useState<City[]>([]);
-  const [categories, setCategories] = useState<HotelCategory[]>([]);
+  const [categories, setCategories] = useState<HotelCategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,7 +82,7 @@ export function useVenues(filters: VenueSearchFilters, skip = false) {
 
 // Hook: Fetch a single venue's full details
 export function useVenueDetails(id: string | null) {
-  const [venue, setVenue] = useState<Hotel | null>(null);
+  const [venue, setVenue] = useState<HotelWithRelations | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

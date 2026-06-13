@@ -40,15 +40,14 @@ export function VenueDetails() {
   const isShortlisted = !!id && shortlistedIds.includes(id);
 
   // Sort photos by display_order
-  const photos = [...(venue?.venue_photos ?? [])].sort(
+  const photos = [...(venue?.photos ?? [])].sort(
     (a, b) => (a.display_order ?? 99) - (b.display_order ?? 99)
   );
   const primaryPhoto = photos[0]?.storage_path ?? null;
   const galleryPhotos = photos.slice(0, 6);
 
   const halls = venue?.halls ?? [];
-  const maxCapacity = halls.length > 0 ? Math.max(...halls.map((h) => h.capacity)) : 0;
-  const totalArea = halls.reduce((sum, hall) => sum + (hall.area ?? 0), 0);
+  const maxCapacity = halls.length > 0 ? Math.max(...halls.map((h) => Math.max(h.classroom_capacity ?? 0, h.u_shape_capacity ?? 0, h.cluster_capacity ?? 0))) : 0;
 
   if (loading) {
     return (
@@ -248,14 +247,14 @@ export function VenueDetails() {
             marginBottom: 'var(--space-2)',
             width: 'fit-content',
           }}>
-            {venue.hotel_categories?.category_name ?? 'Hotel'}
+            {venue.hotel_category ?? 'Hotel'}
           </div>
           <h1 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: '800', color: '#fff', marginBottom: 'var(--space-1)', letterSpacing: '-0.02em' }}>
             {venue.hotel_name}
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'rgba(255,255,255,0.85)', fontSize: 'var(--font-sm)' }}>
             <MapPin size={14} />
-            <span>{venue.cities?.city_name}{venue.address ? ` · ${venue.address}` : ''}</span>
+            <span>{venue.city?.city_name}{venue.address ? ` · ${venue.address}` : ''}</span>
           </div>
         </div>
       </div>
@@ -300,11 +299,11 @@ export function VenueDetails() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <div>
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Category</p>
-                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{venue.hotel_categories?.category_name ?? '—'}</strong>
+                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{venue.hotel_category ?? '—'}</strong>
               </div>
               <div>
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>City</p>
-                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{venue.cities?.city_name ?? '—'}</strong>
+                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{venue.city?.city_name ?? '—'}</strong>
               </div>
               <div>
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Address</p>
@@ -324,7 +323,7 @@ export function VenueDetails() {
               </div>
               <div>
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Total Hall Area</p>
-                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>{totalArea > 0 ? `${totalArea} sq ft` : '—'}</strong>
+                <strong style={{ fontSize: 'var(--font-size-md)', display: 'block', marginTop: '6px' }}>—</strong>
               </div>
             </div>
           </div>
@@ -421,19 +420,18 @@ function HallCard({ hall }: { hall: Hall }) {
       <div>
         <div style={{ fontWeight: '700', fontSize: 'var(--font-size-md)', marginBottom: '4px' }}>{hall.hall_name}</div>
         <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-          {hall.floor_name && (
-            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>📍 {hall.floor_name}</span>
+          {hall.floor && (
+            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>📍 {hall.floor}</span>
           )}
-          {hall.area && (
-            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>📐 {hall.area} sq ft</span>
-          )}
-          {hall.seating_types && (
-            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>🪑 {hall.seating_types}</span>
+          {hall.indoor_outdoor && (
+            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>🏛️ {hall.indoor_outdoor}</span>
           )}
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>
-        <div style={{ fontWeight: '800', fontSize: 'var(--font-size-xl)', color: 'var(--primary)' }}>{hall.capacity}</div>
+        <div style={{ fontWeight: '800', fontSize: 'var(--font-size-xl)', color: 'var(--primary)' }}>
+          {Math.max(hall.classroom_capacity ?? 0, hall.u_shape_capacity ?? 0, hall.cluster_capacity ?? 0)}
+        </div>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>pax</div>
       </div>
     </div>

@@ -123,6 +123,41 @@ export function OverviewTab({ hotel }: OverviewTabProps) {
         </div>
       )}
 
+      {/* PHASE 5 SIMPLIFIED: Conference Room Summary */}
+      {(hotel.halls && hotel.halls.length > 0) && (
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Conference Rooms Summary</h3>
+          <p className="text-sm text-gray-600 mb-4">Meeting space configuration overview (read-only)</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-blue-50 rounded-lg p-3">
+              <p className="text-xs font-medium text-gray-600">Conference Rooms</p>
+              <p className="mt-2 text-2xl font-bold text-blue-700">{hotel.halls.length}</p>
+            </div>
+            <div className="bg-green-50 rounded-lg p-3">
+              <p className="text-xs font-medium text-gray-600">Largest Classroom</p>
+              <p className="mt-2 text-2xl font-bold text-green-700">
+                {Math.max(...(hotel.halls.filter(h => h.classroom_capacity).map(h => h.classroom_capacity || 0) || [0])) || '—'}
+              </p>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-3">
+              <p className="text-xs font-medium text-gray-600">Largest U-Shape</p>
+              <p className="mt-2 text-2xl font-bold text-purple-700">
+                {Math.max(...(hotel.halls.filter(h => h.u_shape_capacity).map(h => h.u_shape_capacity || 0) || [0])) || '—'}
+              </p>
+            </div>
+            <div className="bg-yellow-50 rounded-lg p-3">
+              <p className="text-xs font-medium text-gray-600">Largest Cluster</p>
+              <p className="mt-2 text-2xl font-bold text-yellow-700">
+                {Math.max(...(hotel.halls.filter(h => h.cluster_capacity).map(h => h.cluster_capacity || 0) || [0])) || '—'}
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 text-xs text-gray-500">
+            ℹ️ To edit conference rooms, use the <strong>Halls</strong> tab
+          </p>
+        </div>
+      )}
+
       {/* PHASE 4: Occupancy Policy Summary */}
       <div className="border-t pt-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Occupancy Policy</h3>
