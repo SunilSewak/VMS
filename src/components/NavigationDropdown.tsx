@@ -157,7 +157,37 @@ export function NavigationDropdown({ group, isActive }: NavigationDropdownProps)
           }}
         >
           {group.submenus.map((submenu) => {
-            const isActive = location.pathname === submenu.path.split('?')[0];
+            const isPlaceholder = submenu.path === '#';
+            const isActive = !isPlaceholder && location.pathname === submenu.path.split('?')[0];
+
+            if (isPlaceholder) {
+              return (
+                <button
+                  key={submenu.name}
+                  disabled
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-3)',
+                    width: '100%',
+                    padding: 'var(--space-2) var(--space-4)',
+                    color: 'var(--text-muted)',
+                    fontWeight: '500',
+                    fontSize: 'var(--font-size-sm)',
+                    textDecoration: 'none',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'not-allowed',
+                    opacity: 0.65
+                  }}
+                  title="Coming soon"
+                >
+                  {renderIcon(submenu.iconName)}
+                  <span>{submenu.name}</span>
+                </button>
+              );
+            }
+
             return (
               <Link
                 key={submenu.name}

@@ -201,6 +201,36 @@ export function OverviewTab({ hotel }: OverviewTabProps) {
           </div>
         </div>
       </div>
+
+      {/* Historical Intelligence */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Intelligence</h3>
+        <p className="text-sm text-gray-600 mb-4">Read-only venue history derived from past Ajanta meetings and bookings.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <p className="text-sm font-medium text-gray-600">Total Ajanta Events</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{hotel.total_ajanta_events ?? 0}</p>
+          </div>
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <p className="text-sm font-medium text-gray-600">Last Used Date</p>
+            <p className="mt-2 text-lg font-semibold text-gray-900">
+              {hotel.last_used_date ? new Date(hotel.last_used_date).toLocaleDateString('en-IN') : 'Never used'}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <p className="text-sm font-medium text-gray-600">Last Division</p>
+            <p className="mt-2 text-lg font-semibold text-gray-900">
+              {hotel.last_division || 'Not available'}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <p className="text-sm font-medium text-gray-600">Last Meeting Type</p>
+            <p className="mt-2 text-lg font-semibold text-gray-900">
+              {hotel.last_meeting_type || 'Not available'}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { OverviewTab } from './HotelTabs/OverviewTab';
 import { HallsTab } from './HotelTabs/HallsTab';
 import { AccommodationInventoryTab } from './HotelTabs/AccommodationInventoryTab';
 import { OccupancyMatrixTab } from './HotelTabs/OccupancyMatrixTab';
+import { PhotosTab } from './HotelTabs/PhotosTab';
 import { HotelFormModal } from './HotelFormModal';
 
 type TabName = 'overview' | 'halls' | 'accommodation' | 'occupancy' | 'photos';
@@ -241,11 +242,11 @@ export function HotelDetailsWorkspace() {
         <div className="bg-white border-b border-gray-200">
           <div className="flex gap-8 overflow-x-auto">
             {[
-              { name: 'overview' as TabName, label: 'Overview', icon: '📋' },
-              { name: 'halls' as TabName, label: 'Halls', icon: '🏛️' },
-              { name: 'accommodation' as TabName, label: 'Accommodation', icon: '🛏️' },
-              { name: 'occupancy' as TabName, label: 'Occupancy Rules', icon: '📊' },
-              { name: 'photos' as TabName, label: 'Photos', icon: '📸', disabled: true },
+              { name: 'overview' as TabName, label: 'Overview', icon: '📋', disabled: false },
+              { name: 'halls' as TabName, label: 'Halls', icon: '🏛️', disabled: false },
+              { name: 'accommodation' as TabName, label: 'Accommodation', icon: '🛏️', disabled: false },
+              { name: 'occupancy' as TabName, label: 'Occupancy Rules', icon: '📊', disabled: false },
+              { name: 'photos' as TabName, label: 'Photos', icon: '📸', disabled: false },
             ].map(tab => (
               <button
                 key={tab.name}
@@ -290,9 +291,10 @@ export function HotelDetailsWorkspace() {
             }} />
           )}
           {activeTab === 'photos' && (
-            <div className="p-6 text-center text-gray-500">
-              Photos tab coming soon...
-            </div>
+            <PhotosTab hotel={hotel} onRefresh={() => {
+              const hotelId = id || idFromPath;
+              if (hotelId) loadHotel(hotelId);
+            }} />
           )}
         </div>
       </div>

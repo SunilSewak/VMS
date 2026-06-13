@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, TrendingUp, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { AlertCircle, TrendingUp, CheckCircle2, AlertTriangle, Database } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface QualityMetric {
@@ -53,6 +53,12 @@ export function DataQualityTab({ refreshTrigger }: DataQualityTabProps) {
         .select('*', { count: 'exact', head: true })
         .is('accommodation_inventory_id', null);
 
+      // Get hotels with event history
+      const { count: historyCount } = await supabase
+        .from('hotels')
+        .select('*', { count: 'exact', head: true })
+        .gt('total_ajanta_events', 0);
+
       const total = hotelCount || 0;
       const complete = completeCount || 0;
 
@@ -80,6 +86,14 @@ export function DataQualityTab({ refreshTrigger }: DataQualityTabProps) {
           percentage: total > 0 ? Math.round(((missingAccommodationCount || 0) / total) * 100) : 0,
           color: 'yellow',
           icon: <AlertTriangle className="w-8 h-8" />
+        },
+        {
+          label: 'Venues with history',
+          value: historyCount || 0,
+          total,
+          percentage: total > 0 ? Math.round(((historyCount || 0) / total) * 100) : 0,
+          color: 'blue',
+          icon: <Database className="w-8 h-8" />
         },
         {
           label: 'Total Hotels',

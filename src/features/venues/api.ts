@@ -42,6 +42,8 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
       status,
       hotel_category,
       city_id,
+      total_ajanta_events,
+      last_used_date,
       halls ( id, classroom_capacity, u_shape_capacity, cluster_capacity )
     `)
     .eq('status', 'ACTIVE')
@@ -104,6 +106,8 @@ export async function searchVenues(filters: VenueSearchFilters): Promise<VenueCa
       largestHallCapacity: maxCapacity,
       hallCount: halls.length,
       shortlisted: false,
+      totalAjantaEvents: h.total_ajanta_events ?? 0,
+      lastUsedDate: h.last_used_date ?? null,
     };
   });
 

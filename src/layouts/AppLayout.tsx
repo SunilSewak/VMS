@@ -464,7 +464,37 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     {/* Group Submenus */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', paddingLeft: 'var(--space-5)', marginTop: 'var(--space-1)' }}>
                       {group.submenus.map((submenu) => {
-                        const isActive = location.pathname === submenu.path.split('?')[0];
+                        const isPlaceholder = submenu.path === '#';
+                        const isActive = !isPlaceholder && location.pathname === submenu.path.split('?')[0];
+
+                        if (isPlaceholder) {
+                          return (
+                            <button
+                              key={submenu.name}
+                              disabled
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--space-3)',
+                                width: '100%',
+                                padding: 'var(--space-2) var(--space-4)',
+                                borderRadius: 'var(--radius-md)',
+                                color: 'rgba(255,255,255,0.55)',
+                                backgroundColor: 'transparent',
+                                fontWeight: '400',
+                                fontSize: 'var(--font-size-sm)',
+                                textAlign: 'left',
+                                cursor: 'not-allowed',
+                                opacity: 0.7
+                              }}
+                              title="Coming soon"
+                            >
+                              {renderIcon(submenu.iconName)}
+                              <span>{submenu.name}</span>
+                            </button>
+                          );
+                        }
+
                         return (
                           <Link
                             key={submenu.name}

@@ -36,6 +36,10 @@ const HOTEL_SELECT = `
   blacklisted,
   remarks,
   status,
+  total_ajanta_events,
+  last_used_date,
+  ajanta_rating,
+  ajanta_feedback_count,
   created_at,
   updated_at
 `;
@@ -59,6 +63,52 @@ const HALL_SELECT = `
   created_at,
   updated_at
 `;
+
+const BOOKING_HISTORY_STATUSES = ['CONFIRMED', 'ACTIVE', 'INVOICE_PENDING', 'PAYMENT_PENDING', 'COMPLETED'] as const;
+
+type BookingHistoryStatus = typeof BOOKING_HISTORY_STATUSES[number];
+
+async function fetchHotelHistorySummary(hotelId: string) {
+  const history = {
+    total_ajanta_events: 0,
+    last_used_date: null as string | null,
+    last_division: null as string | null,
+    last_meeting_type: null as string | null,
+  };
+
+  const { count, error: countError } = await supabase
+    .from('bookings')
+    .select('id', { count: 'exact', head: true })
+    .eq('hotel_id', hotelId)
+    .in('status', [...BOOKING_HISTORY_STATUSES] as BookingHistoryStatus[]);
+
+  if (!countError) {
+    history.total_ajanta_events = count ?? 0;
+  }
+
+  const { data: latestBookings, error: latestError } = await supabase
+    .from('bookings')
+    .select(
+      `check_in_date,
+      meeting_requests (
+        divisions ( division_name ),
+        meeting_types ( meeting_type_name )
+      )`
+    )
+    .eq('hotel_id', hotelId)
+    .in('status', [...BOOKING_HISTORY_STATUSES] as BookingHistoryStatus[])
+    .order('check_in_date', { ascending: false })
+    .limit(1);
+
+  if (!latestError && latestBookings && latestBookings.length > 0) {
+    const latest = latestBookings[0] as any;
+    history.last_used_date = latest.check_in_date ?? null;
+    history.last_division = latest.meeting_requests?.divisions?.division_name ?? null;
+    history.last_meeting_type = latest.meeting_requests?.meeting_types?.meeting_type_name ?? null;
+  }
+
+  return history;
+}
 
 // ============================================================================
 // HOTELS
@@ -187,8 +237,10 @@ export async function getHotelById(id: string): Promise<HotelWithRelations> {
       console.log('Fetching photos for hotel:', id);
       const res = await supabase
         .from('venue_photos')
-        .select('id, hotel_id, hall_id, photo_url, photo_name, display_order, created_at')
-        .eq('hotel_id', id);
+        .select('id, hotel_id, hall_id, photo_url, caption, photo_name, display_order, storage_path, created_at')
+        .eq('hotel_id', id)
+        .order('display_order', { ascending: true });
+
       if (res.error) {
         console.warn('Photos fetch warning:', res.error.message);
         errors.push(`Photos: ${res.error.message}`);
@@ -208,6 +260,20 @@ export async function getHotelById(id: string): Promise<HotelWithRelations> {
       console.warn('Hotel details will load with available data only');
     }
 
+    // Fetch historical intelligence derived from booking history
+    let hotelHistory = {
+      total_ajanta_events: 0,
+      last_used_date: null as string | null,
+      last_division: null as string | null,
+      last_meeting_type: null as string | null,
+    };
+
+    try {
+      hotelHistory = await fetchHotelHistorySummary(id);
+    } catch (historyError) {
+      console.warn('Booking history summary fetch failed:', historyError);
+    }
+
     // Combine results - HOTEL DATA IS CRITICAL, RELATIONS ARE OPTIONAL
     const result: HotelWithRelations = {
       ...hotelData,
@@ -216,6 +282,7 @@ export async function getHotelById(id: string): Promise<HotelWithRelations> {
       accommodation_inventory: accommodation,
       occupancy_rules: rules,
       photos: photos,
+      ...hotelHistory,
     };
 
     console.log('=== getHotelById SUCCESS ===');
@@ -231,6 +298,92 @@ export async function getHotelById(id: string): Promise<HotelWithRelations> {
     return result;
   } catch (error) {
     console.error('=== getHotelById ERROR ===', error);
+    throw error;
+  }
+}
+
+export async function uploadVenuePhoto(
+  hotelId: string,
+  file: File,
+  hallId: string | null,
+  caption: string | null
+): Promise<VenuePhoto> {
+  try {
+    const bucketName = 'venue-photos';
+    const filePath = `${hotelId}/${Date.now()}-${file.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    const { data: publicUrlData, error: urlError } = await supabase.storage
+      .from(bucketName)
+      .getPublicUrl(filePath);
+
+    if (urlError) {
+      console.warn('Unable to generate public URL for uploaded venue photo:', urlError.message);
+    }
+
+    const photoUrl = publicUrlData?.publicUrl || filePath;
+
+    const { data, error } = await supabase
+      .from('venue_photos')
+      .insert([
+        {
+          hotel_id: hotelId,
+          hall_id: hallId,
+          photo_url: photoUrl,
+          caption,
+          file_name: file.name,
+          photo_type: 'OTHER',
+          storage_path: filePath,
+        },
+      ])
+      .select('id, hotel_id, hall_id, photo_url, caption, photo_name, display_order, storage_path, created_at')
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data as VenuePhoto;
+  } catch (error) {
+    console.error('Error uploading venue photo:', error);
+    throw error;
+  }
+}
+
+export async function deleteVenuePhoto(photoId: string): Promise<void> {
+  try {
+    const { data: existing, error: fetchError } = await supabase
+      .from('venue_photos')
+      .select('storage_path')
+      .eq('id', photoId)
+      .single();
+
+    if (fetchError) {
+      throw new Error(fetchError.message);
+    }
+
+    const storagePath = existing?.storage_path;
+    if (storagePath) {
+      const { error: storageError } = await supabase.storage
+        .from('venue-photos')
+        .remove([storagePath]);
+      if (storageError) {
+        console.warn('Failed to remove photo from storage:', storageError.message);
+      }
+    }
+
+    const { error } = await supabase
+      .from('venue_photos')
+      .delete()
+      .eq('id', photoId);
+
+    if (error) throw new Error(error.message);
+  } catch (error) {
+    console.error('Error deleting venue photo:', error);
     throw error;
   }
 }

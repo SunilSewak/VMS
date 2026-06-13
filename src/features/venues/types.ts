@@ -27,6 +27,10 @@ export interface VenueCardViewModel {
   largestHallCapacity: number;
   hallCount: number;
   shortlisted: boolean;
+  totalAjantaEvents?: number;
+  lastUsedDate?: string | null;
+  lastDivision?: string | null;
+  lastMeetingType?: string | null;
 }
 
 // Alias for backward compatibility
@@ -106,6 +110,8 @@ export interface Hotel {
   multiple_halls?: boolean;
   total_ajanta_events?: number;
   last_used_date?: string | null;
+  last_division?: string | null;
+  last_meeting_type?: string | null;
   ajanta_rating?: number | null;
   ajanta_feedback_count?: number;
   created_at: string;
@@ -185,6 +191,7 @@ export interface VenuePhoto {
   hotel_id?: string | null;
   hall_id?: string | null;
   photo_url: string;
+  caption?: string | null;
   photo_name?: string | null;
   display_order?: number | null;
   photo_type?: string;

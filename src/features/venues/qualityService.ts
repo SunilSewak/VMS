@@ -40,6 +40,9 @@ export async function analyzeDataQuality() {
     let readyCount = 0;
     let partialCount = 0;
     let notReadyCount = 0;
+    let hotelsMissingPhotos = 0;
+    let hotelsWithPhotos = 0;
+    let totalPhotos = 0;
 
     // Analyze each hotel
     for (const hotel of hotels) {
@@ -86,8 +89,13 @@ export async function analyzeDataQuality() {
 
       // Check for photos
       const photos = (hotel.venue_photos as any[]) || [];
+      totalPhotos += photos.length;
+      if (photos.length > 0) {
+        hotelsWithPhotos++;
+      }
       if (photos.length === 0) {
         missingComponents.push('Photos');
+        hotelsMissingPhotos++;
         issues.push({
           hotel_id: hotel.id,
           hotel_name: hotel.hotel_name,
@@ -136,6 +144,10 @@ export async function analyzeDataQuality() {
       notReadyCount,
       issues,
       hotelReadiness,
+      hotelsWithPhotos,
+      hotelsMissingPhotos,
+      totalPhotos,
+      photoCompletionPercentage: hotels.length > 0 ? Math.round((hotelsWithPhotos / hotels.length) * 100) : 0,
       readinessDistribution: {
         ready: readyCount,
         partial: partialCount,
@@ -173,13 +185,19 @@ export async function getQualityMetricsSummary() {
     let hotelsMissingAccommodation = 0;
     let hotelsMissingOccupancy = 0;
     let hotelsMissingPhotos = 0;
+    let hotelsWithPhotos = 0;
+    let totalPhotos = 0;
     let hotelsNotVenueReady = 0;
 
     for (const hotel of hotels) {
+      const hotelPhotos = (hotel.venue_photos as any[]) || [];
+      totalPhotos += hotelPhotos.length;
+      if (hotelPhotos.length > 0) hotelsWithPhotos++;
+
       if ((!hotel.halls || hotel.halls.length === 0)) hotelsMissingHalls++;
       if ((!hotel.accommodation_inventory || hotel.accommodation_inventory.length === 0)) hotelsMissingAccommodation++;
       if ((!hotel.occupancy_rules || hotel.occupancy_rules.length === 0)) hotelsMissingOccupancy++;
-      if ((!hotel.venue_photos || hotel.venue_photos.length === 0)) hotelsMissingPhotos++;
+      if (hotelPhotos.length === 0) hotelsMissingPhotos++;
 
       // Not venue ready if missing any critical component
       if (
@@ -197,6 +215,9 @@ export async function getQualityMetricsSummary() {
       hotelsMissingAccommodation,
       hotelsMissingOccupancy,
       hotelsMissingPhotos,
+      hotelsWithPhotos,
+      totalPhotos,
+      photoCompletionPercentage: hotels.length > 0 ? Math.round((hotelsWithPhotos / hotels.length) * 100) : 0,
       hotelsNotVenueReady,
       readinessDistribution: analysis.readinessDistribution
     };

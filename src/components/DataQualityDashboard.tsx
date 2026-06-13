@@ -8,6 +8,9 @@ interface QualityMetrics {
   hotelsMissingAccommodation: number;
   hotelsMissingOccupancy: number;
   hotelsMissingPhotos: number;
+  hotelsWithPhotos: number;
+  totalPhotos: number;
+  photoCompletionPercentage: number;
   hotelsNotVenueReady: number;
   readinessDistribution: {
     ready: number;
@@ -202,6 +205,48 @@ export function DataQualityDashboard() {
           </p>
           <p className="text-xs text-gray-500 mt-2">
             Missing critical components
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-600 mb-1">Hotels With Photos</p>
+          <p className="text-2xl font-bold text-emerald-600">
+            {metrics.hotelsWithPhotos}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            {Math.round((metrics.hotelsWithPhotos / metrics.totalHotels) * 100)}% of total
+          </p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-600 mb-1">Total Photos</p>
+          <p className="text-2xl font-bold text-blue-600">
+            {metrics.totalPhotos}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            Across all hotels
+          </p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-600 mb-1">Photo Completion</p>
+          <p className="text-2xl font-bold text-slate-900">
+            {metrics.photoCompletionPercentage}%
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            Hotels with at least one photo
+          </p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-600 mb-1">Hotels Missing Photos</p>
+          <p className="text-2xl font-bold text-yellow-600">
+            {metrics.hotelsMissingPhotos}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            {Math.round((metrics.hotelsMissingPhotos / metrics.totalHotels) * 100)}% of total
           </p>
         </div>
       </div>

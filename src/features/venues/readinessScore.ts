@@ -10,6 +10,7 @@ export interface ReadinessScoreResult {
   checks: ReadinessCheck[];
   missingItems: string[];
   recommendations: string[];
+  photoReadiness: boolean;
 }
 
 export interface ReadinessCheck {
@@ -183,6 +184,50 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
   }
 
   // ============================================================================
+  // PHOTOS AND VISUAL CONTENT (10% weight)
+  // ============================================================================
+
+  const photoCount = hotel.photos?.length || 0;
+  const photosAvailable = photoCount > 0;
+  const photoReady = photoCount >= 5;
+
+  const photoChecks = [
+    {
+      name: 'Photos uploaded',
+      isComplete: photosAvailable,
+      weight: 5,
+      actual: photoCount,
+      required: 1,
+    },
+    {
+      name: 'Photo readiness (5+ photos)',
+      isComplete: photoReady,
+      weight: 5,
+      actual: photoCount,
+      required: 5,
+    },
+  ];
+
+  photoChecks.forEach((check) => {
+    checks.push({
+      category: 'Photos',
+      name: check.name,
+      isComplete: check.isComplete,
+      weight: check.weight,
+      score: check.isComplete ? check.weight : 0,
+    });
+    if (!check.isComplete) {
+      missingItems.push(`Photos: ${check.name} (${check.actual}/${check.required})`);
+    }
+  });
+
+  if (!photosAvailable) {
+    recommendations.push('Upload venue photos to build trust and improve visibility.');
+  } else if (!photoReady) {
+    recommendations.push('Add more photos so the venue reaches photo readiness with at least 5 images.');
+  }
+
+  // ============================================================================
   // OCCUPANCY RULES (15% weight)
   // ============================================================================
 
@@ -250,6 +295,7 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
     checks,
     missingItems,
     recommendations,
+    photoReadiness: photoCount >= 5,
   };
 }
 

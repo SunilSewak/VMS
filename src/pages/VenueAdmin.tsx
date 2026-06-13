@@ -231,6 +231,14 @@ export function VenueAdmin() {
                         <p className="text-gray-900">{hotel.total_rooms}</p>
                       </div>
                     )}
+                    <div>
+                      <p className="text-gray-500 text-xs">Ajanta Events</p>
+                      <p className="text-gray-900">{hotel.total_ajanta_events ?? 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">Last Used</p>
+                      <p className="text-gray-900">{hotel.last_used_date ? new Date(hotel.last_used_date).toLocaleDateString('en-IN') : 'Never used'}</p>
+                    </div>
                   </div>
                 </div>
 

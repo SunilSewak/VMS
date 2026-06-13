@@ -12,6 +12,7 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   RefreshCw,
 } from 'lucide-react';
 import { useVenues, useVenueFilters, useShortlist } from '../features/venues/hooks';
@@ -922,6 +923,16 @@ function VenueCard({ venue, isShortlisted, isInCompare, hasRequestContext, onSho
             icon={<Building2 size={14} />}
             label="Halls"
             value={`${venue.hallCount} hall${venue.hallCount !== 1 ? 's' : ''}`}
+          />
+          <StatBadge
+            icon={<CheckCircle2 size={14} />}
+            label="Ajanta Events"
+            value={`${venue.totalAjantaEvents ?? 0}`}
+          />
+          <StatBadge
+            icon={<AlertTriangle size={14} />}
+            label="Last Used"
+            value={venue.lastUsedDate ? new Date(venue.lastUsedDate).toLocaleDateString('en-IN') : 'Never'}
           />
         </div>
 
