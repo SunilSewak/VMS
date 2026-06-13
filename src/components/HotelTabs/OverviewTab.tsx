@@ -1,4 +1,3 @@
-import React from 'react';
 import type { HotelWithRelations } from '../../features/venues/types';
 
 interface OverviewTabProps {

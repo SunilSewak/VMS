@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { OccupancyRule, HotelWithRelations } from '../../features/venues/types';
 import { getOccupancyRulesByHotel } from '../../features/venues/venueService';
 import { supabase } from '../../lib/supabase';
@@ -17,7 +17,6 @@ export function OccupancyMatrixTab({ hotel, onRefresh }: OccupancyMatrixTabProps
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
-  const [matrix, setMatrix] = useState<Map<string, string>>(new Map());
 
   // Load occupancy rules
   useEffect(() => {
@@ -29,16 +28,6 @@ export function OccupancyMatrixTab({ hotel, onRefresh }: OccupancyMatrixTabProps
       setLoading(true);
       const data = await getOccupancyRulesByHotel(hotel.id);
       setRules(data);
-      
-      // Build matrix from rules (for now treating as designation -> occupancy type mapping)
-      const matrixMap = new Map<string, string>();
-      data.forEach(rule => {
-        // Map rule_type to occupancy designation if available
-        if (rule.rule_type) {
-          matrixMap.set(rule.rule_type, OCCUPANCY_TYPES[0]);
-        }
-      });
-      setMatrix(matrixMap);
     } catch (error) {
       console.error('Error loading occupancy rules:', error);
     } finally {
@@ -58,7 +47,7 @@ export function OccupancyMatrixTab({ hotel, onRefresh }: OccupancyMatrixTabProps
           .update({
             rule_type: `${designation}_${occupancyType}`,
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq('id', existingRule.id);
 
         if (error) throw error;
@@ -70,7 +59,7 @@ export function OccupancyMatrixTab({ hotel, onRefresh }: OccupancyMatrixTabProps
             hotel_id: hotel.id,
             rule_type: `${designation}_${occupancyType}`,
             is_active: true,
-          });
+          } as any);
 
         if (error) throw error;
       }

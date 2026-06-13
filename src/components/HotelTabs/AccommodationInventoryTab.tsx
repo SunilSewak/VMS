@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { AccommodationInventory, HotelWithRelations } from '../../features/venues/types';
-import { getAccommodationByHotel, createAccommodation } from '../../features/venues/venueService';
+import { getAccommodationByHotel } from '../../features/venues/venueService';
 import { supabase } from '../../lib/supabase';
 
 interface AccommodationInventoryTabProps {
@@ -14,10 +14,7 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
   );
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Partial<AccommodationInventory>>({});
-  const [totalRooms, setTotalRooms] = useState<number>(
-    (hotel.accommodation_inventory || []).reduce((sum, inv) => sum + inv.total_rooms, 0)
-  );
+  const [editValues, setEditValues] = useState<Record<string, any>>({});
 
   // Load accommodation data
   useEffect(() => {
@@ -29,7 +26,6 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
       setLoading(true);
       const data = await getAccommodationByHotel(hotel.id);
       setInventory(data);
-      setTotalRooms(data.reduce((sum, inv) => sum + inv.total_rooms, 0));
     } catch (error) {
       console.error('Error loading accommodation:', error);
     } finally {
@@ -64,7 +60,7 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
           rate_per_night: updatedItem.rate_per_night,
           status: updatedItem.status,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', item.id);
 
       if (error) throw error;
@@ -142,7 +138,7 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Room Type
+                Room Category
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                 Total
@@ -175,7 +171,7 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
               inventory.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {item.room_type}
+                    Accommodation Rooms
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {editingId === item.id ? (

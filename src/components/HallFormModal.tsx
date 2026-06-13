@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Hall, HotelWithRelations, HallCreateInput, HallUpdateInput } from '../features/venues/types';
 import { createHall, updateHall } from '../features/venues/venueService';
 
@@ -13,18 +13,18 @@ export function HallFormModal({ hotel, hall, onClose, onComplete }: HallFormModa
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     hall_name: hall?.hall_name || '',
-    hall_type: hall?.hall_type || 'BALLROOM',
-    indoor_outdoor: hall?.indoor_outdoor || 'INDOOR',
-    area: hall?.area || '',
-    length: hall?.length || '',
-    width: hall?.width || '',
-    height: hall?.height || '',
-    capacity: hall?.capacity || '',
-    theater_capacity: hall?.theater_capacity || '',
-    classroom_capacity: hall?.classroom_capacity || '',
-    round_table_capacity: hall?.round_table_capacity || '',
-    cocktail_capacity: hall?.cocktail_capacity || '',
-    status: hall?.status || 'ACTIVE',
+    hall_type: (hall?.hall_type as string) || 'BALLROOM',
+    indoor_outdoor: (hall?.indoor_outdoor as string) || 'INDOOR',
+    area: (hall?.area as string | number) || '',
+    length: (hall?.length as string | number) || '',
+    width: (hall?.width as string | number) || '',
+    height: (hall?.height as string | number) || '',
+    capacity: (hall?.capacity as string | number) || '',
+    theater_capacity: (hall?.theater_capacity as string | number) || '',
+    classroom_capacity: (hall?.classroom_capacity as string | number) || '',
+    round_table_capacity: (hall?.round_table_capacity as string | number) || '',
+    cocktail_capacity: (hall?.cocktail_capacity as string | number) || '',
+    status: (hall?.status as string) || 'ACTIVE',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -60,15 +60,15 @@ export function HallFormModal({ hotel, hall, onClose, onComplete }: HallFormModa
         hall_name: formData.hall_name.trim(),
         hall_type: formData.hall_type as any,
         indoor_outdoor: formData.indoor_outdoor as any,
-        area: formData.area ? parseInt(formData.area) : undefined,
-        length: formData.length ? parseFloat(formData.length) : undefined,
-        width: formData.width ? parseFloat(formData.width) : undefined,
-        height: formData.height ? parseFloat(formData.height) : undefined,
-        capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
-        theater_capacity: formData.theater_capacity ? parseInt(formData.theater_capacity) : undefined,
-        classroom_capacity: formData.classroom_capacity ? parseInt(formData.classroom_capacity) : undefined,
-        round_table_capacity: formData.round_table_capacity ? parseInt(formData.round_table_capacity) : undefined,
-        cocktail_capacity: formData.cocktail_capacity ? parseInt(formData.cocktail_capacity) : undefined,
+        area: formData.area ? parseInt(String(formData.area)) : undefined,
+        length: formData.length ? parseFloat(String(formData.length)) : undefined,
+        width: formData.width ? parseFloat(String(formData.width)) : undefined,
+        height: formData.height ? parseFloat(String(formData.height)) : undefined,
+        capacity: formData.capacity ? parseInt(String(formData.capacity)) : undefined,
+        theater_capacity: formData.theater_capacity ? parseInt(String(formData.theater_capacity)) : undefined,
+        classroom_capacity: formData.classroom_capacity ? parseInt(String(formData.classroom_capacity)) : undefined,
+        round_table_capacity: formData.round_table_capacity ? parseInt(String(formData.round_table_capacity)) : undefined,
+        cocktail_capacity: formData.cocktail_capacity ? parseInt(String(formData.cocktail_capacity)) : undefined,
         status: formData.status as any,
       };
 

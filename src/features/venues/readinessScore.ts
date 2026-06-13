@@ -1,7 +1,7 @@
 // Venue Readiness Score Calculator
 // Comprehensive validation and completeness scoring for hotels
 
-import type { HotelWithRelations, Hall, AccommodationInventory, OccupancyRule } from './types';
+import type { HotelWithRelations, AccommodationInventory, OccupancyRule } from './types';
 
 export interface ReadinessScoreResult {
   overallScore: number; // 0-100

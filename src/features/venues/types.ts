@@ -1,5 +1,59 @@
 // Venue Master Types
 
+// ============================================================================
+// VENUE SEARCH & DISPLAY TYPES (for VenueExplorer)
+// ============================================================================
+
+export interface City {
+  id: string;
+  city_name: string;
+  zone_id?: string;
+}
+
+export interface HotelCategory {
+  id: string;
+  category_code: string;
+  category_name: string;
+}
+
+export interface VenueCardViewModel {
+  id: string;
+  hotelId: string;
+  hotelName: string;
+  categoryName: string;
+  cityName: string;
+  address: string;
+  primaryImage: string | null;
+  largestHallCapacity: number;
+  hallCount: number;
+  shortlisted: boolean;
+}
+
+// Alias for backward compatibility
+export type VenueCardData = VenueCardViewModel;
+
+export interface VenueSearchFilters {
+  searchQuery: string;
+  cityId?: string;
+  zone?: string;
+  categoryCode?: string;
+  capacityMin?: number;
+}
+
+export interface VenueShortlist {
+  id: string;
+  request_id: string;
+  hotel_id: string;
+  hall_id?: string | null;
+  shortlisted_by: string;
+  shortlisted_at: string;
+  hotels?: Hotel | null;
+}
+
+// ============================================================================
+// CORE VENUE TYPES
+// ============================================================================
+
 export type VenueStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING_APPROVAL';
 export type HallType = 'BALLROOM' | 'CONFERENCE' | 'BANQUET' | 'BOARDROOM' | 'THEATRE' | 'OTHER';
 export type IndoorOutdoor = 'INDOOR' | 'OUTDOOR' | 'BOTH';
@@ -46,6 +100,9 @@ export interface Hall {
   classroom_capacity?: number | null;
   cocktail_capacity?: number | null;
   round_table_capacity?: number | null;
+  u_shape_capacity?: number | null;
+  cluster_capacity?: number | null;
+  boardroom_capacity?: number | null;
   indoor_outdoor: IndoorOutdoor;
   amenities?: string[] | null;
   status: VenueStatus;
@@ -58,11 +115,13 @@ export interface Hall {
 export interface AccommodationInventory {
   id: string;
   hotel_id: string;
-  room_type: RoomType;
   total_rooms: number;
+  single_rooms?: number | null;
+  double_rooms?: number | null;
+  triple_rooms?: number | null;
+  quad_rooms?: number | null;
+  suite_rooms?: number | null;
   available_rooms?: number | null;
-  single_bed?: number | null;
-  double_bed?: number | null;
   occupancy: number;
   rate_per_night?: number | null;
   status: VenueStatus;
@@ -106,6 +165,9 @@ export interface VenuePhoto {
   photo_url: string;
   photo_name?: string | null;
   display_order?: number | null;
+  photo_type?: string;
+  file_name?: string;
+  storage_path?: string;
   created_at: string;
   updated_at?: string | null;
 }
@@ -150,6 +212,9 @@ export interface HallCreateInput {
   classroom_capacity?: number;
   cocktail_capacity?: number;
   round_table_capacity?: number;
+  u_shape_capacity?: number;
+  cluster_capacity?: number;
+  boardroom_capacity?: number;
   indoor_outdoor?: IndoorOutdoor;
   amenities?: string[];
   status?: VenueStatus;
@@ -167,6 +232,9 @@ export interface HallUpdateInput {
   classroom_capacity?: number | null;
   cocktail_capacity?: number | null;
   round_table_capacity?: number | null;
+  u_shape_capacity?: number | null;
+  cluster_capacity?: number | null;
+  boardroom_capacity?: number | null;
   indoor_outdoor?: IndoorOutdoor;
   amenities?: string[] | null;
   status?: VenueStatus;
@@ -174,11 +242,13 @@ export interface HallUpdateInput {
 
 export interface AccommodationInventoryCreateInput {
   hotel_id: string;
-  room_type: RoomType;
   total_rooms: number;
+  single_rooms?: number;
+  double_rooms?: number;
+  triple_rooms?: number;
+  quad_rooms?: number;
+  suite_rooms?: number;
   available_rooms?: number;
-  single_bed?: number;
-  double_bed?: number;
   occupancy: number;
   rate_per_night?: number;
   status?: VenueStatus;
@@ -191,4 +261,80 @@ export interface OccupancyRuleCreateInput {
   max_occupancy?: number;
   rate_adjustment?: number;
   is_active?: boolean;
+}
+
+// ============================================================================
+// VENUE IMPORT TYPES (for Bulk Upload)
+// ============================================================================
+
+export interface ImportValidationError {
+  row: number;
+  field: string;
+  error: string;
+  value?: string | number | null;
+  severity: 'ERROR' | 'WARNING';
+}
+
+export interface ImportPreviewData {
+  validRows: number;
+  invalidRows: number;
+  errors: ImportValidationError[];
+  hotelsSummary: {
+    toCreate: number;
+    toUpdate: number;
+  };
+  hallsSummary: {
+    toCreate: number;
+    toUpdate: number;
+  };
+}
+
+export interface ImportResult {
+  success: boolean;
+  hotelCount: number;
+  hallCount: number;
+  hotelCreated: number;
+  hotelUpdated: number;
+  hallCreated: number;
+  hallUpdated: number;
+  rowsProcessed: number;
+  rowsSkipped: number;
+  errors: ImportValidationError[];
+  importSessionId?: string;
+}
+
+export interface VenueImportHistory {
+  id: string;
+  import_session_id: string;
+  file_name: string;
+  uploaded_by: string;
+  uploaded_at: string;
+  rows_processed: number;
+  hotels_created: number;
+  hotels_updated: number;
+  halls_created: number;
+  halls_updated: number;
+  rows_skipped: number;
+  status: 'UPLOADED' | 'VALIDATED' | 'IMPORTING' | 'SUCCESS' | 'FAILED';
+  error_report_path?: string;
+  created_at: string;
+}
+
+export interface DataQualityMetrics {
+  totalHotels: number;
+  hotelsMissingHalls: number;
+  hotelsMissingInventory: number;
+  hotelsMissingOccupancy: number;
+  hotelsMissingPhotos: number;
+  hotelsNotVenueReady: number;
+  readinessDistribution: {
+    notReady: number;
+    partial: number;
+    ready: number;
+    optimized: number;
+  };
+}
+
+export interface ExcelRow {
+  [key: string]: any;
 }

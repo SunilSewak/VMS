@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { Hall, HotelWithRelations } from '../../features/venues/types';
 import { getHallsByHotel, deleteHall } from '../../features/venues/venueService';
 import { HallFormModal } from '../HallFormModal';

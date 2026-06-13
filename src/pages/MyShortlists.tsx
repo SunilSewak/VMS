@@ -8,7 +8,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useMyShortlists } from '../features/venues/hooks';
-import { removeFromShortlist } from '../features/venues/venueService';
+import { removeFromShortlist } from '../features/venues/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { VenueShortlist, Hotel, VenuePhoto } from '../features/venues/types';
 import { ROUTES } from '../routes/routeRegistry';

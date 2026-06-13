@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import type { Hotel, HotelCreateInput, HotelUpdateInput } from '../features/venues/types';
+import { useState, useEffect } from 'react';
+import type { Hotel } from '../features/venues/types';
 import { createHotel, updateHotel } from '../features/venues/venueService';
 import { supabase } from '../lib/supabase';
 
@@ -24,7 +24,6 @@ interface Zone {
 export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalProps) {
   const [loading, setLoading] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
-  const [zones, setZones] = useState<Zone[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -57,14 +56,6 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
   async function loadData() {
     try {
       setCitiesLoading(true);
-
-      // Load zones
-      const { data: zonesData } = await supabase
-        .from('zones')
-        .select('id, zone_name, zone_code')
-        .eq('status', 'ACTIVE')
-        .order('zone_code');
-      setZones(zonesData || []);
 
       // Load cities
       const { data: citiesData } = await supabase

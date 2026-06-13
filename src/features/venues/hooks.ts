@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { VenueCardData, VenueSearchFilters, Hotel, VenueShortlist, HotelCategory, City } from './types';
+import type { Hotel, City, HotelCategory, VenueCardViewModel, VenueSearchFilters, VenueShortlist } from './types';
 import {
   searchVenues,
   getVenueById,
@@ -10,7 +10,7 @@ import {
   fetchShortlistedIds,
   fetchMyShortlists,
   fetchShortlistsForRequest,
-} from './venueService';
+} from './api';
 
 // Hook: Fetch cities and categories for filter dropdowns
 export function useVenueFilters() {
@@ -35,7 +35,7 @@ export function useVenueFilters() {
 
 // Hook: Search venues with filters
 export function useVenues(filters: VenueSearchFilters, skip = false) {
-  const [venues, setVenues] = useState<VenueCardData[]>([]);
+  const [venues, setVenues] = useState<VenueCardViewModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -25,7 +25,10 @@ export const ROUTES = {
   rooming: "/rooming",
   roomingDetails: "/rooming/:id",
   users: "/settings/users",
+  venueAdmin: "/administration/masters/venues",
+  venueAdminDetails: "/administration/masters/venues/:id",
   venueImport: "/admin/venue-import",
+  venueBulkUpload: "/administration/venue-repository/bulk-upload",
   demoTools: "/admin/demo-tools",
   login: "/login"
 } as const;
