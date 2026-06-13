@@ -16,12 +16,9 @@ import { ROUTES } from '../routes/routeRegistry';
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=600&q=80';
 
 function getVenuePhoto(hotel: Hotel | null | undefined): string | null {
-  const hotelWithPhotos = hotel as any;
-  if (!hotelWithPhotos?.photos?.length) return null;
-  const sorted = [...hotelWithPhotos.photos].sort(
-    (a: any, b: any) => (a.display_order ?? 99) - (b.display_order ?? 99)
-  );
-  return sorted[0]?.storage_path ?? null;
+  // For shortlists, we don't fetch photos - use placeholder
+  // Photos are only loaded in detail view via getVenueById
+  return null;
 }
 
 export function MyShortlists() {

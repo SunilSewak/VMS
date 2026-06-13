@@ -257,7 +257,7 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
             ) : (
               <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {photoList.map((photo) => {
-                  const imageSrc = photo.storage_path || photo.photo_url || 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=80';
+                  const imageSrc = photo.photo_url || 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=80';
 
                   return (
                     <div key={photo.id} className="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-100 shadow-sm">

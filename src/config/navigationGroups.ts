@@ -65,27 +65,9 @@ export const navigationGroups: NavigationGroup[] = [
         roles: [ROLES.SUPER_ADMIN, ROLES.SALES_HEAD]
       },
       {
-        name: 'Venue Directory',
+        name: 'Hotel Partners',
         path: ROUTES.hotels,
-        iconName: 'List',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
-      },
-      {
-        name: 'Hotels',
-        path: ROUTES.hotels,
-        iconName: 'Building',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
-      },
-      {
-        name: 'Halls',
-        path: ROUTES.hotels,
-        iconName: 'DoorOpen',
-        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
-      },
-      {
-        name: 'Photos',
-        path: ROUTES.hotels,
-        iconName: 'Image',
+        iconName: 'Building2',
         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN]
       }
     ]

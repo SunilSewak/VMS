@@ -5,7 +5,7 @@ export const ROUTES = {
   meetingRequestNew: "/meeting-requests/new",
   meetingRequestView: "/meeting-requests/:id",
   meetingRequestEdit: "/meeting-requests/:id/edit",
-  hotels: "/hotels",
+  hotels: "/administration/masters/venues",
   venueExplorer: "/venue-explorer",
   venueDetails: "/venue-explorer/:id",
   myShortlists: "/my-shortlists",

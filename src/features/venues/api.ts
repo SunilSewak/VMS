@@ -140,7 +140,7 @@ export async function getVenueById(id: string): Promise<HotelWithRelations> {
       remarks,
       city:city_id ( id, city_name ),
       halls ( id, hotel_id, hall_name, floor, classroom_capacity, u_shape_capacity, cluster_capacity, indoor_outdoor, status ),
-      photos:photos ( id, storage_path, display_order )
+      venue_photos ( id, photo_url, display_order )
     `)
     .eq('id', id)
     .single();
@@ -193,7 +193,7 @@ export async function fetchMyShortlists(userId: string): Promise<VenueShortlist[
     .from('venue_shortlists')
     .select(`
       id, request_id, hotel_id, hall_id, shortlisted_by, shortlisted_at,
-      hotels ( id, hotel_name, address, city:city_id ( city_name ), hotel_category, photos ( storage_path, display_order ) )
+      hotels ( id, hotel_name, address, city:city_id ( city_name ), hotel_category )
     `)
     .eq('shortlisted_by', userId)
     .order('shortlisted_at', { ascending: false });
@@ -207,7 +207,7 @@ export async function fetchShortlistsForRequest(requestId: string): Promise<Venu
     .from('venue_shortlists')
     .select(`
       id, request_id, hotel_id, hall_id, shortlisted_by, shortlisted_at,
-      hotels ( id, hotel_name, address, city:city_id ( city_name ), hotel_category, photos ( storage_path, display_order ) )
+      hotels ( id, hotel_name, address, city:city_id ( city_name ), hotel_category )
     `)
     .eq('request_id', requestId)
     .order('shortlisted_at', { ascending: false });

@@ -9,7 +9,6 @@ import { SalesHeadHome } from './pages/SalesHeadHome';
 import { MeetingRequests } from './pages/MeetingRequests';
 import { MeetingRequestForm } from './pages/MeetingRequestForm';
 import { RequestProcessingWorkspace } from './pages/RequestProcessingWorkspace';
-import { Hotels } from './pages/Hotels';
 import { VenueExplorer } from './pages/VenueExplorer';
 import { VenueDetails } from './pages/VenueDetails';
 import { MyShortlists } from './pages/MyShortlists';
@@ -160,13 +159,10 @@ export default function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path={ROUTES.hotels} element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Hotels />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
+              {/* NOTE: ROUTES.hotels (/administration/masters/venues) is handled by
+                  the <VenueAdmin /> route below. The old <Hotels /> placeholder route
+                  was removed because it duplicated the path and shadowed VenueAdmin,
+                  causing the "No hotel partners listed" empty state. */}
 
               <Route path={ROUTES.venueExplorer} element={
                 <ProtectedRoute>

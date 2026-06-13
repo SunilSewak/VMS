@@ -62,15 +62,27 @@ export function EmptyState({
       {onAction && actionLabel && (
         <button
           onClick={onAction}
+          type="button"
           style={{
-            padding: 'var(--space-2) var(--space-4)',
+            padding: 'var(--space-3) var(--space-5)',
             backgroundColor: 'var(--primary)',
             color: 'var(--text-on-primary)',
             fontSize: 'var(--font-sm)',
             fontWeight: '600',
             borderRadius: 'var(--radius-md)',
             boxShadow: 'var(--shadow-sm)',
-            transition: 'background-color var(--transition-fast)'
+            transition: 'background-color var(--transition-fast), transform var(--transition-fast)',
+            border: 'none',
+            cursor: 'pointer',
+            outline: 'none'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--primary-hover, var(--primary))';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--primary)';
+            e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
           {actionLabel}

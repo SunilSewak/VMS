@@ -38,8 +38,6 @@ const HOTEL_SELECT = `
   status,
   total_ajanta_events,
   last_used_date,
-  ajanta_rating,
-  ajanta_feedback_count,
   created_at,
   updated_at
 `;
@@ -118,7 +116,32 @@ export async function getHotels(): Promise<Hotel[]> {
   try {
     const { data, error } = await supabase
       .from('hotels')
-      .select(HOTEL_SELECT)
+      .select(`
+        id,
+        hotel_name,
+        city_id,
+        zone_id,
+        hotel_brand,
+        hotel_category,
+        address,
+        gst_number,
+        website,
+        latitude,
+        longitude,
+        sales_contact_name,
+        sales_contact_designation,
+        sales_contact_mobile,
+        sales_contact_email,
+        preferred_vendor,
+        blacklisted,
+        remarks,
+        status,
+        total_ajanta_events,
+        last_used_date,
+        created_at,
+        updated_at,
+        city:city_id ( id, city_name, zone_id )
+      `)
       .order('hotel_name', { ascending: true });
 
     if (error) throw new Error(error.message);

@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import type { ReactNode, CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Building2, MapPin, Mail, Phone, BedDouble, CalendarDays, Plus, Database, Upload } from 'lucide-react';
 import type { Hotel } from '../features/venues/types';
 import { getHotels, deleteHotel } from '../features/venues/venueService';
 import { HotelFormModal } from '../components/HotelFormModal';
+
+const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
+  ACTIVE: { bg: 'color-mix(in srgb, var(--status-success) 14%, transparent)', color: 'var(--status-success)' },
+  INACTIVE: { bg: 'color-mix(in srgb, var(--status-error) 14%, transparent)', color: 'var(--status-error)' },
+  PENDING_APPROVAL: { bg: 'color-mix(in srgb, var(--status-warning) 16%, transparent)', color: 'var(--status-warning)' },
+};
 
 export function VenueAdmin() {
   const navigate = useNavigate();
@@ -14,7 +22,6 @@ export function VenueAdmin() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingHotel, setEditingHotel] = useState<Hotel | null>(null);
 
-  // Load hotels
   useEffect(() => {
     loadHotels();
   }, []);
@@ -36,7 +43,6 @@ export function VenueAdmin() {
     if (!confirm('Are you sure you want to delete this hotel? This action cannot be undone.')) {
       return;
     }
-
     try {
       await deleteHotel(hotelId);
       await loadHotels();
@@ -62,214 +68,219 @@ export function VenueAdmin() {
     await loadHotels();
   }
 
-  // Filter hotels
-  const filteredHotels = hotels.filter(hotel => {
-    const matchesSearch = hotel.hotel_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      hotel.city?.city_name.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredHotels = hotels.filter((hotel) => {
+    const matchesSearch =
+      hotel.hotel_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (hotel.city?.city_name ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !statusFilter || hotel.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading hotels...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Venue Repository</h1>
-              <p className="text-gray-600 text-sm mt-1">Manage all hotels, halls, and accommodations</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'fadeIn 0.3s ease' }}>
+
+      {/* ─── HEADER ─── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+            <div style={{
+              width: '44px', height: '44px',
+              borderRadius: 'var(--radius-lg)',
+              background: 'color-mix(in srgb, var(--primary) 12%, transparent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--primary)',
+            }}>
+              <Building2 size={22} />
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => navigate('/administration/masters/venues/data-center')}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors"
-              >
-                📊 Data Center
-              </button>
-              <button
-                onClick={() => navigate('/administration/masters/venues/bulk-upload')}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
-              >
-                ⬆ Bulk Upload
-              </button>
-              <button
-                onClick={handleCreateHotel}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
-              >
-                + Create Hotel
-              </button>
-            </div>
+            <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--text-main)' }}>
+              Venue Repository
+            </h1>
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', maxWidth: '480px' }}>
+            Manage all hotels, halls, and accommodations across the venue inventory.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate('/administration/masters/venues/data-center')}
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+          >
+            <Database size={16} /> Data Center
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate('/administration/masters/venues/bulk-upload')}
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+          >
+            <Upload size={16} /> Bulk Upload
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={handleCreateHotel}
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+          >
+            <Plus size={16} /> Create Hotel
+          </button>
+        </div>
+      </div>
+
+      {/* ─── FILTERS ─── */}
+      <div className="card" style={{ padding: 'var(--space-5)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)', alignItems: 'end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>
+              Search by Hotel or City
+            </label>
+            <input
+              type="text"
+              className="input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Type to search..."
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>
+              Filter by Status
+            </label>
+            <select
+              className="input"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <option value="">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="PENDING_APPROVAL">Pending Approval</option>
+            </select>
+          </div>
+
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
+            Showing <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{filteredHotels.length}</span> of{' '}
+            <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{hotels.length}</span> hotels
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search by Hotel or City
-              </label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Type to search..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Filter by Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Status</option>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-                <option value="PENDING_APPROVAL">Pending Approval</option>
-              </select>
-            </div>
-
-            {/* Results Count */}
-            <div className="flex items-end">
-              <div className="text-sm text-gray-600">
-                Showing <span className="font-semibold text-gray-900">{filteredHotels.length}</span> of{' '}
-                <span className="font-semibold text-gray-900">{hotels.length}</span> hotels
-              </div>
-            </div>
-          </div>
+      {/* ─── LOADING ─── */}
+      {loading && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-4)' }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="card animate-pulse" style={{ height: '220px', background: 'var(--surface-2)' }} />
+          ))}
         </div>
-      </div>
+      )}
 
-      {/* Hotels List */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        {filteredHotels.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
-            <p className="text-gray-500 text-lg font-medium">
-              {hotels.length === 0 ? 'No hotels created yet' : 'No hotels match your search'}
-            </p>
-            {hotels.length === 0 && (
-              <button
-                onClick={handleCreateHotel}
-                className="mt-4 px-4 py-2 text-blue-600 hover:underline font-medium"
-              >
-                Create the first hotel
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-            {filteredHotels.map(hotel => (
-              <div
-                key={hotel.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden"
-              >
+      {/* ─── EMPTY STATE ─── */}
+      {!loading && filteredHotels.length === 0 && (
+        <div className="card" style={{ padding: 'var(--space-16)', textAlign: 'center' }}>
+          <Building2 size={56} style={{ color: 'var(--text-light)', marginBottom: 'var(--space-5)', opacity: 0.5 }} />
+          <h3 style={{ fontWeight: 800, fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-3)' }}>
+            {hotels.length === 0 ? 'No hotels created yet' : 'No hotels match your search'}
+          </h3>
+          {hotels.length === 0 && (
+            <button
+              className="btn btn-primary"
+              onClick={handleCreateHotel}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}
+            >
+              <Plus size={16} /> Create the first hotel
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ─── HOTEL CARDS ─── */}
+      {!loading && filteredHotels.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-5)' }}>
+          {filteredHotels.map((hotel) => {
+            const statusStyle = STATUS_STYLES[hotel.status] ?? STATUS_STYLES.PENDING_APPROVAL;
+            return (
+              <div key={hotel.id} className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 {/* Card Header */}
-                <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 truncate">
-                    {hotel.hotel_name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {hotel.city?.city_name || 'N/A'}
-                  </p>
-                </div>
-
-                {/* Card Body */}
-                <div className="px-6 py-4 space-y-3">
-                  {/* Status Badge */}
-                  <div>
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                        hotel.status === 'ACTIVE'
-                          ? 'bg-green-100 text-green-800'
-                          : hotel.status === 'INACTIVE'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
+                <div style={{
+                  padding: 'var(--space-5)',
+                  background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+                  borderBottom: '1px solid var(--border)',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-2)' }}>
+                    <h3 style={{ fontWeight: 800, fontSize: 'var(--font-size-md)', color: 'var(--text-main)' }}>
+                      {hotel.hotel_name}
+                    </h3>
+                    <span style={{
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                      background: statusStyle.bg,
+                      color: statusStyle.color,
+                    }}>
                       {hotel.status}
                     </span>
                   </div>
-
-                  {/* Hotel Details */}
-                  <div className="space-y-2 text-sm">
-                    {hotel.contact_email && (
-                      <div>
-                        <p className="text-gray-500 text-xs">Email</p>
-                        <p className="text-gray-900 truncate">{hotel.contact_email}</p>
-                      </div>
-                    )}
-                    {hotel.contact_phone && (
-                      <div>
-                        <p className="text-gray-500 text-xs">Phone</p>
-                        <p className="text-gray-900">{hotel.contact_phone}</p>
-                      </div>
-                    )}
-                    {hotel.total_rooms && (
-                      <div>
-                        <p className="text-gray-500 text-xs">Total Rooms</p>
-                        <p className="text-gray-900">{hotel.total_rooms}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-gray-500 text-xs">Ajanta Events</p>
-                      <p className="text-gray-900">{hotel.total_ajanta_events ?? 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs">Last Used</p>
-                      <p className="text-gray-900">{hotel.last_used_date ? new Date(hotel.last_used_date).toLocaleDateString('en-IN') : 'Never used'}</p>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: 'var(--space-2)' }}>
+                    <MapPin size={13} /> {hotel.city?.city_name || 'N/A'}
                   </div>
                 </div>
 
+                {/* Card Body */}
+                <div style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', flex: 1 }}>
+                  {hotel.contact_email && (
+                    <DetailRow icon={<Mail size={13} />} label="Email" value={hotel.contact_email} />
+                  )}
+                  {hotel.contact_phone && (
+                    <DetailRow icon={<Phone size={13} />} label="Phone" value={hotel.contact_phone} />
+                  )}
+                  {hotel.total_rooms != null && (
+                    <DetailRow icon={<BedDouble size={13} />} label="Total Rooms" value={String(hotel.total_rooms)} />
+                  )}
+                  <DetailRow icon={<CalendarDays size={13} />} label="Ajanta Events" value={String(hotel.total_ajanta_events ?? 0)} />
+                  <DetailRow
+                    icon={<CalendarDays size={13} />}
+                    label="Last Used"
+                    value={hotel.last_used_date ? new Date(hotel.last_used_date).toLocaleDateString('en-IN') : 'Never used'}
+                  />
+                </div>
+
                 {/* Card Footer */}
-                <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex gap-2">
+                <div style={{
+                  padding: 'var(--space-3) var(--space-5)',
+                  borderTop: '1px solid var(--border)',
+                  background: 'var(--surface-2)',
+                  display: 'flex', gap: 'var(--space-2)',
+                }}>
                   <button
                     onClick={() => navigate(`/administration/masters/venues/${hotel.id}`)}
-                    className="flex-1 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
+                    style={footerBtnStyle('var(--primary)')}
                   >
                     View Details
                   </button>
                   <button
                     onClick={() => handleEditHotel(hotel)}
-                    className="flex-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-200 rounded"
+                    style={footerBtnStyle('var(--text-main)')}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(hotel.id)}
-                    className="flex-1 px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                    style={footerBtnStyle('var(--status-error)')}
                   >
                     Delete
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Hotel Form Modal */}
+      {/* ─── HOTEL FORM MODAL ─── */}
       {showFormModal && (
         <HotelFormModal
           hotel={editingHotel}
@@ -282,4 +293,31 @@ export function VenueAdmin() {
       )}
     </div>
   );
+}
+
+function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', color: 'var(--text-light)', fontSize: 'var(--font-xs)' }}>
+        {icon} {label}
+      </span>
+      <span style={{ color: 'var(--text-main)', fontSize: 'var(--font-sm)', fontWeight: 600, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function footerBtnStyle(color: string): CSSProperties {
+  return {
+    flex: 1,
+    padding: '0.55rem 0.5rem',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border)',
+    background: 'var(--surface)',
+    color,
+    fontWeight: 700,
+    fontSize: 'var(--font-sm)',
+    cursor: 'pointer',
+  };
 }
