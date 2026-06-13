@@ -11,6 +11,34 @@ interface HotelFormModalProps {
   onComplete: () => void;
 }
 
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 'var(--font-sm)',
+  fontWeight: 600,
+  color: 'var(--text-main)',
+  marginBottom: 'var(--space-2)',
+};
+
+const errStyle: React.CSSProperties = {
+  color: 'var(--status-error)',
+  fontSize: 'var(--font-xs)',
+  marginTop: 'var(--space-1)',
+};
+
+const requiredMark: React.CSSProperties = {
+  color: 'var(--status-error)',
+};
+
+const gridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: 'var(--space-4)',
+};
+
+const fullRow: React.CSSProperties = {
+  gridColumn: '1 / -1',
+};
+
 export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalProps) {
   const isEditing = !!hotel;
   const [loading, setLoading] = useState(false);
@@ -232,88 +260,112 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 'var(--space-4)',
+    }}>
+      <div style={{
+        background: 'var(--surface)',
+        borderRadius: 'var(--radius-xl)',
+        boxShadow: 'var(--shadow-lg)',
+        maxWidth: '720px', width: '100%', maxHeight: '90vh', overflowY: 'auto',
+      }}>
         {/* Header */}
-        <div className="sticky top-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
-          <h2 className="text-xl font-bold text-gray-900">
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 10,
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
+          padding: 'var(--space-4) var(--space-6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--text-main)' }}>
             {isEditing ? 'Edit Hotel' : 'Create New Hotel'}
           </h2>
           <button
             onClick={onClose}
             disabled={loading}
-            className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', display: 'flex',
+              opacity: loading ? 0.5 : 1,
+            }}
           >
             <X size={24} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 py-6">
+        <form onSubmit={handleSubmit} style={{ padding: 'var(--space-6)' }}>
           {errors.submit && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3">
-              <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-red-700 text-sm">{errors.submit}</p>
+            <div style={{
+              marginBottom: 'var(--space-4)',
+              padding: 'var(--space-4)',
+              background: 'color-mix(in srgb, var(--status-error) 10%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--status-error) 30%, transparent)',
+              borderRadius: 'var(--radius-lg)',
+              display: 'flex', gap: 'var(--space-3)',
+            }}>
+              <AlertCircle size={20} style={{ color: 'var(--status-error)', flexShrink: 0, marginTop: '2px' }} />
+              <p style={{ color: 'var(--status-error)', fontSize: 'var(--font-sm)', margin: 0 }}>{errors.submit}</p>
             </div>
           )}
 
-          {/* SECTION A: BASIC INFORMATION (Blue) */}
-          <div className="mb-8">
-            <div className="mb-4 pb-3 border-b-2 border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-900">📋 Basic Information</h3>
-              <p className="text-sm text-blue-700">Hotel name, brand, category, and location</p>
+          {/* SECTION A: BASIC INFORMATION */}
+          <div style={{ marginBottom: 'var(--space-8)' }}>
+            <div style={{ marginBottom: 'var(--space-4)', paddingBottom: 'var(--space-3)', borderBottom: '2px solid var(--border)' }}>
+              <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>📋 Basic Information</h3>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0, marginTop: 'var(--space-1)' }}>Hotel name, brand, category, and location</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div style={gridStyle}>
               {/* Hotel Name */}
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Hotel Name <span className="text-red-500">*</span>
+              <div style={fullRow}>
+                <label style={labelStyle}>
+                  Hotel Name <span style={requiredMark}>*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.hotel_name}
                   onChange={(e) => handleInputChange('hotel_name', e.target.value)}
                   placeholder="e.g., The Grand Hotel"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.hotel_name ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.hotel_name ? 'var(--status-error)' : undefined }}
                 />
                 {errors.hotel_name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.hotel_name}</p>
+                  <p style={errStyle}>{errors.hotel_name}</p>
                 )}
               </div>
 
               {/* Hotel Brand */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Hotel Brand <span className="text-red-500">*</span>
+                <label style={labelStyle}>
+                  Hotel Brand <span style={requiredMark}>*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.hotel_brand}
                   onChange={(e) => handleInputChange('hotel_brand', e.target.value)}
                   placeholder="e.g., ITC, Marriott"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.hotel_brand ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.hotel_brand ? 'var(--status-error)' : undefined }}
                 />
                 {errors.hotel_brand && (
-                  <p className="text-red-500 text-xs mt-1">{errors.hotel_brand}</p>
+                  <p style={errStyle}>{errors.hotel_brand}</p>
                 )}
               </div>
 
               {/* Hotel Category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Hotel Category <span className="text-red-500">*</span>
+                <label style={labelStyle}>
+                  Hotel Category <span style={requiredMark}>*</span>
                 </label>
                 <select
                   value={(formData.hotel_category || '') as string}
                   onChange={(e) => handleInputChange('hotel_category', (e.target.value || null) as any)}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.hotel_category ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.hotel_category ? 'var(--status-error)' : undefined }}
                 >
                   <option value="">Select Category</option>
                   {HOTEL_CATEGORY_OPTIONS.map(option => (
@@ -323,21 +375,20 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   ))}
                 </select>
                 {errors.hotel_category && (
-                  <p className="text-red-500 text-xs mt-1">{errors.hotel_category}</p>
+                  <p style={errStyle}>{errors.hotel_category}</p>
                 )}
               </div>
 
               {/* Zone */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Zone <span className="text-red-500">*</span>
+                <label style={labelStyle}>
+                  Zone <span style={requiredMark}>*</span>
                 </label>
                 <select
                   value={formData.zone_id}
                   onChange={(e) => handleZoneChange(e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.zone_id ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.zone_id ? 'var(--status-error)' : undefined }}
                 >
                   <option value="">Select Zone</option>
                   {/* Zones from cities */}
@@ -348,22 +399,21 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   ))}
                 </select>
                 {errors.zone_id && (
-                  <p className="text-red-500 text-xs mt-1">{errors.zone_id}</p>
+                  <p style={errStyle}>{errors.zone_id}</p>
                 )}
               </div>
 
               {/* City */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  City <span className="text-red-500">*</span>
+                <label style={labelStyle}>
+                  City <span style={requiredMark}>*</span>
                 </label>
                 <select
                   value={formData.city_id}
                   onChange={(e) => handleInputChange('city_id', e.target.value)}
                   disabled={!formData.zone_id || citiesLoading}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                    errors.city_id ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.city_id ? 'var(--status-error)' : undefined }}
                 >
                   <option value="">
                     {!formData.zone_id ? 'Select zone first' : citiesLoading ? 'Loading cities...' : 'Select City'}
@@ -375,13 +425,13 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   ))}
                 </select>
                 {errors.city_id && (
-                  <p className="text-red-500 text-xs mt-1">{errors.city_id}</p>
+                  <p style={errStyle}>{errors.city_id}</p>
                 )}
               </div>
 
               {/* Address */}
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div style={fullRow}>
+                <label style={labelStyle}>
                   Address
                 </label>
                 <textarea
@@ -389,13 +439,14 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   onChange={(e) => handleInputChange('address', e.target.value)}
                   placeholder="Enter hotel address"
                   rows={2}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="input"
+                  style={{ width: '100%', resize: 'none' }}
                 />
               </div>
 
               {/* GST Number */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={labelStyle}>
                   GST Number
                 </label>
                 <input
@@ -403,13 +454,14 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   value={formData.gst_number}
                   onChange={(e) => handleInputChange('gst_number', e.target.value)}
                   placeholder="e.g., 27ABCDE1234F1Z5"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="input"
+                  style={{ width: '100%' }}
                 />
               </div>
 
               {/* Website */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={labelStyle}>
                   Website
                 </label>
                 <input
@@ -417,18 +469,17 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   value={formData.website}
                   onChange={(e) => handleInputChange('website', e.target.value)}
                   placeholder="e.g., www.hotel.com"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.website ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.website ? 'var(--status-error)' : undefined }}
                 />
                 {errors.website && (
-                  <p className="text-red-500 text-xs mt-1">{errors.website}</p>
+                  <p style={errStyle}>{errors.website}</p>
                 )}
               </div>
 
               {/* Latitude */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={labelStyle}>
                   Latitude
                 </label>
                 <input
@@ -437,18 +488,17 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   value={formData.latitude}
                   onChange={(e) => handleInputChange('latitude', e.target.value)}
                   placeholder="e.g., 19.0760"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.latitude ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.latitude ? 'var(--status-error)' : undefined }}
                 />
                 {errors.latitude && (
-                  <p className="text-red-500 text-xs mt-1">{errors.latitude}</p>
+                  <p style={errStyle}>{errors.latitude}</p>
                 )}
               </div>
 
               {/* Longitude */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={labelStyle}>
                   Longitude
                 </label>
                 <input
@@ -457,24 +507,24 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   value={formData.longitude}
                   onChange={(e) => handleInputChange('longitude', e.target.value)}
                   placeholder="e.g., 72.8856"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.longitude ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.longitude ? 'var(--status-error)' : undefined }}
                 />
                 {errors.longitude && (
-                  <p className="text-red-500 text-xs mt-1">{errors.longitude}</p>
+                  <p style={errStyle}>{errors.longitude}</p>
                 )}
               </div>
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status <span className="text-red-500">*</span>
+                <label style={labelStyle}>
+                  Status <span style={requiredMark}>*</span>
                 </label>
                 <select
                   value={formData.status}
                   onChange={(e) => handleInputChange('status', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="input"
+                  style={{ width: '100%' }}
                 >
                   <option value="ACTIVE">Active</option>
                   <option value="INACTIVE">Inactive</option>
@@ -485,36 +535,35 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
             </div>
           </div>
 
-          {/* SECTION B: SALES CONTACT INFORMATION (Green) */}
-          <div className="mb-8">
-            <div className="mb-4 pb-3 border-b-2 border-green-200">
-              <h3 className="text-lg font-semibold text-green-900">👤 Sales Contact Information</h3>
-              <p className="text-sm text-green-700">Primary contact for venue coordination</p>
+          {/* SECTION B: SALES CONTACT INFORMATION */}
+          <div style={{ marginBottom: 'var(--space-8)' }}>
+            <div style={{ marginBottom: 'var(--space-4)', paddingBottom: 'var(--space-3)', borderBottom: '2px solid var(--border)' }}>
+              <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>👤 Sales Contact Information</h3>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0, marginTop: 'var(--space-1)' }}>Primary contact for venue coordination</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div style={gridStyle}>
               {/* Sales Contact Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Name <span className="text-red-500">*</span>
+                <label style={labelStyle}>
+                  Contact Name <span style={requiredMark}>*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.sales_contact_name}
                   onChange={(e) => handleInputChange('sales_contact_name', e.target.value)}
                   placeholder="e.g., John Smith"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
-                    errors.sales_contact_name ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.sales_contact_name ? 'var(--status-error)' : undefined }}
                 />
                 {errors.sales_contact_name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.sales_contact_name}</p>
+                  <p style={errStyle}>{errors.sales_contact_name}</p>
                 )}
               </div>
 
               {/* Sales Contact Designation */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={labelStyle}>
                   Designation
                 </label>
                 <input
@@ -522,32 +571,32 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   value={formData.sales_contact_designation}
                   onChange={(e) => handleInputChange('sales_contact_designation', e.target.value)}
                   placeholder="e.g., Sales Manager"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="input"
+                  style={{ width: '100%' }}
                 />
               </div>
 
               {/* Sales Contact Mobile */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mobile Number <span className="text-red-500">*</span>
+                <label style={labelStyle}>
+                  Mobile Number <span style={requiredMark}>*</span>
                 </label>
                 <input
                   type="tel"
                   value={formData.sales_contact_mobile}
                   onChange={(e) => handleInputChange('sales_contact_mobile', e.target.value)}
                   placeholder="e.g., 9876543210"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
-                    errors.sales_contact_mobile ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.sales_contact_mobile ? 'var(--status-error)' : undefined }}
                 />
                 {errors.sales_contact_mobile && (
-                  <p className="text-red-500 text-xs mt-1">{errors.sales_contact_mobile}</p>
+                  <p style={errStyle}>{errors.sales_contact_mobile}</p>
                 )}
               </div>
 
               {/* Sales Contact Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={labelStyle}>
                   Email Address
                 </label>
                 <input
@@ -555,58 +604,69 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   value={formData.sales_contact_email}
                   onChange={(e) => handleInputChange('sales_contact_email', e.target.value)}
                   placeholder="e.g., john@hotel.com"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
-                    errors.sales_contact_email ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="input"
+                  style={{ width: '100%', borderColor: errors.sales_contact_email ? 'var(--status-error)' : undefined }}
                 />
                 {errors.sales_contact_email && (
-                  <p className="text-red-500 text-xs mt-1">{errors.sales_contact_email}</p>
+                  <p style={errStyle}>{errors.sales_contact_email}</p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* SECTION C: OPERATIONAL INFORMATION (Purple) */}
-          <div className="mb-8">
-            <div className="mb-4 pb-3 border-b-2 border-purple-200">
-              <h3 className="text-lg font-semibold text-purple-900">⚙️ Operational Information</h3>
-              <p className="text-sm text-purple-700">Business rules and preferences</p>
+          {/* SECTION C: OPERATIONAL INFORMATION */}
+          <div style={{ marginBottom: 'var(--space-8)' }}>
+            <div style={{ marginBottom: 'var(--space-4)', paddingBottom: 'var(--space-3)', borderBottom: '2px solid var(--border)' }}>
+              <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>⚙️ Operational Information</h3>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0, marginTop: 'var(--space-1)' }}>Business rules and preferences</p>
             </div>
 
-            <div className="space-y-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               {/* Preferred Vendor */}
-              <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                padding: 'var(--space-3)',
+                background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+              }}>
                 <input
                   type="checkbox"
                   id="preferred_vendor"
                   checked={formData.preferred_vendor}
                   onChange={(e) => handleInputChange('preferred_vendor', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                  style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
                 />
-                <label htmlFor="preferred_vendor" className="flex-1 text-sm font-medium text-gray-700">
+                <label htmlFor="preferred_vendor" style={{ flex: 1, fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-main)' }}>
                   Preferred Vendor
                 </label>
-                <p className="text-xs text-gray-600">Mark as preferred for priority selection</p>
+                <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 0 }}>Mark as preferred for priority selection</p>
               </div>
 
               {/* Blacklisted */}
-              <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                padding: 'var(--space-3)',
+                background: 'color-mix(in srgb, var(--status-error) 8%, transparent)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid color-mix(in srgb, var(--status-error) 25%, transparent)',
+              }}>
                 <input
                   type="checkbox"
                   id="blacklisted"
                   checked={formData.blacklisted}
                   onChange={(e) => handleInputChange('blacklisted', e.target.checked)}
-                  className="w-4 h-4 text-red-600 rounded focus:ring-2 focus:ring-red-500"
+                  style={{ width: '16px', height: '16px', accentColor: 'var(--status-error)' }}
                 />
-                <label htmlFor="blacklisted" className="flex-1 text-sm font-medium text-gray-700">
+                <label htmlFor="blacklisted" style={{ flex: 1, fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-main)' }}>
                   Blacklisted
                 </label>
-                <p className="text-xs text-gray-600">Exclude from future venue selection</p>
+                <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 0 }}>Exclude from future venue selection</p>
               </div>
 
               {/* Remarks */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label style={{ ...labelStyle, marginBottom: 'var(--space-2)' }}>
                   Remarks
                 </label>
                 <textarea
@@ -614,28 +674,40 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
                   onChange={(e) => handleInputChange('remarks', e.target.value)}
                   placeholder="Add any additional notes or observations about this hotel..."
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                  className="input"
+                  style={{ width: '100%', resize: 'none' }}
                 />
               </div>
             </div>
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3 justify-end border-t border-gray-200 pt-6">
+          <div style={{
+            display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end',
+            borderTop: '1px solid var(--border)', paddingTop: 'var(--space-6)',
+          }}>
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="btn btn-secondary"
+              style={{ opacity: loading ? 0.6 : 1 }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+              className="btn btn-primary"
+              style={{ opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
             >
-              {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+              {loading && <div style={{
+                width: '16px', height: '16px',
+                border: '2px solid transparent',
+                borderBottomColor: 'var(--text-on-primary)',
+                borderRadius: 'var(--radius-full)',
+                animation: 'spin 0.6s linear infinite',
+              }}></div>}
               {isEditing ? 'Update Hotel' : 'Create Hotel'}
             </button>
           </div>

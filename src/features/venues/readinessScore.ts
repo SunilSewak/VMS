@@ -232,7 +232,7 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
   // ============================================================================
 
   const rulesCount = hotel.occupancy_rules?.length || 0;
-  const rulesActive = hotel.occupancy_rules?.filter((r) => r.is_active).length || 0;
+  const rulesActive = hotel.occupancy_rules?.filter((r) => !!r.occupancy_type).length || 0;
 
   const rulesChecks = [
     {

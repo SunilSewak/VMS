@@ -240,7 +240,7 @@ export async function getHotelById(id: string): Promise<HotelWithRelations> {
       console.log('Fetching occupancy rules for hotel:', id);
       const res = await supabase
         .from('hotel_occupancy_rules')
-        .select('id, hotel_id, rule_type, min_occupancy, max_occupancy, rate_adjustment, is_active, created_at')
+        .select('id, hotel_id, designation_type, occupancy_type, created_at, updated_at')
         .eq('hotel_id', id);
       if (res.error) {
         console.warn('Rules fetch warning:', res.error.message);
@@ -691,8 +691,7 @@ export async function getOccupancyRulesByHotel(hotelId: string): Promise<Occupan
     const { data, error } = await supabase
       .from('hotel_occupancy_rules')
       .select('*')
-      .eq('hotel_id', hotelId)
-      .eq('is_active', true);
+      .eq('hotel_id', hotelId);
 
     if (error) throw new Error(error.message);
     return data || [];
@@ -706,14 +705,14 @@ export async function createOccupancyRule(input: OccupancyRuleCreateInput): Prom
   try {
     const { data, error } = await supabase
       .from('hotel_occupancy_rules')
-      .insert({
-        hotel_id: input.hotel_id,
-        rule_type: input.rule_type,
-        min_occupancy: input.min_occupancy || null,
-        max_occupancy: input.max_occupancy || null,
-        rate_adjustment: input.rate_adjustment || null,
-        is_active: input.is_active !== false,
-      })
+      .upsert(
+        {
+          hotel_id: input.hotel_id,
+          designation_type: input.designation_type,
+          occupancy_type: input.occupancy_type,
+        },
+        { onConflict: 'hotel_id,designation_type' }
+      )
       .select('*')
       .single();
 
@@ -728,11 +727,8 @@ export async function createOccupancyRule(input: OccupancyRuleCreateInput): Prom
 export async function updateOccupancyRule(id: string, input: Partial<OccupancyRuleCreateInput>): Promise<OccupancyRule> {
   try {
     const updateData: any = {};
-    if (input.rule_type) updateData.rule_type = input.rule_type;
-    if (input.min_occupancy !== undefined) updateData.min_occupancy = input.min_occupancy;
-    if (input.max_occupancy !== undefined) updateData.max_occupancy = input.max_occupancy;
-    if (input.rate_adjustment !== undefined) updateData.rate_adjustment = input.rate_adjustment;
-    if (input.is_active !== undefined) updateData.is_active = input.is_active;
+    if (input.designation_type) updateData.designation_type = input.designation_type;
+    if (input.occupancy_type) updateData.occupancy_type = input.occupancy_type;
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase

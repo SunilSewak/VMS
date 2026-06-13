@@ -63,9 +63,10 @@ export type HotelCategory = '5_STAR' | '4_STAR' | '3_STAR' | 'BUSINESS' | 'BUDGE
 export type HallType = 'BALLROOM' | 'CONFERENCE' | 'BANQUET' | 'BOARDROOM' | 'THEATRE' | 'OTHER';
 export type IndoorOutdoor = 'INDOOR' | 'OUTDOOR' | 'BOTH';
 export type RoomType = 'SINGLE' | 'DOUBLE' | 'SUITE' | 'DELUXE' | 'PRESIDENTIAL';
-// PHASE 4: Occupancy designations - one matrix per hotel with 4 designation groups
-export type OccupancyRuleType = 'SO' | 'DM' | 'RSM' | 'Senior Manager';
-// Legacy: MIN_OCCUPANCY | 'MAX_OCCUPANCY' | 'STANDARD' (deprecated, kept for compatibility)
+// Occupancy designations - matches hotel_occupancy_rules.designation_type CHECK constraint
+export type OccupancyRuleType = 'SO' | 'DM' | 'RSM' | 'CH' | 'IBH' | 'OTHERS';
+// Room occupancy types - matches hotel_occupancy_rules.occupancy_type CHECK constraint
+export type OccupancyType = 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD';
 
 export const HOTEL_CATEGORY_OPTIONS: { value: HotelCategory; label: string }[] = [
   { value: '5_STAR', label: '5 Star' },
@@ -162,11 +163,8 @@ export interface AccommodationInventory {
 export interface OccupancyRule {
   id: string;
   hotel_id: string;
-  rule_type: OccupancyRuleType;
-  min_occupancy?: number | null;
-  max_occupancy?: number | null;
-  rate_adjustment?: number | null;
-  is_active: boolean;
+  designation_type: OccupancyRuleType;
+  occupancy_type: OccupancyType;
   created_at: string;
   updated_at?: string | null;
   hotel?: Hotel | null;
@@ -175,14 +173,10 @@ export interface OccupancyRule {
 // Default Occupancy Rule
 export interface DefaultOccupancyRule {
   id: string;
-  zone_id?: string | null;
-  rule_type: OccupancyRuleType;
-  min_occupancy?: number | null;
-  max_occupancy?: number | null;
-  rate_adjustment?: number | null;
-  is_active: boolean;
+  designation_type: OccupancyRuleType;
+  occupancy_type: OccupancyType;
+  description?: string | null;
   created_at: string;
-  updated_at?: string | null;
 }
 
 // Venue Photo
@@ -279,11 +273,8 @@ export interface AccommodationInventoryCreateInput {
 
 export interface OccupancyRuleCreateInput {
   hotel_id: string;
-  rule_type: OccupancyRuleType;
-  min_occupancy?: number;
-  max_occupancy?: number;
-  rate_adjustment?: number;
-  is_active?: boolean;
+  designation_type: OccupancyRuleType;
+  occupancy_type: OccupancyType;
 }
 
 // ============================================================================

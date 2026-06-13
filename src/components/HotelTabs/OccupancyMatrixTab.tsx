@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { OccupancyRule, HotelWithRelations } from '../../features/venues/types';
+import type { OccupancyRule, OccupancyType, HotelWithRelations } from '../../features/venues/types';
 import { getOccupancyRulesByHotel, createOccupancyRule, updateOccupancyRule } from '../../features/venues/venueService';
 
 interface OccupancyMatrixTabProps {
@@ -7,12 +7,15 @@ interface OccupancyMatrixTabProps {
   onRefresh: () => void;
 }
 
-// PHASE 4: Only 4 designation groups as per specification
+// Designations match hotel_occupancy_rules.designation_type CHECK constraint
+// Defaults mirror default_occupancy_rules seed data
 const DESIGNATIONS = [
-  { code: 'SO' as const, label: 'Sales Officer', default: 'TRIPLE' as const },
-  { code: 'DM' as const, label: 'District Manager', default: 'DOUBLE' as const },
-  { code: 'RSM' as const, label: 'Regional Sales Manager', default: 'SINGLE' as const },
-  { code: 'Senior Manager' as const, label: 'Senior Manager', default: 'SINGLE' as const },
+  { code: 'SO' as const, label: 'Sales Officer', default: 'TRIPLE' as OccType },
+  { code: 'DM' as const, label: 'District Manager', default: 'DOUBLE' as OccType },
+  { code: 'RSM' as const, label: 'Regional Sales Manager', default: 'SINGLE' as OccType },
+  { code: 'CH' as const, label: 'Channel Head', default: 'SINGLE' as OccType },
+  { code: 'IBH' as const, label: 'Institutional Business Head', default: 'SINGLE' as OccType },
+  { code: 'OTHERS' as const, label: 'Others', default: 'SINGLE' as OccType },
 ];
 
 const OCCUPANCY_OPTIONS = [
@@ -22,14 +25,17 @@ const OCCUPANCY_OPTIONS = [
   { value: 'QUAD' as const, label: 'Quad' },
 ];
 
+type OccType = OccupancyType;
+
+const OCC_LABEL: Record<OccType, string> = { SINGLE: 'Single', DOUBLE: 'Double', TRIPLE: 'Triple', QUAD: 'Quad' };
+
 export function OccupancyMatrixTab({ hotel, onRefresh }: OccupancyMatrixTabProps) {
   const [rules, setRules] = useState<OccupancyRule[]>(hotel.occupancy_rules || []);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editingRules, setEditingRules] = useState<Record<string, 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD'>>({});
+  const [editingRules, setEditingRules] = useState<Record<string, OccType>>({});
   const [error, setError] = useState<string | null>(null);
 
-  // Load occupancy rules
   useEffect(() => {
     loadRules();
   }, [hotel.id]);
@@ -39,12 +45,10 @@ export function OccupancyMatrixTab({ hotel, onRefresh }: OccupancyMatrixTabProps
       setLoading(true);
       const data = await getOccupancyRulesByHotel(hotel.id);
       setRules(data);
-      
-      // Initialize editing state with current values
-      const initial: Record<string, 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD'> = {};
-      DESIGNATIONS.forEach(des => {
-        const rule = data.find(r => r.rule_type === des.code);
-        initial[des.code] = (rule ? mapNumberToOccupancyType(rule.min_occupancy) : des.default) as 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD';
+      const initial: Record<string, OccType> = {};
+      DESIGNATIONS.forEach((des) => {
+        const rule = data.find((r) => r.designation_type === des.code);
+        initial[des.code] = (rule?.occupancy_type ?? des.default) as OccType;
       });
       setEditingRules(initial);
     } catch (error) {
@@ -55,117 +59,108 @@ export function OccupancyMatrixTab({ hotel, onRefresh }: OccupancyMatrixTabProps
   }
 
   async function handleSave() {
-    // Validation: all rules must be assigned
-    const hasBlank = DESIGNATIONS.some(des => !editingRules[des.code]);
+    const hasBlank = DESIGNATIONS.some((des) => !editingRules[des.code]);
     if (hasBlank) {
       setError('All occupancy rules must be assigned.');
       return;
     }
-
     setSaving(true);
     setError(null);
-
     try {
-      // Save all rules
       for (const des of DESIGNATIONS) {
         const occupancyType = editingRules[des.code];
-        const existingRule = rules.find(r => r.rule_type === des.code);
-
+        const existingRule = rules.find((r) => r.designation_type === des.code);
         if (existingRule) {
-          // Update existing rule
           await updateOccupancyRule(existingRule.id, {
-            rule_type: des.code,
-            min_occupancy: mapOccupancyToNumber(occupancyType as 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD'),
-            is_active: true,
+            designation_type: des.code,
+            occupancy_type: occupancyType,
           });
         } else {
-          // Create new rule
           await createOccupancyRule({
             hotel_id: hotel.id,
-            rule_type: des.code,
-            min_occupancy: mapOccupancyToNumber(occupancyType as 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD'),
-            is_active: true,
+            designation_type: des.code,
+            occupancy_type: occupancyType,
           });
         }
       }
-
       await loadRules();
       onRefresh();
     } catch (err) {
       console.error('Error saving occupancy rules:', err);
-      setError('Failed to save occupancy rules. Please try again.');
+      setError(`Failed to save occupancy rules: ${err instanceof Error ? err.message : 'Please try again.'}`);
     } finally {
       setSaving(false);
     }
   }
 
-  // Check if all required designations are configured
-  const allConfigured = DESIGNATIONS.every(des => editingRules[des.code]);
+  const allConfigured = DESIGNATIONS.every((des) => editingRules[des.code]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading occupancy rules...</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-16)' }}>
+        <p style={{ color: 'var(--text-muted)' }}>Loading occupancy rules...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Completion Status */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-6)' }}>
+      {/* Status */}
+      <div style={{
+        background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
           <div>
-            <p className="text-sm font-medium text-gray-700">Occupancy Matrix Status</p>
-            <p className="mt-1 text-lg font-semibold" style={{ color: allConfigured ? '#059669' : '#dc2626' }}>
+            <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-muted)' }}>Occupancy Matrix Status</p>
+            <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--font-size-lg)', fontWeight: 700, color: allConfigured ? 'var(--status-success)' : 'var(--status-error)' }}>
               {allConfigured ? '✓ Complete' : '⚠ Incomplete'}
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-medium text-gray-700">Designations Configured</p>
-            <p className="mt-1 text-lg font-semibold text-blue-900">
-              {Object.values(editingRules).filter(v => v).length} / {DESIGNATIONS.length}
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-muted)' }}>Designations Configured</p>
+            <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--primary)' }}>
+              {Object.values(editingRules).filter((v) => v).length} / {DESIGNATIONS.length}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Error Messages */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm font-medium text-red-800">{error}</p>
+        <div style={{ background: 'color-mix(in srgb, var(--status-error) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--status-error) 30%, transparent)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)' }}>
+          <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--status-error)' }}>{error}</p>
         </div>
       )}
 
-      {/* Occupancy Rules Editor */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-sm font-semibold text-gray-900">Occupancy Rules</h3>
-          <p className="mt-1 text-xs text-gray-600">Select the room occupancy type for each designation</p>
+      {/* Editor */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: 'var(--space-4) var(--space-6)', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+          <h3 style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--text-main)' }}>Occupancy Rules</h3>
+          <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Select the room occupancy type for each designation</p>
         </div>
 
-        <div className="divide-y divide-gray-200">
-          {DESIGNATIONS.map((des) => (
-            <div key={des.code} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900">{des.code}</p>
-                <p className="text-xs text-gray-500 mt-1">{des.label}</p>
+        <div>
+          {DESIGNATIONS.map((des, idx) => (
+            <div key={des.code} style={{
+              padding: 'var(--space-4) var(--space-6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)',
+              borderTop: idx === 0 ? 'none' : '1px solid var(--border)',
+            }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--text-main)' }}>{des.code}</p>
+                <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>{des.label}</p>
               </div>
-
-              <div className="w-40">
+              <div style={{ width: '160px' }}>
                 <select
+                  className="input"
+                  style={{ width: '100%' }}
                   value={editingRules[des.code] || ''}
-                  onChange={(e) => setEditingRules(prev => ({
-                    ...prev,
-                    [des.code]: (e.target.value as 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD')
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => setEditingRules((prev) => ({ ...prev, [des.code]: e.target.value as OccType }))}
                 >
                   <option value="">Select occupancy type</option>
-                  {OCCUPANCY_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
+                  {OCCUPANCY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
               </div>
@@ -173,43 +168,39 @@ export function OccupancyMatrixTab({ hotel, onRefresh }: OccupancyMatrixTabProps
           ))}
         </div>
 
-        {/* Default Values Reference */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 text-xs text-gray-600">
-          <p className="font-medium mb-2">Default assignments:</p>
-          <ul className="space-y-1">
-            {DESIGNATIONS.map(des => (
-              <li key={des.code}>• {des.code}: {des.default}</li>
+        <div style={{ padding: 'var(--space-4) var(--space-6)', background: 'var(--surface-2)', borderTop: '1px solid var(--border)', fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>
+          <p style={{ fontWeight: 600, marginBottom: 'var(--space-2)' }}>Default assignments:</p>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: '4px', listStyle: 'none', padding: 0, margin: 0 }}>
+            {DESIGNATIONS.map((des) => (
+              <li key={des.code}>• {des.code}: {OCC_LABEL[des.default]}</li>
             ))}
           </ul>
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end gap-3">
+      {/* Save */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button
+          className="btn btn-primary"
           onClick={handleSave}
           disabled={saving || !allConfigured}
-          className={`px-6 py-2 font-medium rounded-lg transition-colors ${
-            allConfigured && !saving
-              ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-          }`}
+          style={{ opacity: saving || !allConfigured ? 0.6 : 1, cursor: saving || !allConfigured ? 'not-allowed' : 'pointer' }}
         >
           {saving ? 'Saving...' : 'Save Occupancy Rules'}
         </button>
       </div>
 
-      {/* Current Configuration Display */}
+      {/* Current Config */}
       {rules.length > 0 && (
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Current Configuration</h3>
-          <div className="space-y-2">
-            {DESIGNATIONS.map(des => {
-              const rule = rules.find(r => r.rule_type === des.code);
-              const occupancy = rule ? mapNumberToOccupancy(rule.min_occupancy) : 'Not configured';
+        <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)' }}>
+          <h3 style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--text-main)', marginBottom: 'var(--space-3)' }}>Current Configuration</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            {DESIGNATIONS.map((des) => {
+              const rule = rules.find((r) => r.designation_type === des.code);
+              const occupancy = rule ? OCC_LABEL[rule.occupancy_type] : 'Not configured';
               return (
-                <p key={des.code} className="text-sm text-gray-600">
-                  • <strong>{des.code}</strong>: {occupancy}
+                <p key={des.code} style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
+                  • <strong style={{ color: 'var(--text-main)' }}>{des.code}</strong>: {occupancy}
                 </p>
               );
             })}
@@ -218,39 +209,4 @@ export function OccupancyMatrixTab({ hotel, onRefresh }: OccupancyMatrixTabProps
       )}
     </div>
   );
-}
-
-// Helper: Map occupancy label to number for storage
-function mapOccupancyToNumber(occupancy: 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD'): number {
-  const mapping: Record<'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD', number> = {
-    'SINGLE': 1,
-    'DOUBLE': 2,
-    'TRIPLE': 3,
-    'QUAD': 4,
-  };
-  return mapping[occupancy] || 1;
-}
-
-// Helper: Map number to occupancy label for display
-function mapNumberToOccupancy(num?: number | null): string {
-  if (!num) return 'Not configured';
-  const mapping: Record<number, string> = {
-    1: 'Single',
-    2: 'Double',
-    3: 'Triple',
-    4: 'Quad',
-  };
-  return mapping[num] || 'Unknown';
-}
-
-// Helper: Map number to occupancy type for state
-function mapNumberToOccupancyType(num?: number | null): 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD' | undefined {
-  if (!num) return undefined;
-  const mapping: Record<number, 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD'> = {
-    1: 'SINGLE',
-    2: 'DOUBLE',
-    3: 'TRIPLE',
-    4: 'QUAD',
-  };
-  return mapping[num] || undefined;
 }

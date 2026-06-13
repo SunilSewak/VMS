@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import type { ReactNode, CSSProperties } from 'react';
+import { Plus } from 'lucide-react';
 import type { Hall, HotelWithRelations } from '../../features/venues/types';
 import { getHallsByHotel, deleteHall } from '../../features/venues/venueService';
 import { HallFormModal } from '../HallFormModal';
@@ -14,7 +16,6 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingHall, setEditingHall] = useState<Hall | null>(null);
 
-  // Load halls
   useEffect(() => {
     loadHalls();
   }, [hotel.id]);
@@ -33,7 +34,6 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
 
   async function handleDelete(hallId: string) {
     if (!confirm('Delete Conference Room?\n\nThis action cannot be undone.')) return;
-
     try {
       await deleteHall(hallId);
       await loadHalls();
@@ -63,137 +63,90 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading conference rooms...</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-16)' }}>
+        <p style={{ color: 'var(--text-muted)' }}>Loading conference rooms...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header with Add Button */}
-      <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-6)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
         <div>
-          <p className="text-sm font-medium text-gray-700">Conference Rooms</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{halls.length}</p>
+          <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-muted)' }}>Conference Rooms</p>
+          <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--text-main)' }}>{halls.length}</p>
         </div>
         <button
+          className="btn btn-primary"
           onClick={handleAddHall}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
         >
-          + Add Room
+          <Plus size={16} /> Add Room
         </button>
       </div>
 
-      {/* Halls Grid - Card Layout */}
+      {/* Halls Grid */}
       {halls.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <p className="text-gray-500 font-medium">No conference rooms configured</p>
-          <p className="text-sm text-gray-400 mt-1">Add a conference room to enable meeting space bookings</p>
+        <div style={{
+          textAlign: 'center',
+          padding: 'var(--space-16)',
+          background: 'var(--surface-2)',
+          borderRadius: 'var(--radius-lg)',
+          border: '2px dashed var(--border)',
+        }}>
+          <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>No conference rooms configured</p>
+          <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-light)', marginTop: 'var(--space-1)' }}>
+            Add a conference room to enable meeting space bookings
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {halls.map((hall) => (
-            <div
-              key={hall.id}
-              className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden"
-            >
-              {/* Card Header */}
-              <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 truncate">{hall.hall_name}</h3>
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <span
-                    className={`text-xs font-medium px-2 py-1 rounded ${
-                      hall.indoor_outdoor === 'INDOOR'
-                        ? 'bg-green-100 text-green-700'
-                        : hall.indoor_outdoor === 'OUTDOOR'
-                        ? 'bg-orange-100 text-orange-700'
-                        : 'bg-purple-100 text-purple-700'
-                    }`}
-                  >
-                    {hall.indoor_outdoor}
-                  </span>
-                  <span
-                    className={`text-xs font-medium px-2 py-1 rounded ${
-                      hall.status === 'ACTIVE'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    {hall.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Card Body - Seating Capacities */}
-              <div className="px-6 py-4 space-y-3">
-                {/* Floor info */}
-                {hall.floor && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Floor:</span>
-                    <span className="font-medium text-gray-900">{hall.floor}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
+          {halls.map((hall) => {
+            const ioColor = hall.indoor_outdoor === 'INDOOR' ? 'var(--status-success)'
+              : hall.indoor_outdoor === 'OUTDOOR' ? 'var(--status-warning)' : '#8b5cf6';
+            const statusColor = hall.status === 'ACTIVE' ? 'var(--status-success)' : 'var(--status-error)';
+            return (
+              <div key={hall.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                {/* Card Header */}
+                <div style={{
+                  padding: 'var(--space-4) var(--space-5)',
+                  background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+                  borderBottom: '1px solid var(--border)',
+                }}>
+                  <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 800, color: 'var(--text-main)' }}>{hall.hall_name}</h3>
+                  <div style={{ marginTop: 'var(--space-2)', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                    <Badge color={ioColor}>{hall.indoor_outdoor}</Badge>
+                    <Badge color={statusColor}>{hall.status}</Badge>
                   </div>
-                )}
+                </div>
 
-                {/* Seating Capacities - 3 Formats */}
-                <div className="grid grid-cols-3 gap-2">
-                  {hall.classroom_capacity ? (
-                    <div className="bg-blue-50 rounded p-2">
-                      <p className="text-xs text-gray-600 font-medium">Classroom</p>
-                      <p className="text-lg font-bold text-blue-700">{hall.classroom_capacity}</p>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50 rounded p-2 opacity-50">
-                      <p className="text-xs text-gray-600 font-medium">Classroom</p>
-                      <p className="text-lg font-bold text-gray-400">—</p>
+                {/* Card Body */}
+                <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                  {hall.floor && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--font-sm)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Floor:</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{hall.floor}</span>
                     </div>
                   )}
-                  {hall.u_shape_capacity ? (
-                    <div className="bg-green-50 rounded p-2">
-                      <p className="text-xs text-gray-600 font-medium">U-Shape</p>
-                      <p className="text-lg font-bold text-green-700">{hall.u_shape_capacity}</p>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50 rounded p-2 opacity-50">
-                      <p className="text-xs text-gray-600 font-medium">U-Shape</p>
-                      <p className="text-lg font-bold text-gray-400">—</p>
-                    </div>
-                  )}
-                  {hall.cluster_capacity ? (
-                    <div className="bg-purple-50 rounded p-2">
-                      <p className="text-xs text-gray-600 font-medium">Cluster</p>
-                      <p className="text-lg font-bold text-purple-700">{hall.cluster_capacity}</p>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50 rounded p-2 opacity-50">
-                      <p className="text-xs text-gray-600 font-medium">Cluster</p>
-                      <p className="text-lg font-bold text-gray-400">—</p>
-                    </div>
-                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-2)' }}>
+                    <CapacityBox label="Classroom" value={hall.classroom_capacity} accent="var(--primary)" />
+                    <CapacityBox label="U-Shape" value={hall.u_shape_capacity} accent="var(--status-success)" />
+                    <CapacityBox label="Cluster" value={hall.cluster_capacity} accent="#8b5cf6" />
+                  </div>
+                </div>
+
+                {/* Card Actions */}
+                <div style={{ padding: 'var(--space-3) var(--space-5)', borderTop: '1px solid var(--border)', display: 'flex', gap: 'var(--space-2)' }}>
+                  <button onClick={() => handleEditHall(hall)} style={actionBtn('var(--primary)')}>Edit</button>
+                  <button onClick={() => handleDelete(hall.id)} style={actionBtn('var(--status-error)')}>Delete</button>
                 </div>
               </div>
-
-              {/* Card Actions */}
-              <div className="px-6 py-3 border-t border-gray-200 flex gap-2">
-                <button
-                  onClick={() => handleEditHall(hall)}
-                  className="flex-1 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(hall.id)}
-                  className="flex-1 px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Hall Form Modal */}
       {showFormModal && (
         <HallFormModal
           hotel={hotel}
@@ -207,4 +160,48 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
       )}
     </div>
   );
+}
+
+function Badge({ color, children }: { color: string; children: ReactNode }) {
+  return (
+    <span style={{
+      fontSize: '11px',
+      fontWeight: 700,
+      padding: '2px 8px',
+      borderRadius: 'var(--radius-md)',
+      background: `color-mix(in srgb, ${color} 14%, transparent)`,
+      color,
+    }}>
+      {children}
+    </span>
+  );
+}
+
+function CapacityBox({ label, value, accent }: { label: string; value?: number | null; accent: string }) {
+  const has = !!value;
+  return (
+    <div style={{
+      background: has ? `color-mix(in srgb, ${accent} 10%, transparent)` : 'var(--surface-2)',
+      borderRadius: 'var(--radius-md)',
+      padding: 'var(--space-2)',
+      opacity: has ? 1 : 0.6,
+    }}>
+      <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>{label}</p>
+      <p style={{ fontSize: 'var(--font-size-lg)', fontWeight: 800, color: has ? accent : 'var(--text-light)' }}>{value || '—'}</p>
+    </div>
+  );
+}
+
+function actionBtn(color: string): CSSProperties {
+  return {
+    flex: 1,
+    padding: '0.5rem',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border)',
+    background: 'var(--surface)',
+    color,
+    fontWeight: 700,
+    fontSize: 'var(--font-sm)',
+    cursor: 'pointer',
+  };
 }

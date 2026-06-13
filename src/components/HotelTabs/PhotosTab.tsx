@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react';
-import { UploadCloud, Image, Trash2, CheckCircle2, ImagePlus } from 'lucide-react';
+import { UploadCloud, Image as ImageIcon, Trash2, ImagePlus } from 'lucide-react';
 import type { HotelWithRelations, VenuePhoto } from '../../features/venues/types';
 import { uploadVenuePhoto, deleteVenuePhoto } from '../../features/venues/venueService';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const FALLBACK_IMG = 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=80';
 
 interface PhotosTabProps {
   hotel: HotelWithRelations;
@@ -13,25 +14,25 @@ interface PhotosTabProps {
 
 function formatDate(value: string) {
   try {
-    return new Date(value).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch {
     return value;
   }
 }
 
 function formatFileSize(size: number) {
-  if (size >= 1024 * 1024) {
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-  }
-  if (size >= 1024) {
-    return `${Math.round(size / 1024)} KB`;
-  }
+  if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  if (size >= 1024) return `${Math.round(size / 1024)} KB`;
   return `${size} bytes`;
 }
+
+const fieldLabel = {
+  display: 'block',
+  fontSize: 'var(--font-sm)',
+  fontWeight: 600,
+  color: 'var(--text-main)',
+  marginBottom: 'var(--space-2)',
+} as const;
 
 export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -54,30 +55,23 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
   const halls = hotel.halls || [];
 
   function validateSelectedFile(file: File) {
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      return 'Please upload JPG, JPEG, PNG or WEBP images only.';
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      return 'Maximum file size is 10 MB. Please choose a smaller image.';
-    }
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) return 'Please upload JPG, JPEG, PNG or WEBP images only.';
+    if (file.size > MAX_FILE_SIZE) return 'Maximum file size is 10 MB. Please choose a smaller image.';
     return null;
   }
 
   async function handleUpload() {
     setError(null);
     setMessage(null);
-
     if (!selectedFile) {
       setError('Please choose an image to upload.');
       return;
     }
-
     const validationError = validateSelectedFile(selectedFile);
     if (validationError) {
       setError(validationError);
       return;
     }
-
     try {
       setUploading(true);
       await uploadVenuePhoto(hotel.id, selectedFile, hallId || null, caption.trim() || null);
@@ -85,9 +79,7 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
       setSelectedFile(null);
       setCaption('');
       setHallId('');
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
       onRefresh();
     } catch (err: any) {
       console.error('Photo upload failed:', err);
@@ -99,7 +91,6 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
 
   async function handleDelete(photoId: string) {
     if (!confirm('Delete this photo? This cannot be undone.')) return;
-
     try {
       await deleteVenuePhoto(photoId);
       setMessage('Photo deleted successfully.');
@@ -111,71 +102,85 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
   }
 
   function getHallLabel(photo: VenuePhoto) {
-    if (!photo.hall_id) {
-      return 'Hotel-level photo';
-    }
+    if (!photo.hall_id) return 'Hotel-level photo';
     return halls.find((hall) => hall.id === photo.hall_id)?.hall_name || 'Hall photo';
   }
 
+  const readinessColor = photoReady ? 'var(--status-success)' : 'var(--status-warning)';
+
   return (
-    <div className="space-y-6 p-6">
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white">
+    <div style={{ padding: 'var(--space-6)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 340px) 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
+
+        {/* ─── LEFT: Readiness + Upload ─── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+          {/* Readiness */}
+          <div className="card" style={{ background: 'var(--surface-2)' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
+              <div style={{
+                width: '48px', height: '48px',
+                borderRadius: 'var(--radius-lg)',
+                background: 'var(--primary)', color: 'var(--text-on-primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
                 <ImagePlus size={20} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-900">Photo readiness</p>
-                <p className="mt-2 text-sm text-slate-600">
+                <p style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--text-main)' }}>Photo readiness</p>
+                <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
                   A hotel is photo-ready when it has at least 5 venue photos.
                 </p>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Total hotel photos</p>
-                <p className="mt-3 text-3xl font-semibold text-slate-900">{photoCount}</p>
+            <div style={{ marginTop: 'var(--space-5)', display: 'grid', gap: 'var(--space-3)' }}>
+              <div className="card" style={{ padding: 'var(--space-4)' }}>
+                <p style={{ fontSize: 'var(--font-xs)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Total hotel photos</p>
+                <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--text-main)' }}>{photoCount}</p>
               </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="flex items-center justify-between gap-3">
+              <div className="card" style={{ padding: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Readiness status</p>
-                    <p className="mt-3 text-xl font-semibold text-slate-900">
-                      {photoReady ? 'YES' : 'NO'}
-                    </p>
+                    <p style={{ fontSize: 'var(--font-xs)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Readiness status</p>
+                    <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-size-lg)', fontWeight: 800, color: 'var(--text-main)' }}>{photoReady ? 'YES' : 'NO'}</p>
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-sm font-semibold ${photoReady ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {photoReady ? '5+ Images' : 'Needs more photos'}
+                  <span style={{
+                    borderRadius: 'var(--radius-full)', padding: '4px 12px',
+                    fontSize: 'var(--font-sm)', fontWeight: 700,
+                    background: `color-mix(in srgb, ${readinessColor} 16%, transparent)`, color: readinessColor,
+                  }}>
+                    {photoReady ? '5+ Images' : 'Needs more'}
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6">
-            <div className="flex items-center justify-between gap-2">
+          {/* Upload */}
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
               <div>
-                <p className="text-sm font-semibold text-slate-900">Upload new venue photo</p>
-                <p className="mt-1 text-sm text-slate-500">Supported formats: JPG, JPEG, PNG, WEBP. Max size 10 MB.</p>
+                <p style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--text-main)' }}>Upload new venue photo</p>
+                <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>JPG, JPEG, PNG, WEBP. Max 10 MB.</p>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-                <UploadCloud size={16} />
-                Upload
-              </div>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
+                borderRadius: 'var(--radius-full)', background: 'var(--surface-2)',
+                padding: '4px 12px', fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-muted)',
+              }}>
+                <UploadCloud size={16} /> Upload
+              </span>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div style={{ marginTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Select image</label>
+                <label style={fieldLabel}>Select image</label>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                  className="input"
+                  style={{ width: '100%' }}
                   onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
                     setSelectedFile(file);
@@ -183,29 +188,31 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
                     setError(null);
                   }}
                 />
-                {selectedFile ? (
-                  <p className="mt-2 text-sm text-slate-500">
+                {selectedFile && (
+                  <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
                     Selected: <strong>{selectedFile.name}</strong> ({formatFileSize(selectedFile.size)})
                   </p>
-                ) : null}
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700">Caption (optional)</label>
+                <label style={fieldLabel}>Caption (optional)</label>
                 <input
+                  className="input"
+                  style={{ width: '100%' }}
                   value={caption}
                   onChange={(event) => setCaption(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
                   placeholder="Describe the photo or hall location"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700">Attach to hall</label>
+                <label style={fieldLabel}>Attach to hall</label>
                 <select
+                  className="input"
+                  style={{ width: '100%' }}
                   value={hallId}
                   onChange={(event) => setHallId(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
                 >
                   <option value="">Hotel-wide photo</option>
                   {halls.map((hall) => (
@@ -215,20 +222,21 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
               </div>
 
               {error && (
-                <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-700">
+                <div style={{ borderRadius: 'var(--radius-lg)', background: 'color-mix(in srgb, var(--status-error) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--status-error) 30%, transparent)', padding: 'var(--space-4)', fontSize: 'var(--font-sm)', color: 'var(--status-error)' }}>
                   {error}
                 </div>
               )}
               {message && (
-                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-700">
+                <div style={{ borderRadius: 'var(--radius-lg)', background: 'color-mix(in srgb, var(--status-success) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--status-success) 30%, transparent)', padding: 'var(--space-4)', fontSize: 'var(--font-sm)', color: 'var(--status-success)' }}>
                   {message}
                 </div>
               )}
 
               <button
+                className="btn btn-primary"
                 onClick={handleUpload}
                 disabled={uploading}
-                className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${uploading ? 'bg-slate-300 text-slate-600 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                style={{ width: '100%', justifyContent: 'center', opacity: uploading ? 0.6 : 1, cursor: uploading ? 'not-allowed' : 'pointer' }}
               >
                 {uploading ? 'Uploading...' : 'Upload Photo'}
               </button>
@@ -236,66 +244,77 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-base font-semibold text-slate-900">Venue Photo Gallery</p>
-                <p className="mt-1 text-sm text-slate-500">Manage hotel and hall photos for this venue.</p>
-              </div>
-              <span className={`rounded-full px-3 py-1 text-sm font-semibold ${photoReady ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                {photoReady ? 'Photo Readiness: YES' : 'Photo Readiness: NO'}
-              </span>
+        {/* ─── RIGHT: Gallery ─── */}
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ fontSize: 'var(--font-size-md)', fontWeight: 700, color: 'var(--text-main)' }}>Venue Photo Gallery</p>
+              <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>Manage hotel and hall photos for this venue.</p>
             </div>
+            <span style={{
+              borderRadius: 'var(--radius-full)', padding: '4px 12px',
+              fontSize: 'var(--font-sm)', fontWeight: 700,
+              background: `color-mix(in srgb, ${readinessColor} 16%, transparent)`, color: readinessColor,
+            }}>
+              {photoReady ? 'Photo Readiness: YES' : 'Photo Readiness: NO'}
+            </span>
+          </div>
 
-            {photoList.length === 0 ? (
-              <div className="mt-8 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-slate-500">
-                <Image size={32} className="mx-auto" />
-                <p className="mt-4 text-sm font-medium">No images uploaded yet.</p>
-                <p className="mt-2 text-sm text-slate-500">Use the upload panel to add photos for the hotel or halls.</p>
-              </div>
-            ) : (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {photoList.map((photo) => {
-                  const imageSrc = photo.photo_url || 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=80';
-
-                  return (
-                    <div key={photo.id} className="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-100 shadow-sm">
-                      <div className="relative h-52 overflow-hidden bg-slate-200">
-                        <img
-                          src={imageSrc}
-                          alt={photo.caption || 'Venue photo'}
-                          className="h-full w-full object-cover"
-                          onError={(event) => {
-                            (event.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=80';
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-3 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{getHallLabel(photo)}</p>
-                          <p className="mt-2 text-sm font-semibold text-slate-900 truncate">{photo.caption || 'No caption provided'}</p>
+          {photoList.length === 0 ? (
+            <div style={{
+              marginTop: 'var(--space-6)',
+              borderRadius: 'var(--radius-lg)',
+              border: '2px dashed var(--border)',
+              background: 'var(--surface-2)',
+              padding: 'var(--space-10)',
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+            }}>
+              <ImageIcon size={32} style={{ margin: '0 auto' }} />
+              <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-sm)', fontWeight: 600 }}>No images uploaded yet.</p>
+              <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-sm)' }}>Use the upload panel to add photos for the hotel or halls.</p>
+            </div>
+          ) : (
+            <div style={{ marginTop: 'var(--space-5)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-4)' }}>
+              {photoList.map((photo) => {
+                const imageSrc = photo.photo_url || FALLBACK_IMG;
+                return (
+                  <div key={photo.id} style={{ overflow: 'hidden', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
+                    <div style={{ height: '180px', overflow: 'hidden', background: 'var(--surface-2)' }}>
+                      <img
+                        src={imageSrc}
+                        alt={photo.caption || 'Venue photo'}
+                        style={{ height: '100%', width: '100%', objectFit: 'cover' }}
+                        onError={(event) => { (event.currentTarget as HTMLImageElement).src = FALLBACK_IMG; }}
+                      />
+                    </div>
+                    <div style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontSize: 'var(--font-xs)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{getHallLabel(photo)}</p>
+                          <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {photo.caption || 'No caption provided'}
+                          </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleDelete(photo.id)}
-                          className="rounded-full p-2 text-rose-600 transition hover:bg-rose-50 hover:text-rose-800"
+                          title="Delete photo"
+                          style={{ borderRadius: 'var(--radius-full)', padding: 'var(--space-2)', border: 'none', background: 'transparent', color: 'var(--status-error)', cursor: 'pointer' }}
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', fontSize: 'var(--font-xs)', color: 'var(--text-light)' }}>
                         <span>{formatDate(photo.created_at)}</span>
-                        {photo.storage_path ? <span>• {photo.storage_path.split('/').pop()}</span> : null}
+                        {(photo as any).storage_path ? <span>• {String((photo as any).storage_path).split('/').pop()}</span> : null}
                       </div>
                     </div>
                   </div>
                 );
               })}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

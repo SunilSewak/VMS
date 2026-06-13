@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, AlertCircle, CheckCircle } from 'lucide-react';
 import type { Hotel, AccommodationInventory } from '../features/venues/types';
 import { createAccommodation, updateAccommodation } from '../features/venues/venueService';
@@ -9,6 +9,20 @@ interface AccommodationInventoryEditorProps {
   onClose: () => void;
   onComplete: () => void;
 }
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 'var(--font-sm)',
+  fontWeight: 600,
+  color: 'var(--text-main)',
+  marginBottom: 'var(--space-2)',
+};
+
+const errStyle: React.CSSProperties = {
+  color: 'var(--status-error)',
+  fontSize: 'var(--font-xs)',
+  marginTop: 'var(--space-1)',
+};
 
 export function AccommodationInventoryEditor({
   hotel,
@@ -133,60 +147,89 @@ export function AccommodationInventoryEditor({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 'var(--space-4)',
+    }}>
+      <div style={{
+        background: 'var(--surface)',
+        borderRadius: 'var(--radius-xl)',
+        boxShadow: 'var(--shadow-lg)',
+        maxWidth: '560px', width: '100%', maxHeight: '90vh', overflowY: 'auto',
+      }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
-          <h2 className="text-xl font-bold text-gray-900">
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 10,
+          background: 'linear-gradient(135deg, var(--primary) 0%, #6366f1 100%)',
+          padding: 'var(--space-4) var(--space-6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 800, color: 'var(--text-on-primary)' }}>
             {isEditing ? 'Edit Accommodation Inventory' : 'Create Accommodation Inventory'}
           </h2>
           <button
             onClick={onClose}
             disabled={loading}
-            className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            style={{
+              background: 'transparent', border: 'none', color: 'var(--text-on-primary)',
+              cursor: loading ? 'not-allowed' : 'pointer', display: 'flex',
+              opacity: loading ? 0.5 : 1,
+            }}
           >
             <X size={24} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 py-6 space-y-4">
+        <form onSubmit={handleSubmit} style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {/* Hotel Info */}
-          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-700 font-medium">{hotel.hotel_name}</p>
-            <p className="text-xs text-blue-600">{hotel.city?.city_name || 'City not specified'}</p>
+          <div style={{
+            padding: 'var(--space-4)',
+            background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+          }}>
+            <p style={{ fontSize: 'var(--font-sm)', color: 'var(--primary)', fontWeight: 600 }}>{hotel.hotel_name}</p>
+            <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>{hotel.city?.city_name || 'City not specified'}</p>
           </div>
 
           {/* Submit Error */}
           {errors.submit && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3">
-              <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-red-700 text-sm">{errors.submit}</p>
+            <div style={{
+              padding: 'var(--space-4)',
+              background: 'color-mix(in srgb, var(--status-error) 10%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--status-error) 25%, transparent)',
+              borderRadius: 'var(--radius-lg)',
+              display: 'flex', gap: 'var(--space-3)',
+            }}>
+              <AlertCircle size={20} style={{ color: 'var(--status-error)', flexShrink: 0, marginTop: '2px' }} />
+              <p style={{ color: 'var(--status-error)', fontSize: 'var(--font-sm)' }}>{errors.submit}</p>
             </div>
           )}
 
           {/* Total Rooms */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Total Rooms <span className="text-red-500">*</span>
+            <label style={labelStyle}>
+              Total Rooms <span style={{ color: 'var(--status-error)' }}>*</span>
             </label>
             <input
               type="number"
               min="1"
               value={formData.total_rooms}
               onChange={(e) => handleInputChange('total_rooms', e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.total_rooms ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className="input"
+              style={{ width: '100%', borderColor: errors.total_rooms ? 'var(--status-error)' : undefined }}
             />
-            {errors.total_rooms && <p className="text-red-500 text-xs mt-1">{errors.total_rooms}</p>}
+            {errors.total_rooms && <p style={errStyle}>{errors.total_rooms}</p>}
           </div>
 
           {/* Room Type Grid */}
-          <div className="grid grid-cols-2 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-4)' }}>
             {/* Single Rooms */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label style={labelStyle}>
                 Single Rooms
               </label>
               <input
@@ -194,16 +237,15 @@ export function AccommodationInventoryEditor({
                 min="0"
                 value={formData.single_rooms}
                 onChange={(e) => handleInputChange('single_rooms', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.single_rooms ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="input"
+                style={{ width: '100%', borderColor: errors.single_rooms ? 'var(--status-error)' : undefined }}
               />
-              {errors.single_rooms && <p className="text-red-500 text-xs mt-1">{errors.single_rooms}</p>}
+              {errors.single_rooms && <p style={errStyle}>{errors.single_rooms}</p>}
             </div>
 
             {/* Double Rooms */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label style={labelStyle}>
                 Double Rooms
               </label>
               <input
@@ -211,16 +253,15 @@ export function AccommodationInventoryEditor({
                 min="0"
                 value={formData.double_rooms}
                 onChange={(e) => handleInputChange('double_rooms', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.double_rooms ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="input"
+                style={{ width: '100%', borderColor: errors.double_rooms ? 'var(--status-error)' : undefined }}
               />
-              {errors.double_rooms && <p className="text-red-500 text-xs mt-1">{errors.double_rooms}</p>}
+              {errors.double_rooms && <p style={errStyle}>{errors.double_rooms}</p>}
             </div>
 
             {/* Triple Rooms */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label style={labelStyle}>
                 Triple Rooms
               </label>
               <input
@@ -228,16 +269,15 @@ export function AccommodationInventoryEditor({
                 min="0"
                 value={formData.triple_rooms}
                 onChange={(e) => handleInputChange('triple_rooms', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.triple_rooms ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="input"
+                style={{ width: '100%', borderColor: errors.triple_rooms ? 'var(--status-error)' : undefined }}
               />
-              {errors.triple_rooms && <p className="text-red-500 text-xs mt-1">{errors.triple_rooms}</p>}
+              {errors.triple_rooms && <p style={errStyle}>{errors.triple_rooms}</p>}
             </div>
 
             {/* Quad Rooms */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label style={labelStyle}>
                 Quad Rooms
               </label>
               <input
@@ -245,69 +285,104 @@ export function AccommodationInventoryEditor({
                 min="0"
                 value={formData.quad_rooms}
                 onChange={(e) => handleInputChange('quad_rooms', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.quad_rooms ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="input"
+                style={{ width: '100%', borderColor: errors.quad_rooms ? 'var(--status-error)' : undefined }}
               />
-              {errors.quad_rooms && <p className="text-red-500 text-xs mt-1">{errors.quad_rooms}</p>}
+              {errors.quad_rooms && <p style={errStyle}>{errors.quad_rooms}</p>}
             </div>
           </div>
 
           {/* Allocation Status */}
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700">Total Allocated</p>
-              <p className="text-2xl font-bold text-gray-900">{allocatedRooms}</p>
+          <div style={{
+            padding: 'var(--space-4)',
+            background: 'var(--surface-2)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+              <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-main)' }}>Total Allocated</p>
+              <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--text-main)' }}>{allocatedRooms}</p>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div style={{ width: '100%', background: 'var(--border)', borderRadius: 'var(--radius-full)', height: '8px', overflow: 'hidden' }}>
               <div
-                className={`h-2 rounded-full transition-all ${
-                  isAllocationValid ? 'bg-green-500' : 'bg-yellow-500'
-                }`}
-                style={{ width: `${Math.min(allocationPercentage, 100)}%` }}
+                style={{
+                  height: '8px',
+                  borderRadius: 'var(--radius-full)',
+                  transition: 'all 0.2s',
+                  background: isAllocationValid ? 'var(--status-success)' : 'var(--status-warning)',
+                  width: `${Math.min(allocationPercentage, 100)}%`,
+                }}
               ></div>
             </div>
-            <p className="text-xs text-gray-600 mt-2">
+            <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-2)' }}>
               {allocationPercentage}% of {formData.total_rooms} total rooms
             </p>
 
             {isAllocationValid ? (
-              <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded flex gap-2">
-                <CheckCircle size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-green-700">✓ Perfect allocation match</p>
+              <div style={{
+                marginTop: 'var(--space-3)', padding: 'var(--space-2)',
+                background: 'color-mix(in srgb, var(--status-success) 10%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--status-success) 25%, transparent)',
+                borderRadius: 'var(--radius-md)',
+                display: 'flex', gap: 'var(--space-2)',
+              }}>
+                <CheckCircle size={16} style={{ color: 'var(--status-success)', flexShrink: 0, marginTop: '2px' }} />
+                <p style={{ fontSize: 'var(--font-xs)', color: 'var(--status-success)' }}>✓ Perfect allocation match</p>
               </div>
             ) : (
-              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded flex gap-2">
-                <AlertCircle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-yellow-700">Allocation ({allocatedRooms}) does not match total ({formData.total_rooms})</p>
+              <div style={{
+                marginTop: 'var(--space-3)', padding: 'var(--space-2)',
+                background: 'color-mix(in srgb, var(--status-warning) 10%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--status-warning) 25%, transparent)',
+                borderRadius: 'var(--radius-md)',
+                display: 'flex', gap: 'var(--space-2)',
+              }}>
+                <AlertCircle size={16} style={{ color: 'var(--status-warning)', flexShrink: 0, marginTop: '2px' }} />
+                <p style={{ fontSize: 'var(--font-xs)', color: 'var(--status-warning)' }}>Allocation ({allocatedRooms}) does not match total ({formData.total_rooms})</p>
               </div>
             )}
           </div>
 
           {/* Allocation Error */}
           {errors.allocation && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded flex gap-2">
-              <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-red-700">{errors.allocation}</p>
+            <div style={{
+              padding: 'var(--space-3)',
+              background: 'color-mix(in srgb, var(--status-error) 10%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--status-error) 25%, transparent)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex', gap: 'var(--space-2)',
+            }}>
+              <AlertCircle size={16} style={{ color: 'var(--status-error)', flexShrink: 0, marginTop: '2px' }} />
+              <p style={{ fontSize: 'var(--font-xs)', color: 'var(--status-error)' }}>{errors.allocation}</p>
             </div>
           )}
 
           {/* Buttons */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)' }}>
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="btn btn-secondary"
+              style={{ opacity: loading ? 0.6 : 1 }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !isAllocationValid}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+              className="btn btn-primary"
+              style={{ opacity: (loading || !isAllocationValid) ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
             >
-              {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+              {loading && (
+                <div style={{
+                  width: '16px', height: '16px',
+                  borderRadius: 'var(--radius-full)',
+                  border: '2px solid transparent',
+                  borderBottomColor: 'var(--text-on-primary)',
+                  animation: 'spin 0.6s linear infinite',
+                }}></div>
+              )}
               {isEditing ? 'Update' : 'Create'}
             </button>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Edit2, Plus, AlertCircle, CheckCircle } from 'lucide-react';
 import type { Hotel, AccommodationInventory } from '../../features/venues/types';
 import { getAccommodationByHotel, deleteAccommodation } from '../../features/venues/venueService';
@@ -7,6 +7,16 @@ import { AccommodationInventoryEditor } from '../AccommodationInventoryEditor';
 interface AccommodationInventoryTabProps {
   hotel: Hotel;
   onRefresh: () => void;
+}
+
+function RoomStat({ label, value, accent, pct }: { label: string; value: number; accent: string; pct?: string }) {
+  return (
+    <div>
+      <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>{label}</p>
+      <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: accent }}>{value}</p>
+      {pct !== undefined && <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-light)', marginTop: 'var(--space-1)' }}>{pct}</p>}
+    </div>
+  );
 }
 
 export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInventoryTabProps) {
@@ -49,7 +59,6 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
   async function handleDeleteClick() {
     if (!inventory) return;
     if (!confirm('Are you sure you want to delete this accommodation inventory?')) return;
-
     try {
       await deleteAccommodation(inventory.id);
       setInventory(null);
@@ -69,142 +78,84 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Loading accommodation inventory...</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-16)' }}>
+        <span style={{ color: 'var(--text-muted)' }}>Loading accommodation inventory...</span>
       </div>
     );
   }
 
+  const pct = (n?: number) => (n && inventory?.total_rooms ? `${((n / inventory.total_rooms) * 100).toFixed(0)}%` : '-');
+  const allocated = inventory
+    ? (inventory.single_rooms || 0) + (inventory.double_rooms || 0) + (inventory.triple_rooms || 0) + (inventory.quad_rooms || 0)
+    : 0;
+  const matches = inventory && allocated === inventory.total_rooms;
+
   return (
-    <div className="space-y-6 p-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-6)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Accommodation Inventory</h3>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+        <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--text-main)' }}>Accommodation Inventory</h3>
         {inventory ? (
-          <div className="flex gap-2">
-            <button
-              onClick={handleEditClick}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2"
-            >
-              <Edit2 size={16} />
-              Edit
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button className="btn btn-secondary" onClick={handleEditClick} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <Edit2 size={16} /> Edit
             </button>
-            <button
-              onClick={handleDeleteClick}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
-            >
-              Delete
-            </button>
+            <button className="btn btn-danger" onClick={handleDeleteClick}>Delete</button>
           </div>
         ) : (
-          <button
-            onClick={handleCreateClick}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors flex items-center gap-2"
-          >
-            <Plus size={16} />
-            Create Inventory
+          <button className="btn btn-primary" onClick={handleCreateClick} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <Plus size={16} /> Create Inventory
           </button>
         )}
       </div>
 
-      {/* Error Message */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3">
-          <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-red-700">{error}</p>
+        <div style={{ padding: 'var(--space-4)', background: 'color-mix(in srgb, var(--status-error) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--status-error) 30%, transparent)', borderRadius: 'var(--radius-lg)', display: 'flex', gap: 'var(--space-3)' }}>
+          <AlertCircle size={20} style={{ color: 'var(--status-error)', flexShrink: 0, marginTop: '2px' }} />
+          <p style={{ color: 'var(--status-error)' }}>{error}</p>
         </div>
       )}
 
-      {/* Inventory Display */}
       {inventory ? (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {/* Status Badge */}
-          <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200 flex items-center justify-between">
-            <h4 className="font-semibold text-gray-900">Inventory Configuration</h4>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold gap-2 bg-green-100 text-green-800">
-              <CheckCircle size={16} />
-              Configured
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{
+            padding: 'var(--space-4) var(--space-6)',
+            background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <h4 style={{ fontWeight: 700, color: 'var(--text-main)' }}>Inventory Configuration</h4>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
+              padding: '4px 12px', borderRadius: 'var(--radius-full)',
+              fontSize: 'var(--font-sm)', fontWeight: 700,
+              background: 'color-mix(in srgb, var(--status-success) 14%, transparent)', color: 'var(--status-success)',
+            }}>
+              <CheckCircle size={16} /> Configured
             </span>
           </div>
 
-          {/* Inventory Grid */}
-          <div className="px-6 py-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-              {/* Total Rooms */}
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Total Rooms</p>
-                <p className="text-3xl font-bold text-gray-900">{inventory.total_rooms}</p>
-              </div>
-
-              {/* Single Rooms */}
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Single Rooms</p>
-                <p className="text-3xl font-bold text-blue-600">{inventory.single_rooms || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {inventory.single_rooms && inventory.total_rooms 
-                    ? `${((inventory.single_rooms / inventory.total_rooms) * 100).toFixed(0)}%`
-                    : '-'}
-                </p>
-              </div>
-
-              {/* Double Rooms */}
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Double Rooms</p>
-                <p className="text-3xl font-bold text-green-600">{inventory.double_rooms || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {inventory.double_rooms && inventory.total_rooms 
-                    ? `${((inventory.double_rooms / inventory.total_rooms) * 100).toFixed(0)}%`
-                    : '-'}
-                </p>
-              </div>
-
-              {/* Triple Rooms */}
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Triple Rooms</p>
-                <p className="text-3xl font-bold text-purple-600">{inventory.triple_rooms || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {inventory.triple_rooms && inventory.total_rooms 
-                    ? `${((inventory.triple_rooms / inventory.total_rooms) * 100).toFixed(0)}%`
-                    : '-'}
-                </p>
-              </div>
-
-              {/* Quad Rooms */}
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Quad Rooms</p>
-                <p className="text-3xl font-bold text-orange-600">{inventory.quad_rooms || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {inventory.quad_rooms && inventory.total_rooms 
-                    ? `${((inventory.quad_rooms / inventory.total_rooms) * 100).toFixed(0)}%`
-                    : '-'}
-                </p>
-              </div>
-
-              {/* Allocation Status */}
-              <div className="md:col-span-3">
-                <p className="text-sm text-gray-600 mb-2">Allocated</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {(inventory.single_rooms || 0) + (inventory.double_rooms || 0) + (inventory.triple_rooms || 0) + (inventory.quad_rooms || 0)}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  of {inventory.total_rooms}
-                </p>
-              </div>
+          <div style={{ padding: 'var(--space-6)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-6)' }}>
+              <RoomStat label="Total Rooms" value={inventory.total_rooms} accent="var(--text-main)" />
+              <RoomStat label="Single Rooms" value={inventory.single_rooms || 0} accent="var(--primary)" pct={pct(inventory.single_rooms)} />
+              <RoomStat label="Double Rooms" value={inventory.double_rooms || 0} accent="var(--status-success)" pct={pct(inventory.double_rooms)} />
+              <RoomStat label="Triple Rooms" value={inventory.triple_rooms || 0} accent="#8b5cf6" pct={pct(inventory.triple_rooms)} />
+              <RoomStat label="Quad Rooms" value={inventory.quad_rooms || 0} accent="var(--status-warning)" pct={pct(inventory.quad_rooms)} />
+              <RoomStat label="Allocated" value={allocated} accent="var(--text-main)" pct={`of ${inventory.total_rooms}`} />
             </div>
 
-            {/* Validation Check */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              {((inventory.single_rooms || 0) + (inventory.double_rooms || 0) + (inventory.triple_rooms || 0) + (inventory.quad_rooms || 0)) === inventory.total_rooms ? (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex gap-2">
-                  <CheckCircle size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-700">✓ Inventory allocation matches total rooms perfectly</p>
+            <div style={{ marginTop: 'var(--space-6)', paddingTop: 'var(--space-6)', borderTop: '1px solid var(--border)' }}>
+              {matches ? (
+                <div style={{ padding: 'var(--space-3)', background: 'color-mix(in srgb, var(--status-success) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--status-success) 30%, transparent)', borderRadius: 'var(--radius-lg)', display: 'flex', gap: 'var(--space-2)' }}>
+                  <CheckCircle size={16} style={{ color: 'var(--status-success)', flexShrink: 0, marginTop: '2px' }} />
+                  <p style={{ fontSize: 'var(--font-sm)', color: 'var(--status-success)' }}>✓ Inventory allocation matches total rooms perfectly</p>
                 </div>
               ) : (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex gap-2">
-                  <AlertCircle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-yellow-700">
-                    ⚠ Inventory allocation ({(inventory.single_rooms || 0) + (inventory.double_rooms || 0) + (inventory.triple_rooms || 0) + (inventory.quad_rooms || 0)}) does not equal total rooms ({inventory.total_rooms})
+                <div style={{ padding: 'var(--space-3)', background: 'color-mix(in srgb, var(--status-warning) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--status-warning) 30%, transparent)', borderRadius: 'var(--radius-lg)', display: 'flex', gap: 'var(--space-2)' }}>
+                  <AlertCircle size={16} style={{ color: 'var(--status-warning)', flexShrink: 0, marginTop: '2px' }} />
+                  <p style={{ fontSize: 'var(--font-sm)', color: 'var(--status-warning)' }}>
+                    ⚠ Inventory allocation ({allocated}) does not equal total rooms ({inventory.total_rooms})
                   </p>
                 </div>
               )}
@@ -212,23 +163,18 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
           </div>
         </div>
       ) : (
-        <div className="bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-          <AlertCircle size={48} className="mx-auto text-gray-400 mb-4" />
-          <h4 className="text-lg font-semibold text-gray-900 mb-2">No Accommodation Inventory</h4>
-          <p className="text-gray-600 mb-6">
+        <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-lg)', border: '2px dashed var(--border)', padding: 'var(--space-12, 3rem)', textAlign: 'center' }}>
+          <AlertCircle size={48} style={{ margin: '0 auto var(--space-4)', color: 'var(--text-light)' }} />
+          <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: 'var(--space-2)' }}>No Accommodation Inventory</h4>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-6)' }}>
             Create an accommodation inventory to specify room allocations by type.
           </p>
-          <button
-            onClick={handleCreateClick}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors inline-flex items-center gap-2"
-          >
-            <Plus size={18} />
-            Create Inventory Now
+          <button className="btn btn-primary" onClick={handleCreateClick} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <Plus size={18} /> Create Inventory Now
           </button>
         </div>
       )}
 
-      {/* Editor Modal */}
       {showEditor && (
         <AccommodationInventoryEditor
           hotel={hotel}
