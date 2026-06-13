@@ -8,87 +8,78 @@ import * as XLSX from 'xlsx';
 // ============================================================================
 
 const HOTEL_MASTER_HEADERS = [
-  'Hotel Name',
+  'Zone',
   'City',
+  'Hotel Name',
   'Address',
-  'Contact Person',
-  'Mobile',
-  'Email',
-  'Total Rooms',
-  'Check-in Time',
-  'Check-out Time',
+  'GST Number',
+  'Website',
+  'Sales Contact Name',
+  'Sales Contact Mobile',
+  'Sales Contact Email',
+  'Preferred Vendor',
+  'Blacklisted',
   'Status'
 ];
 
 const HOTEL_MASTER_EXAMPLE = [
-  ['Taj Hotel', 'Mumbai', '123 Business Park, BKC', 'Rajesh Sharma', '9876543210', 'sales@taj.com', '250', '14:00', '11:00', 'ACTIVE'],
-  ['ITC Grand', 'Delhi', '456 Central Avenue', 'Priya Singh', '8765432109', 'operations@itc.com', '180', '15:00', '12:00', 'ACTIVE'],
+  ['West', 'Mumbai', 'Taj Hotel', '123 Business Park, BKC', '27AAACT1234A1Z5', 'https://tajhotels.com', 'Rajesh Sharma', '9876543210', 'sales@taj.com', 'YES', 'NO', 'ACTIVE'],
+  ['North', 'Delhi', 'ITC Grand', '456 Central Avenue', '07AAACT5678B1Z3', 'https://itchotels.com', 'Priya Singh', '8765432109', 'operations@itc.com', 'NO', 'NO', 'ACTIVE'],
 ];
 
 const HALL_MASTER_HEADERS = [
   'Hotel Name',
-  'City',
+  'Floor',
+  'Indoor/Outdoor',
   'Hall Name',
-  'Hall Type',
-  'Theatre Capacity',
   'Classroom Capacity',
   'U Shape Capacity',
   'Cluster Capacity',
-  'Boardroom Capacity',
-  'Reception Capacity'
+  'Status'
 ];
 
 const HALL_MASTER_EXAMPLE = [
-  ['Taj Hotel', 'Mumbai', 'Grand Ballroom', 'BALLROOM', '500', '250', '80', '200', '40', '700'],
-  ['Taj Hotel', 'Mumbai', 'Executive Suite', 'CONFERENCE', '100', '80', '30', '50', '20', '150'],
-  ['ITC Grand', 'Delhi', 'Crystal Hall', 'BANQUET', '350', '180', '60', '150', '30', '500'],
+  ['Taj Hotel', 'Ground', 'INDOOR', 'Grand Ballroom', '250', '80', '200', 'ACTIVE'],
+  ['Taj Hotel', 'Third Floor', 'INDOOR', 'Executive Suite', '80', '30', '50', 'ACTIVE'],
+  ['ITC Grand', 'Lobby', 'INDOOR', 'Crystal Hall', '180', '60', '150', 'ACTIVE'],
 ];
 
 const ACCOMMODATION_HEADERS = [
   'Hotel Name',
-  'City',
   'Total Rooms',
   'Single Rooms',
   'Double Rooms',
   'Triple Rooms',
-  'Quad Rooms',
-  'Suite Rooms',
-  'Occupancy Rate (%)',
-  'Rate per Night (INR)'
+  'Quad Rooms'
 ];
 
 const ACCOMMODATION_EXAMPLE = [
-  ['Taj Hotel', 'Mumbai', '250', '50', '150', '30', '10', '10', '75', '5000'],
-  ['ITC Grand', 'Delhi', '180', '40', '120', '15', '0', '5', '80', '4500'],
+  ['Taj Hotel', '250', '50', '150', '30', '20'],
+  ['ITC Grand', '180', '40', '120', '15', '5'],
 ];
 
 const OCCUPANCY_HEADERS = [
   'Hotel Name',
-  'City',
-  'Designation',
-  'Occupancy Type',
-  'Min Occupancy',
-  'Max Occupancy'
+  'SO',
+  'DM',
+  'RSM',
+  'OTHERS'
 ];
 
 const OCCUPANCY_EXAMPLE = [
-  ['Taj Hotel', 'Mumbai', 'SO', 'DOUBLE', '10', '100'],
-  ['Taj Hotel', 'Mumbai', 'DM', 'SINGLE', '5', '50'],
-  ['Taj Hotel', 'Mumbai', 'RSM', 'DOUBLE', '15', '150'],
-  ['ITC Grand', 'Delhi', 'SO', 'DOUBLE', '10', '80'],
+  ['Taj Hotel', '120', '80', '160', '90'],
+  ['ITC Grand', '90', '60', '130', '70'],
 ];
 
 const PHOTOS_HEADERS = [
   'Hotel Name',
-  'City',
-  'Photo Type',
-  'Photo URL',
-  'Display Order'
+  'Photo File Name',
+  'Caption'
 ];
 
 const PHOTOS_EXAMPLE = [
-  ['Taj Hotel', 'Mumbai', 'EXTERIOR', 'https://example.com/taj-exterior.jpg', '1'],
-  ['Taj Hotel', 'Mumbai', 'HALL', 'https://example.com/taj-ballroom.jpg', '2'],
+  ['Taj Hotel', 'taj_ballroom_01.jpg', 'Grand Ballroom front view'],
+  ['ITC Grand', 'itc_exterior_01.jpg', 'Hotel exterior panorama'],
 ];
 
 // ============================================================================
@@ -258,10 +249,10 @@ export function generateMasterTemplate(): Blob {
   
   // Add sheets
   XLSX.utils.book_append_sheet(wb, createHotelMasterSheet(), 'Hotel Master');
+  XLSX.utils.book_append_sheet(wb, createAccommodationSheet(), 'Accommodation Inventory');
+  XLSX.utils.book_append_sheet(wb, createOccupancySheet(), 'Occupancy Matrix');
   XLSX.utils.book_append_sheet(wb, createHallMasterSheet(), 'Hall Master');
-  XLSX.utils.book_append_sheet(wb, createAccommodationSheet(), 'Accommodation');
-  XLSX.utils.book_append_sheet(wb, createOccupancySheet(), 'Occupancy Rules');
-  XLSX.utils.book_append_sheet(wb, createPhotosSheet(), 'Photos');
+  XLSX.utils.book_append_sheet(wb, createPhotosSheet(), 'Hotel Photos');
   XLSX.utils.book_append_sheet(wb, createInstructionsSheet(), 'Instructions');
   
   // Generate Excel file
@@ -300,18 +291,18 @@ export const TEMPLATE_INFO = {
         rows: 'One per hall'
       },
       {
-        name: 'Accommodation',
-        description: 'Room inventory and occupancy',
+        name: 'Accommodation Inventory',
+        description: 'Room inventory summary for each hotel',
         rows: 'One per hotel'
       },
       {
-        name: 'Occupancy Rules',
-        description: 'Designation-to-occupancy mappings',
-        rows: 'One per rule'
+        name: 'Occupancy Matrix',
+        description: 'Designation occupancy limits for each hotel',
+        rows: 'One per hotel'
       },
       {
-        name: 'Photos',
-        description: 'Photo references (optional)',
+        name: 'Hotel Photos',
+        description: 'Photo metadata for hotel images',
         rows: 'One per photo'
       }
     ]

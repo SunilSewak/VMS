@@ -1,8 +1,9 @@
 // Venue Bulk Import Service
-// Handles Excel parsing, validation, import preview, and actual import
+// Handles multi-sheet Excel parsing, validation, import preview, and actual import
 
 import * as XLSX from 'xlsx';
 import { supabase } from '../../lib/supabase';
+import { generateMasterTemplate } from './templateService';
 import type {
   ImportValidationError,
   ImportPreviewData,
@@ -10,6 +11,8 @@ import type {
   VenueImportHistory,
   DataQualityMetrics,
   ExcelRow,
+  MultiSheetValidationResult,
+  BulkImportResult,
 } from './types';
 
 // ============================================================================
@@ -18,29 +21,308 @@ import type {
 
 const HALL_TYPES = ['BALLROOM', 'CONFERENCE', 'BANQUET', 'BOARDROOM', 'THEATRE', 'OTHER'];
 const VENUE_STATUSES = ['ACTIVE', 'INACTIVE', 'PENDING_APPROVAL'];
+const OCCUPANCY_TYPES = ['SINGLE', 'DOUBLE', 'TRIPLE', 'QUAD'];
+const ROOM_TYPES = ['SINGLE', 'DOUBLE', 'TRIPLE', 'QUAD'];
+
+// Sheet name mappings (flexible for different Excel formats)
+const SHEET_PATTERNS = {
+  hotel: ['hotel master', 'hotels', 'hotel', 'master'],
+  hall: ['hall master', 'halls', 'hall'],
+  accommodation: ['accommodation', 'accommodation inventory', 'inventory', 'rooms'],
+  occupancy: ['occupancy', 'occupancy matrix', 'occupancy rules'],
+  photos: ['photos', 'hotel photos', 'images', 'images & photos'],
+};
 
 // ============================================================================
 // TEMPLATE GENERATION
 // ============================================================================
 
 export function generateExcelTemplate(): Blob {
-  // Using a minimal template - in production would use XLSX library
-  // For now, return a CSV that can be opened in Excel
-  const template = `Hotel Name,City,Star Rating,Total Rooms,Residential Capacity,Contact Person,Mobile,Email,Status
-Taj Hotel,Mumbai,5,250,200,Rajesh Sharma,9876543210,sales@taj.com,ACTIVE
-Hotel Name,City,Star Rating,Total Rooms,Residential Capacity,Contact Person,Mobile,Email,Status
-
-Hall Name,Theatre Capacity,Classroom Capacity,U Shape Capacity,Cluster Capacity,Boardroom Capacity,Reception Capacity,Hall Type
-Grand Ballroom,500,250,80,200,40,700,BALLROOM
-Conference Room,100,80,30,50,20,150,CONFERENCE`;
-
-  return new Blob([template], { type: 'text/csv;charset=utf-8;' });
+  return generateMasterTemplate();
 }
+
+// ============================================================================
+// LEGACY COMPATIBILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Backward-compatible import preview generator
+ * Works with simple row arrays for older UI flows
+ */
+export async function generateImportPreview(rows: ExcelRow[]): Promise<ImportPreviewData> {
+  const allErrors: ImportValidationError[] = [];
+  let validCount = 0;
+  let hotelToCreate = 0;
+  let hotelToUpdate = 0;
+  let hallToCreate = 0;
+  let hallToUpdate = 0;
+
+  // Fetch existing hotels
+  const { data: existingHotels } = await supabase
+    .from('hotels')
+    .select('id, hotel_name, city_id');
+
+  const hotelMap = new Map<string, string>();
+  if (existingHotels) {
+    existingHotels.forEach((h: any) => {
+      hotelMap.set(`${h.hotel_name}|${h.city_id}`, h.id);
+    });
+  }
+
+  // Separate and validate rows
+  const hotelRows = rows.filter((r) => r.star_rating !== undefined && r.city_name !== undefined);
+  const hallRows = rows.filter((r) => r.theatre_capacity !== undefined && r.hall_name !== undefined);
+
+  hotelRows.forEach((row, idx) => {
+    const errors = validateHotelRow(row, idx + 2);
+    if (errors.length === 0) {
+      validCount++;
+      const key = `${row.hotel_name}|${row.city_name}`;
+      if (hotelMap.has(key)) {
+        hotelToUpdate++;
+      } else {
+        hotelToCreate++;
+      }
+    } else {
+      allErrors.push(...errors);
+    }
+  });
+
+  hallRows.forEach((row, idx) => {
+    const errors = validateHallRow(row, hotelRows.length + idx + 2);
+    if (errors.length === 0) {
+      validCount++;
+      hallToCreate++;
+    } else {
+      allErrors.push(...errors);
+    }
+  });
+
+  return {
+    validRows: validCount,
+    invalidRows: allErrors.filter((e) => e.severity === 'ERROR').length,
+    errors: allErrors,
+    hotelsSummary: {
+      toCreate: hotelToCreate,
+      toUpdate: hotelToUpdate,
+    },
+    hallsSummary: {
+      toCreate: hallToCreate,
+      toUpdate: hallToUpdate,
+    },
+  };
+}
+
+// ============================================================================
+// SHEET DETECTION & CLASSIFICATION
+// ============================================================================
+
+function normalizeSheetName(name: string): string {
+  return name.toLowerCase().trim();
+}
+
+function detectSheetType(sheetName: string): string | null {
+  const normalized = normalizeSheetName(sheetName);
+  
+  for (const [type, patterns] of Object.entries(SHEET_PATTERNS)) {
+    for (const pattern of patterns) {
+      if (normalized.includes(pattern) || pattern.includes(normalized)) {
+        return type;
+      }
+    }
+  }
+  
+  return null;
+}
+
+function detectRowType(row: ExcelRow, sheetType: string): string | null {
+  if (sheetType === 'hotel') return 'HOTEL';
+  if (sheetType === 'hall') return 'HALL';
+  if (sheetType === 'accommodation') return 'ACCOMMODATION';
+  if (sheetType === 'occupancy') return 'OCCUPANCY';
+  if (sheetType === 'photos') return 'PHOTO';
+  
+  // Fallback: detect by presence of distinctive columns
+  if (row.hotel_name && row.theatre_capacity) return 'HALL';
+  if (row.hotel_name && row.room_type) return 'ACCOMMODATION';
+  if (row.hotel_name && row.designation) return 'OCCUPANCY';
+  if (row.hotel_name && row.photo_url) return 'PHOTO';
+  if (row.hotel_name && row.city_name) return 'HOTEL';
+  
+  return null;
+}
+
+// ============================================================================
+// ZONE & CITY RESOLUTION
+// ============================================================================
+
+const zoneCache = new Map<string, string>(); // zone_name -> zone_id
+const cityCache = new Map<string, string>(); // city_name -> city_id
+
+export async function resolveZone(zoneName: string): Promise<string | null> {
+  if (!zoneName || !zoneName.trim()) return null;
+  
+  const normalized = zoneName.trim();
+  
+  if (zoneCache.has(normalized)) {
+    return zoneCache.get(normalized)!;
+  }
+  
+  const { data: zone } = await supabase
+    .from('zones')
+    .select('id')
+    .ilike('zone_name', normalized)
+    .single();
+  
+  if (zone) {
+    zoneCache.set(normalized, zone.id);
+    return zone.id;
+  }
+  
+  return null;
+}
+
+export async function ensureCityExists(cityName: string, zoneName?: string): Promise<string> {
+  if (!cityName || !cityName.trim()) {
+    throw new Error('City name is required');
+  }
+
+  const normalizedCityName = cityName.trim();
+
+  if (cityCache.has(normalizedCityName)) {
+    return cityCache.get(normalizedCityName)!;
+  }
+
+  // Check if city exists in database
+  const { data: existingCity, error: fetchError } = await supabase
+    .from('cities')
+    .select('id')
+    .ilike('city_name', normalizedCityName)
+    .single();
+
+  if (existingCity) {
+    cityCache.set(normalizedCityName, existingCity.id);
+    return existingCity.id;
+  }
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    throw new Error(`Failed to fetch city: ${fetchError.message}`);
+  }
+
+  // City doesn't exist, create it with zone if provided
+  let zoneId: string | null = null;
+  if (zoneName) {
+    zoneId = await resolveZone(zoneName);
+  }
+
+  const { data: newCity, error: createError } = await supabase
+    .from('cities')
+    .insert([{ city_name: normalizedCityName, ...(zoneId && { zone_id: zoneId }) }])
+    .select()
+    .single();
+
+  if (createError) {
+    throw new Error(`Failed to create city: ${createError.message}`);
+  }
+
+  if (newCity) {
+    cityCache.set(normalizedCityName, newCity.id);
+    return newCity.id;
+  }
+
+  throw new Error('Failed to create or retrieve city');
+}
+
 
 // ============================================================================
 // FILE PARSING
 // ============================================================================
 
+interface ParsedSheets {
+  [sheetType: string]: ExcelRow[];
+}
+
+/**
+ * Parse Excel file into multi-sheet structure
+ */
+export async function parseExcelFileMultiSheet(file: File): Promise<ParsedSheets> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        if (!data) {
+          reject(new Error('Failed to read file'));
+          return;
+        }
+
+        // Parse workbook
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        const sheets: ParsedSheets = {};
+
+        // Process each sheet
+        workbook.SheetNames.forEach((sheetName) => {
+          const sheetType = detectSheetType(sheetName);
+          if (!sheetType) {
+            console.warn(`Sheet "${sheetName}" not recognized, skipping`);
+            return;
+          }
+
+          const sheet = workbook.Sheets[sheetName];
+          const sheetData = XLSX.utils.sheet_to_json<ExcelRow>(sheet, {
+            header: 1,
+            defval: '',
+          });
+
+          // Convert array format to object format
+          if (sheetData.length > 1) {
+            const headers = (sheetData[0] as any[]).map((h) =>
+              String(h).toLowerCase().replace(/\s+/g, '_').trim()
+            );
+
+            const rows: ExcelRow[] = [];
+            for (let i = 1; i < sheetData.length; i++) {
+              const row = (sheetData[i] as any[]) || [];
+              const rowObj: ExcelRow = {};
+
+              headers.forEach((header, idx) => {
+                if (header && row[idx] !== undefined && row[idx] !== '') {
+                  rowObj[header as keyof ExcelRow] = String(row[idx]).trim();
+                }
+              });
+
+              // Only add rows with data
+              if (Object.values(rowObj).some((v) => v && v !== '')) {
+                rows.push(rowObj);
+              }
+            }
+
+            if (!sheets[sheetType]) {
+              sheets[sheetType] = [];
+            }
+            sheets[sheetType].push(...rows);
+          }
+        });
+
+        resolve(sheets);
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Failed to read file'));
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
+ * Backward-compatible parse function - returns flat array of all rows
+ * This maintains compatibility with existing UI code
+ */
 export async function parseExcelFile(file: File): Promise<ExcelRow[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -55,19 +337,17 @@ export async function parseExcelFile(file: File): Promise<ExcelRow[]> {
 
         // Parse workbook
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-
-        // Get all rows from all sheets
         const allRows: ExcelRow[] = [];
 
         // Process each sheet
         workbook.SheetNames.forEach((sheetName) => {
           const sheet = workbook.Sheets[sheetName];
           const sheetData = XLSX.utils.sheet_to_json<ExcelRow>(sheet, {
-            header: 1, // Use first row as headers
+            header: 1,
             defval: '',
           });
 
-          // Convert array format to object format with headers from first row
+          // Convert array format to object format
           if (sheetData.length > 1) {
             const headers = (sheetData[0] as any[]).map((h) =>
               String(h).toLowerCase().replace(/\s+/g, '_').trim()
@@ -78,12 +358,12 @@ export async function parseExcelFile(file: File): Promise<ExcelRow[]> {
               const rowObj: ExcelRow = {};
 
               headers.forEach((header, idx) => {
-                if (header && row[idx] !== undefined) {
+                if (header && row[idx] !== undefined && row[idx] !== '') {
                   rowObj[header as keyof ExcelRow] = String(row[idx]).trim();
                 }
               });
 
-              // Only add rows that have data
+              // Only add rows with data
               if (Object.values(rowObj).some((v) => v && v !== '')) {
                 allRows.push(rowObj);
               }
@@ -103,60 +383,6 @@ export async function parseExcelFile(file: File): Promise<ExcelRow[]> {
 
     reader.readAsArrayBuffer(file);
   });
-}
-
-// ============================================================================
-// CITY RESOLUTION
-// ============================================================================
-
-const cityCache = new Map<string, string>(); // city_name -> city_id
-
-export async function ensureCityExists(cityName: string): Promise<string> {
-  if (!cityName || !cityName.trim()) {
-    throw new Error('City name is required');
-  }
-
-  const normalizedCityName = cityName.trim();
-
-  // Check cache first
-  if (cityCache.has(normalizedCityName)) {
-    return cityCache.get(normalizedCityName)!;
-  }
-
-  // Check if city exists in database
-  const { data: existingCity, error: fetchError } = await supabase
-    .from('cities')
-    .select('id')
-    .ilike('city_name', normalizedCityName)
-    .single();
-
-  if (existingCity) {
-    cityCache.set(normalizedCityName, existingCity.id);
-    return existingCity.id;
-  }
-
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    // PGRST116 means no rows found, which is expected
-    throw new Error(`Failed to fetch city: ${fetchError.message}`);
-  }
-
-  // City doesn't exist, create it
-  const { data: newCity, error: createError } = await supabase
-    .from('cities')
-    .insert([{ city_name: normalizedCityName }])
-    .select()
-    .single();
-
-  if (createError) {
-    throw new Error(`Failed to create city: ${createError.message}`);
-  }
-
-  if (newCity) {
-    cityCache.set(normalizedCityName, newCity.id);
-    return newCity.id;
-  }
-
-  throw new Error('Failed to create or retrieve city');
 }
 
 // ============================================================================
@@ -244,20 +470,6 @@ function validateHotelRow(row: ExcelRow, rowNumber: number): ImportValidationErr
     });
   }
 
-  // Residential capacity validation (warning)
-  if (row.residential_capacity) {
-    const resCap = parseInt(row.residential_capacity);
-    if (isNaN(resCap) || resCap < 0) {
-      errors.push({
-        row: rowNumber,
-        field: 'residential_capacity',
-        error: 'Residential capacity must be a non-negative number',
-        value: row.residential_capacity,
-        severity: 'WARNING',
-      });
-    }
-  }
-
   // Email validation
   if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
     errors.push({
@@ -280,7 +492,7 @@ function validateHotelRow(row: ExcelRow, rowNumber: number): ImportValidationErr
     });
   }
 
-  // Status validation (warning)
+  // Status validation
   if (row.status && !VENUE_STATUSES.includes(row.status)) {
     errors.push({
       row: rowNumber,
@@ -340,115 +552,191 @@ function validateHallRow(row: ExcelRow, rowNumber: number): ImportValidationErro
     });
   }
 
-  // Other capacity validations (warning)
-  const capacityFields = ['classroom_capacity', 'u_shape_capacity', 'cluster_capacity', 'boardroom_capacity', 'reception_capacity'];
-  capacityFields.forEach(field => {
-    if (row[field]) {
-      const capacity = parseInt(row[field]);
-      if (isNaN(capacity) || capacity < 0) {
-        errors.push({
-          row: rowNumber,
-          field,
-          error: `${field} must be a non-negative number`,
-          value: row[field],
-          severity: 'WARNING',
-        });
-      }
+  return errors;
+}
+
+function validateAccommodationRow(row: ExcelRow, rowNumber: number): ImportValidationError[] {
+  const errors: ImportValidationError[] = [];
+
+  // Required fields
+  if (!row.hotel_name || typeof row.hotel_name !== 'string' || row.hotel_name.trim() === '') {
+    errors.push({
+      row: rowNumber,
+      field: 'hotel_name',
+      error: 'Hotel name is required',
+      value: row.hotel_name,
+      severity: 'ERROR',
+    });
+  }
+
+  if (!row.room_type || !ROOM_TYPES.includes(row.room_type)) {
+    errors.push({
+      row: rowNumber,
+      field: 'room_type',
+      error: `Room type must be one of: ${ROOM_TYPES.join(', ')}`,
+      value: row.room_type,
+      severity: 'ERROR',
+    });
+  }
+
+  // Room count validation
+  const roomCount = parseInt(row.room_count);
+  if (isNaN(roomCount) || roomCount < 0) {
+    errors.push({
+      row: rowNumber,
+      field: 'room_count',
+      error: 'Room count must be a non-negative number',
+      value: row.room_count,
+      severity: 'ERROR',
+    });
+  }
+
+  return errors;
+}
+
+function validateOccupancyRow(row: ExcelRow, rowNumber: number): ImportValidationError[] {
+  const errors: ImportValidationError[] = [];
+
+  // Required fields
+  if (!row.hotel_name || typeof row.hotel_name !== 'string' || row.hotel_name.trim() === '') {
+    errors.push({
+      row: rowNumber,
+      field: 'hotel_name',
+      error: 'Hotel name is required',
+      value: row.hotel_name,
+      severity: 'ERROR',
+    });
+  }
+
+  if (!row.designation || typeof row.designation !== 'string' || row.designation.trim() === '') {
+    errors.push({
+      row: rowNumber,
+      field: 'designation',
+      error: 'Designation is required',
+      value: row.designation,
+      severity: 'ERROR',
+    });
+  }
+
+  if (!row.min_occupancy || !OCCUPANCY_TYPES.includes(row.min_occupancy)) {
+    errors.push({
+      row: rowNumber,
+      field: 'min_occupancy',
+      error: `Min occupancy must be one of: ${OCCUPANCY_TYPES.join(', ')}`,
+      value: row.min_occupancy,
+      severity: 'ERROR',
+    });
+  }
+
+  return errors;
+}
+
+function validatePhotoRow(row: ExcelRow, rowNumber: number): ImportValidationError[] {
+  const errors: ImportValidationError[] = [];
+
+  // Required fields
+  if (!row.hotel_name || typeof row.hotel_name !== 'string' || row.hotel_name.trim() === '') {
+    errors.push({
+      row: rowNumber,
+      field: 'hotel_name',
+      error: 'Hotel name is required',
+      value: row.hotel_name,
+      severity: 'ERROR',
+    });
+  }
+
+  if (!row.photo_url || typeof row.photo_url !== 'string' || row.photo_url.trim() === '') {
+    errors.push({
+      row: rowNumber,
+      field: 'photo_url',
+      error: 'Photo URL is required',
+      value: row.photo_url,
+      severity: 'ERROR',
+    });
+  }
+
+  // URL validation
+  if (row.photo_url) {
+    try {
+      new URL(row.photo_url);
+    } catch {
+      errors.push({
+        row: rowNumber,
+        field: 'photo_url',
+        error: 'Photo URL is not a valid URL',
+        value: row.photo_url,
+        severity: 'ERROR',
+      });
     }
-  });
+  }
 
   return errors;
 }
 
 // ============================================================================
-// PREVIEW GENERATION
+// ERROR REPORT GENERATION
 // ============================================================================
 
-export async function generateImportPreview(rows: ExcelRow[]): Promise<ImportPreviewData> {
-  const allErrors: ImportValidationError[] = [];
-  const cityMap = new Map<string, string>(); // city_name -> id
-  const hotelMap = new Map<string, string>(); // hotel_name + city_name -> id
-
-  // Fetch existing cities
-  const { data: cities } = await supabase.from('cities').select('id, city_name');
-  if (cities) {
-    cities.forEach((city: any) => {
-      cityMap.set(city.city_name, city.id);
-    });
-  }
-
-  // Fetch existing hotels
-  const { data: hotels } = await supabase
-    .from('hotels')
-    .select('id, hotel_name, city_id')
-    .join('cities', 'hotels.city_id', 'cities.id', { select: 'city_name' });
-
-  if (hotels) {
-    hotels.forEach((hotel: any) => {
-      const key = `${hotel.hotel_name}|${hotel.city_name}`;
-      hotelMap.set(key, hotel.id);
-    });
-  }
-
-  // Process rows
-  let validCount = 0;
-  let hotelToCreate = 0;
-  let hotelToUpdate = 0;
-  let hallToCreate = 0;
-  let hallToUpdate = 0;
-
-  // Separate hotel and hall rows
-  const hotelRows = rows.filter((r) => r.star_rating !== undefined && r.city_name !== undefined);
-  const hallRows = rows.filter((r) => r.theatre_capacity !== undefined && r.hall_name !== undefined);
-
-  // Validate hotel rows
-  hotelRows.forEach((row, idx) => {
-    const errors = validateHotelRow(row, idx + 2); // Row 2 starts after header
-    if (errors.length === 0) {
-      validCount++;
-      const key = `${row.hotel_name}|${row.city_name}`;
-      if (hotelMap.has(key)) {
-        hotelToUpdate++;
-      } else {
-        hotelToCreate++;
-      }
-    } else {
-      allErrors.push(...errors);
-    }
+export async function generateErrorReport(errors: ImportValidationError[]): Promise<Blob> {
+  // Sort errors by row and severity
+  const sorted = errors.sort((a, b) => {
+    if (a.row !== b.row) return a.row - b.row;
+    return a.severity === 'ERROR' ? -1 : 1;
   });
 
-  // Validate hall rows
-  hallRows.forEach((row, idx) => {
-    const errors = validateHallRow(row, hotelRows.length + idx + 2);
-    if (errors.length === 0) {
-      validCount++;
-      // Note: in real implementation, would resolve hotel_id here
-      hallToCreate++;
-    } else {
-      allErrors.push(...errors);
-    }
-  });
+  // Generate CSV content
+  const headers = ['Row', 'Field', 'Severity', 'Error', 'Value'];
+  const rows = sorted.map(e => [
+    e.row.toString(),
+    e.field,
+    e.severity,
+    e.error,
+    e.value?.toString() || '',
+  ]);
 
-  return {
-    validRows: validCount,
-    invalidRows: allErrors.filter((e) => e.severity === 'ERROR').length,
-    errors: allErrors,
-    hotelsSummary: {
-      toCreate: hotelToCreate,
-      toUpdate: hotelToUpdate,
-    },
-    hallsSummary: {
-      toCreate: hallToCreate,
-      toUpdate: hallToUpdate,
-    },
-  };
+  const csv = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+  ].join('\n');
+
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+export function downloadErrorReport(errors: ImportValidationError[], fileName: string = 'import-errors.csv') {
+  generateErrorReport(errors).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
 }
 
 // ============================================================================
-// IMPORT EXECUTION
+// IMPORT EXECUTION (MULTI-SHEET)
 // ============================================================================
 
-export async function executeImport(rows: ExcelRow[], userId: string): Promise<ImportResult> {
+export async function executeImport(
+  data: ExcelRow[] | ParsedSheets,
+  userId: string
+): Promise<BulkImportResult | ImportResult> {
+  // Check if data is flat array (legacy) or structured sheets (new)
+  const isLegacyFormat = Array.isArray(data);
+  
+  if (isLegacyFormat) {
+    // Legacy: convert flat array to structured format
+    return await executeLegacyImport(data as ExcelRow[], userId);
+  } else {
+    // New multi-sheet format
+    return await executeMultiSheetImport(data as ParsedSheets, userId);
+  }
+}
+
+/**
+ * Legacy import for flat row arrays
+ */
+async function executeLegacyImport(rows: ExcelRow[], userId: string): Promise<ImportResult> {
   const result: ImportResult = {
     success: false,
     hotelCount: 0,
@@ -464,24 +752,23 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
 
   try {
     const importSessionId = crypto.randomUUID();
-    const processedHotels = new Map<string, string>(); // hotel_name|city_id -> hotel_id
+    const processedHotels = new Map<string, string>();
 
     // Process hotels
     const hotelRows = rows.filter((r) => r.star_rating !== undefined && r.city_name !== undefined);
 
     for (const row of hotelRows) {
-      const rowNumber = result.rowsProcessed + 2;
+      result.rowsProcessed++;
+      const rowNumber = result.rowsProcessed + 1;
       const errors = validateHotelRow(row, rowNumber);
 
       if (errors.length > 0) {
         result.rowsSkipped++;
         result.errors.push(...errors);
-        result.rowsProcessed++;
         continue;
       }
 
       try {
-        // Resolve city
         let cityId: string;
         try {
           cityId = await ensureCityExists(row.city_name!);
@@ -494,20 +781,17 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
             severity: 'ERROR',
           });
           result.rowsSkipped++;
-          result.rowsProcessed++;
           continue;
         }
 
-        // Check if hotel already exists
         const existingHotelId = await resolveHotelId(row.hotel_name!, cityId);
         const isUpdate = !!existingHotelId;
 
-        // Upsert hotel
-        const { data, error } = await supabase
+        const { data: hotelData, error } = await supabase
           .from('hotels')
           .upsert(
             {
-              ...(existingHotelId && { id: existingHotelId }), // Include ID if updating
+              ...(existingHotelId && { id: existingHotelId }),
               hotel_name: row.hotel_name,
               city_id: cityId,
               status: row.status || 'ACTIVE',
@@ -531,9 +815,9 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
             severity: 'ERROR',
           });
           result.rowsSkipped++;
-        } else if (data) {
-          const key = `${row.hotel_name}|${cityId}`;
-          processedHotels.set(key, data.id);
+        } else if (hotelData) {
+          const key = `${row.hotel_name}|${row.city_name}`;
+          processedHotels.set(key, hotelData.id);
 
           if (isUpdate) {
             result.hotelUpdated++;
@@ -552,26 +836,23 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
         });
         result.rowsSkipped++;
       }
-
-      result.rowsProcessed++;
     }
 
     // Process halls
     const hallRows = rows.filter((r) => r.theatre_capacity !== undefined && r.hall_name !== undefined);
 
     for (const row of hallRows) {
-      const rowNumber = result.rowsProcessed + 2;
+      result.rowsProcessed++;
+      const rowNumber = result.rowsProcessed + 1;
       const errors = validateHallRow(row, rowNumber);
 
       if (errors.length > 0) {
         result.rowsSkipped++;
         result.errors.push(...errors);
-        result.rowsProcessed++;
         continue;
       }
 
       try {
-        // Resolve hotel
         if (!row.hotel_name || !row.city_name) {
           result.errors.push({
             row: rowNumber,
@@ -580,11 +861,9 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
             severity: 'ERROR',
           });
           result.rowsSkipped++;
-          result.rowsProcessed++;
           continue;
         }
 
-        // Get city ID
         let cityId: string;
         try {
           cityId = await ensureCityExists(row.city_name);
@@ -597,17 +876,11 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
             severity: 'ERROR',
           });
           result.rowsSkipped++;
-          result.rowsProcessed++;
           continue;
         }
 
-        // Get hotel ID
-        const hotelKey = `${row.hotel_name}|${cityId}`;
-        let hotelId = processedHotels.get(hotelKey);
-
-        if (!hotelId) {
-          hotelId = await resolveHotelId(row.hotel_name, cityId);
-        }
+        const hotelKey = `${row.hotel_name}|${row.city_name}`;
+        let hotelId = processedHotels.get(hotelKey) || await resolveHotelId(row.hotel_name, cityId);
 
         if (!hotelId) {
           result.errors.push({
@@ -618,11 +891,9 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
             severity: 'ERROR',
           });
           result.rowsSkipped++;
-          result.rowsProcessed++;
           continue;
         }
 
-        // Check if hall already exists
         const { data: existingHall } = await supabase
           .from('halls')
           .select('id')
@@ -632,17 +903,20 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
 
         const isUpdate = !!existingHall;
 
-        // Upsert hall
         const { error } = await supabase
           .from('halls')
           .upsert(
             {
-              ...(isUpdate && { id: existingHall.id }), // Include ID if updating
+              ...(isUpdate && { id: existingHall.id }),
               hotel_id: hotelId,
               hall_name: row.hall_name,
+              hall_type: row.hall_type || 'OTHER',
+              theatre_capacity: parseInt(row.theatre_capacity || '0'),
               classroom_capacity: parseInt(row.classroom_capacity || '0'),
               u_shape_capacity: parseInt(row.u_shape_capacity || '0'),
               cluster_capacity: parseInt(row.cluster_capacity || '0'),
+              boardroom_capacity: parseInt(row.boardroom_capacity || '0'),
+              reception_capacity: parseInt(row.reception_capacity || '0'),
               status: 'ACTIVE',
             },
             { onConflict: 'hotel_id,hall_name' }
@@ -675,11 +949,495 @@ export async function executeImport(rows: ExcelRow[], userId: string): Promise<I
         });
         result.rowsSkipped++;
       }
-
-      result.rowsProcessed++;
     }
 
     // Record import history
+    const { error: historyError } = await supabase.from('venue_import_history').insert({
+      import_session_id: importSessionId,
+      file_name: `import_${new Date().toISOString()}`,
+      uploaded_by: userId,
+      rows_processed: result.rowsProcessed,
+      hotels_created: result.hotelCreated,
+      hotels_updated: result.hotelUpdated,
+      halls_created: result.hallCreated,
+      halls_updated: result.hallUpdated,
+      rows_skipped: result.rowsSkipped,
+      status: result.errors.filter((e) => e.severity === 'ERROR').length === 0 ? 'SUCCESS' : 'PARTIAL',
+    });
+
+    if (historyError) {
+      console.error('Failed to record import history:', historyError);
+    }
+
+    result.success = result.errors.filter((e) => e.severity === 'ERROR').length === 0;
+    result.importSessionId = importSessionId;
+
+    return result;
+  } catch (error: any) {
+    result.errors.push({
+      row: 0,
+      field: 'import',
+      error: error.message || 'Unknown import error',
+      severity: 'ERROR',
+    });
+    return result;
+  }
+}
+
+/**
+ * Multi-sheet import for structured workbook format
+ */
+async function executeMultiSheetImport(
+  sheets: ParsedSheets,
+  userId: string
+): Promise<BulkImportResult> {
+  const result: BulkImportResult = {
+    success: false,
+    hotelCount: 0,
+    hallCount: 0,
+    hotelCreated: 0,
+    hotelUpdated: 0,
+    hallCreated: 0,
+    hallUpdated: 0,
+    inventoryCreated: 0,
+    occupancyCreated: 0,
+    photosCreated: 0,
+    rowsProcessed: 0,
+    rowsSkipped: 0,
+    errors: [],
+  };
+
+  try {
+    const importSessionId = crypto.randomUUID();
+    const processedHotels = new Map<string, string>(); // hotel_name|city_name -> hotel_id
+
+    // 1. PROCESS HOTELS FIRST
+    const hotelRows = sheets.hotel || [];
+    for (const row of hotelRows) {
+      result.rowsProcessed++;
+      const rowNumber = result.rowsProcessed + 1;
+      const errors = validateHotelRow(row, rowNumber);
+
+      if (errors.length > 0) {
+        result.rowsSkipped++;
+        result.errors.push(...errors);
+        continue;
+      }
+
+      try {
+        // Resolve city
+        let cityId: string;
+        try {
+          cityId = await ensureCityExists(row.city_name!, row.zone_name);
+        } catch (err: any) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'city_name',
+            error: `City resolution failed: ${err.message}`,
+            value: row.city_name,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        // Check if hotel already exists
+        const existingHotelId = await resolveHotelId(row.hotel_name!, cityId);
+        const isUpdate = !!existingHotelId;
+
+        // Upsert hotel
+        const { data, error } = await supabase
+          .from('hotels')
+          .upsert(
+            {
+              ...(existingHotelId && { id: existingHotelId }),
+              hotel_name: row.hotel_name,
+              city_id: cityId,
+              status: row.status || 'ACTIVE',
+              address: row.address || '',
+              contact_phone: row.mobile || '',
+              contact_email: row.email || '',
+              total_rooms: parseInt(row.total_rooms || '0'),
+              residential_capacity: parseInt(row.residential_capacity || '0'),
+            },
+            { onConflict: 'hotel_name,city_id' }
+          )
+          .select()
+          .single();
+
+        if (error) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hotel_name',
+            error: `Database error: ${error.message}`,
+            value: row.hotel_name,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+        } else if (data) {
+          const key = `${row.hotel_name}|${row.city_name}`;
+          processedHotels.set(key, data.id);
+
+          if (isUpdate) {
+            result.hotelUpdated++;
+          } else {
+            result.hotelCreated++;
+          }
+          result.hotelCount++;
+        }
+      } catch (err: any) {
+        result.errors.push({
+          row: rowNumber,
+          field: 'hotel_name',
+          error: err.message,
+          value: row.hotel_name,
+          severity: 'ERROR',
+        });
+        result.rowsSkipped++;
+      }
+    }
+
+    // 2. PROCESS HALLS
+    const hallRows = sheets.hall || [];
+    for (const row of hallRows) {
+      result.rowsProcessed++;
+      const rowNumber = result.rowsProcessed + 1;
+      const errors = validateHallRow(row, rowNumber);
+
+      if (errors.length > 0) {
+        result.rowsSkipped++;
+        result.errors.push(...errors);
+        continue;
+      }
+
+      try {
+        if (!row.hotel_name || !row.city_name) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hotel_name',
+            error: 'Hotel name and city are required for halls',
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        // Get city ID
+        let cityId: string;
+        try {
+          cityId = await ensureCityExists(row.city_name);
+        } catch (err: any) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'city_name',
+            error: `City resolution failed: ${err.message}`,
+            value: row.city_name,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        // Get hotel ID
+        const hotelKey = `${row.hotel_name}|${row.city_name}`;
+        let hotelId = processedHotels.get(hotelKey);
+
+        if (!hotelId) {
+          hotelId = await resolveHotelId(row.hotel_name, cityId);
+        }
+
+        if (!hotelId) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hotel_name',
+            error: `Hotel not found: ${row.hotel_name} in city ${row.city_name}`,
+            value: row.hotel_name,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        // Check if hall already exists
+        const { data: existingHall } = await supabase
+          .from('halls')
+          .select('id')
+          .eq('hotel_id', hotelId)
+          .eq('hall_name', row.hall_name)
+          .single();
+
+        const isUpdate = !!existingHall;
+
+        // Upsert hall
+        const { error } = await supabase
+          .from('halls')
+          .upsert(
+            {
+              ...(isUpdate && { id: existingHall.id }),
+              hotel_id: hotelId,
+              hall_name: row.hall_name,
+              hall_type: row.hall_type || 'OTHER',
+              theatre_capacity: parseInt(row.theatre_capacity || '0'),
+              classroom_capacity: parseInt(row.classroom_capacity || '0'),
+              u_shape_capacity: parseInt(row.u_shape_capacity || '0'),
+              cluster_capacity: parseInt(row.cluster_capacity || '0'),
+              boardroom_capacity: parseInt(row.boardroom_capacity || '0'),
+              reception_capacity: parseInt(row.reception_capacity || '0'),
+              status: 'ACTIVE',
+            },
+            { onConflict: 'hotel_id,hall_name' }
+          );
+
+        if (error) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hall_name',
+            error: `Database error: ${error.message}`,
+            value: row.hall_name,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+        } else {
+          if (isUpdate) {
+            result.hallUpdated++;
+          } else {
+            result.hallCreated++;
+          }
+          result.hallCount++;
+        }
+      } catch (err: any) {
+        result.errors.push({
+          row: rowNumber,
+          field: 'hall_name',
+          error: err.message,
+          value: row.hall_name,
+          severity: 'ERROR',
+        });
+        result.rowsSkipped++;
+      }
+    }
+
+    // 3. PROCESS ACCOMMODATION
+    const accommodationRows = sheets.accommodation || [];
+    for (const row of accommodationRows) {
+      result.rowsProcessed++;
+      const rowNumber = result.rowsProcessed + 1;
+      const errors = validateAccommodationRow(row, rowNumber);
+
+      if (errors.length > 0) {
+        result.rowsSkipped++;
+        result.errors.push(...errors);
+        continue;
+      }
+
+      try {
+        if (!row.hotel_name || !row.city_name) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hotel_name',
+            error: 'Hotel name and city are required',
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        const cityId = await ensureCityExists(row.city_name);
+        const hotelKey = `${row.hotel_name}|${row.city_name}`;
+        let hotelId = processedHotels.get(hotelKey) || await resolveHotelId(row.hotel_name, cityId);
+
+        if (!hotelId) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hotel_name',
+            error: `Hotel not found: ${row.hotel_name}`,
+            value: row.hotel_name,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        const { error } = await supabase
+          .from('accommodation_inventory')
+          .insert({
+            hotel_id: hotelId,
+            room_type: row.room_type,
+            room_count: parseInt(row.room_count || '0'),
+          });
+
+        if (error) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'room_count',
+            error: `Database error: ${error.message}`,
+            value: row.room_count,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+        } else {
+          result.inventoryCreated++;
+        }
+      } catch (err: any) {
+        result.errors.push({
+          row: rowNumber,
+          field: 'accommodation',
+          error: err.message,
+          severity: 'ERROR',
+        });
+        result.rowsSkipped++;
+      }
+    }
+
+    // 4. PROCESS OCCUPANCY
+    const occupancyRows = sheets.occupancy || [];
+    for (const row of occupancyRows) {
+      result.rowsProcessed++;
+      const rowNumber = result.rowsProcessed + 1;
+      const errors = validateOccupancyRow(row, rowNumber);
+
+      if (errors.length > 0) {
+        result.rowsSkipped++;
+        result.errors.push(...errors);
+        continue;
+      }
+
+      try {
+        if (!row.hotel_name || !row.city_name) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hotel_name',
+            error: 'Hotel name and city are required',
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        const cityId = await ensureCityExists(row.city_name);
+        const hotelKey = `${row.hotel_name}|${row.city_name}`;
+        let hotelId = processedHotels.get(hotelKey) || await resolveHotelId(row.hotel_name, cityId);
+
+        if (!hotelId) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hotel_name',
+            error: `Hotel not found: ${row.hotel_name}`,
+            value: row.hotel_name,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        const { error } = await supabase
+          .from('occupancy_rules')
+          .insert({
+            hotel_id: hotelId,
+            rule_type: row.designation,
+            min_occupancy: OCCUPANCY_TYPES.indexOf(row.min_occupancy) + 1,
+            is_active: true,
+          });
+
+        if (error) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'min_occupancy',
+            error: `Database error: ${error.message}`,
+            value: row.min_occupancy,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+        } else {
+          result.occupancyCreated++;
+        }
+      } catch (err: any) {
+        result.errors.push({
+          row: rowNumber,
+          field: 'occupancy',
+          error: err.message,
+          severity: 'ERROR',
+        });
+        result.rowsSkipped++;
+      }
+    }
+
+    // 5. PROCESS PHOTOS
+    const photoRows = sheets.photos || [];
+    for (const row of photoRows) {
+      result.rowsProcessed++;
+      const rowNumber = result.rowsProcessed + 1;
+      const errors = validatePhotoRow(row, rowNumber);
+
+      if (errors.length > 0) {
+        result.rowsSkipped++;
+        result.errors.push(...errors);
+        continue;
+      }
+
+      try {
+        if (!row.hotel_name || !row.city_name) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hotel_name',
+            error: 'Hotel name and city are required',
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        const cityId = await ensureCityExists(row.city_name);
+        const hotelKey = `${row.hotel_name}|${row.city_name}`;
+        let hotelId = processedHotels.get(hotelKey) || await resolveHotelId(row.hotel_name, cityId);
+
+        if (!hotelId) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'hotel_name',
+            error: `Hotel not found: ${row.hotel_name}`,
+            value: row.hotel_name,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+          continue;
+        }
+
+        const { error } = await supabase
+          .from('venue_photos')
+          .insert({
+            hotel_id: hotelId,
+            photo_url: row.photo_url,
+            photo_title: row.photo_title || '',
+            display_order: parseInt(row.display_order || '0'),
+          });
+
+        if (error) {
+          result.errors.push({
+            row: rowNumber,
+            field: 'photo_url',
+            error: `Database error: ${error.message}`,
+            value: row.photo_url,
+            severity: 'ERROR',
+          });
+          result.rowsSkipped++;
+        } else {
+          result.photosCreated++;
+        }
+      } catch (err: any) {
+        result.errors.push({
+          row: rowNumber,
+          field: 'photo',
+          error: err.message,
+          severity: 'ERROR',
+        });
+        result.rowsSkipped++;
+      }
+    }
+
+    // Record import history
+    const errorReportBlob = result.errors.length > 0 ? await generateErrorReport(result.errors) : null;
+    
     const { error: historyError } = await supabase.from('venue_import_history').insert({
       import_session_id: importSessionId,
       file_name: `import_${new Date().toISOString()}`,
@@ -739,27 +1497,92 @@ export async function getImportDetails(importSessionId: string): Promise<VenueIm
 }
 
 // ============================================================================
-// DATA QUALITY DASHBOARD
+// DATA QUALITY & READINESS
 // ============================================================================
 
 export async function calculateDataQuality(): Promise<DataQualityMetrics> {
-  const { data: hotels } = await supabase.from('hotels').select('id');
-  const totalHotels = hotels?.length || 0;
+  const { data: hotels } = await supabase
+    .from('hotels')
+    .select(`
+      id,
+      halls (id),
+      accommodation_inventory (id),
+      occupancy_rules (id),
+      venue_photos (id)
+    `);
 
-  // This would need more sophisticated queries in production
-  // For now, return mock data structure
-  return {
-    totalHotels,
-    hotelsMissingHalls: 0,
-    hotelsMissingInventory: 0,
-    hotelsMissingOccupancy: 0,
-    hotelsMissingPhotos: 0,
-    hotelsNotVenueReady: 0,
-    readinessDistribution: {
-      notReady: 0,
-      partial: 0,
-      ready: 0,
-      optimized: 0,
-    },
+  if (!hotels) {
+    return {
+      totalHotels: 0,
+      hotelsMissingHalls: 0,
+      hotelsMissingInventory: 0,
+      hotelsMissingOccupancy: 0,
+      hotelsMissingPhotos: 0,
+      hotelsNotVenueReady: 0,
+      readinessDistribution: {
+        notReady: 0,
+        partial: 0,
+        ready: 0,
+        optimized: 0,
+      },
+    };
+  }
+
+  let hotelsMissingHalls = 0;
+  let hotelsMissingInventory = 0;
+  let hotelsMissingOccupancy = 0;
+  let hotelsMissingPhotos = 0;
+
+  const readinessDistribution = {
+    notReady: 0,
+    partial: 0,
+    ready: 0,
+    optimized: 0,
   };
+
+  hotels.forEach((hotel: any) => {
+    const hasHalls = (hotel.halls || []).length > 0;
+    const hasInventory = (hotel.accommodation_inventory || []).length > 0;
+    const hasOccupancy = (hotel.occupancy_rules || []).length > 0;
+    const hasPhotos = (hotel.venue_photos || []).length > 0;
+
+    if (!hasHalls) hotelsMissingHalls++;
+    if (!hasInventory) hotelsMissingInventory++;
+    if (!hasOccupancy) hotelsMissingOccupancy++;
+    if (!hasPhotos) hotelsMissingPhotos++;
+
+    const missingCount = [!hasHalls, !hasInventory, !hasOccupancy, !hasPhotos].filter(m => m).length;
+
+    if (missingCount === 4) {
+      readinessDistribution.notReady++;
+    } else if (missingCount >= 2) {
+      readinessDistribution.partial++;
+    } else if (missingCount === 1) {
+      readinessDistribution.ready++;
+    } else {
+      readinessDistribution.optimized++;
+    }
+  });
+
+  const hotelsNotVenueReady = Math.max(
+    hotelsMissingHalls,
+    hotelsMissingInventory,
+    hotelsMissingOccupancy
+  );
+
+  return {
+    totalHotels: hotels.length,
+    hotelsMissingHalls,
+    hotelsMissingInventory,
+    hotelsMissingOccupancy,
+    hotelsMissingPhotos,
+    hotelsNotVenueReady,
+    readinessDistribution,
+  };
+}
+
+export async function refreshDataQualityAfterImport(hotelIds: string[]): Promise<void> {
+  // This function would typically trigger recalculation of data quality metrics
+  // For now, it's a placeholder for future enhancements
+  console.log(`Refreshing data quality for ${hotelIds.length} hotels`);
 }
