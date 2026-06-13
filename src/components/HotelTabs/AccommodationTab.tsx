@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Edit2, Plus, AlertCircle, CheckCircle } from 'lucide-react';
 import type { Hotel, AccommodationInventory } from '../../features/venues/types';
-import { getAccommodationByHotel, deleteAccommodation } from '../../features/venues/venueService';
+import { getAccommodationByHotel, createAccommodation, updateAccommodation, deleteAccommodation } from '../../features/venues/venueService';
 import { AccommodationInventoryEditor } from '../AccommodationInventoryEditor';
 
-interface AccommodationInventoryTabProps {
+interface AccommodationTabProps {
   hotel: Hotel;
   onRefresh: () => void;
 }
 
-export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInventoryTabProps) {
+export function AccommodationTab({ hotel, onRefresh }: AccommodationTabProps) {
   const [inventory, setInventory] = useState<AccommodationInventory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">Accommodation Inventory</h3>
@@ -122,9 +122,15 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
           {/* Status Badge */}
           <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200 flex items-center justify-between">
             <h4 className="font-semibold text-gray-900">Inventory Configuration</h4>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold gap-2 bg-green-100 text-green-800">
-              <CheckCircle size={16} />
-              Configured
+            <span
+              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold gap-2 ${
+                inventory.status === 'ACTIVE'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-red-100 text-red-800'
+              }`}
+            >
+              {inventory.status === 'ACTIVE' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+              {inventory.status}
             </span>
           </div>
 
@@ -182,7 +188,7 @@ export function AccommodationInventoryTab({ hotel, onRefresh }: AccommodationInv
               </div>
 
               {/* Allocation Status */}
-              <div className="md:col-span-3">
+              <div>
                 <p className="text-sm text-gray-600 mb-2">Allocated</p>
                 <p className="text-3xl font-bold text-gray-900">
                   {(inventory.single_rooms || 0) + (inventory.double_rooms || 0) + (inventory.triple_rooms || 0) + (inventory.quad_rooms || 0)}

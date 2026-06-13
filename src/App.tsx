@@ -329,18 +329,18 @@ export default function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path="/administration/masters/venues" element={
-                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
-                  <AppLayout>
-                    <VenueAdmin />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-
               <Route path="/administration/masters/venues/data-center" element={
                 <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                   <AppLayout>
                     <VenueDataCenter />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/administration/masters/venues/bulk-upload" element={
+                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                  <AppLayout>
+                    <VenueUploadCenter />
                   </AppLayout>
                 </ProtectedRoute>
               } />
@@ -353,10 +353,10 @@ export default function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path="/administration/masters/venues/bulk-upload" element={
+              <Route path="/administration/masters/venues" element={
                 <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                   <AppLayout>
-                    <VenueUploadCenter />
+                    <VenueAdmin />
                   </AppLayout>
                 </ProtectedRoute>
               } />

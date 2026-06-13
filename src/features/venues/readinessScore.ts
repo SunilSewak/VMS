@@ -1,7 +1,7 @@
 // Venue Readiness Score Calculator
 // Comprehensive validation and completeness scoring for hotels
 
-import type { HotelWithRelations, AccommodationInventory, OccupancyRule } from './types';
+import type { HotelWithRelations } from './types';
 
 export interface ReadinessScoreResult {
   overallScore: number; // 0-100
@@ -42,17 +42,17 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
     },
     {
       name: 'Contact Information',
-      isComplete: !!(hotel.contact_phone || hotel.contact_email),
+      isComplete: !!(hotel.sales_contact_mobile || hotel.sales_contact_email),
       weight: 5,
     },
     {
-      name: 'Total Rooms',
-      isComplete: !!hotel.total_rooms && hotel.total_rooms > 0,
+      name: 'Hotel Category',
+      isComplete: !!hotel.hotel_category,
       weight: 5,
     },
     {
-      name: 'Check-in/Check-out Times',
-      isComplete: !!hotel.check_in_time && !!hotel.check_out_time,
+      name: 'City Assignment',
+      isComplete: !!hotel.city_id,
       weight: 5,
     },
   ];
@@ -69,8 +69,8 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
   });
 
   if (!hotel.address) recommendations.push('Add hotel address for better visibility');
-  if (!hotel.contact_phone && !hotel.contact_email) recommendations.push('Add contact information (phone or email)');
-  if (!hotel.check_in_time || !hotel.check_out_time) recommendations.push('Set check-in and check-out times');
+  if (!hotel.sales_contact_mobile && !hotel.sales_contact_email) recommendations.push('Add sales contact information (phone or email)');
+  if (!hotel.hotel_category) recommendations.push('Set hotel category');
 
   // ============================================================================
   // HALLS CONFIGURATION (25% weight)
@@ -141,22 +141,25 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
   // ============================================================================
 
   const inventoryCount = hotel.accommodation_inventory?.length || 0;
-  const inventoryWithRates = hotel.accommodation_inventory?.filter((a) => a.rate_per_night && a.rate_per_night > 0).length || 0;
+  const inventoryWithAllocation = hotel.accommodation_inventory?.filter((a) => {
+    const allocated = (a.single_rooms || 0) + (a.double_rooms || 0) + (a.triple_rooms || 0) + (a.quad_rooms || 0);
+    return allocated === a.total_rooms;
+  }).length || 0;
   const inventoryActive = hotel.accommodation_inventory?.filter((a) => a.status === 'ACTIVE').length || 0;
 
   const inventoryChecks = [
     {
-      name: 'Room Types Configured',
+      name: 'Accommodation Inventory Configured',
       isComplete: inventoryCount >= 1,
       weight: 8,
       actual: inventoryCount,
       required: 1,
     },
     {
-      name: 'Rates Defined',
-      isComplete: inventoryWithRates === inventoryCount && inventoryCount > 0,
+      name: 'Room Allocation Complete',
+      isComplete: inventoryWithAllocation === inventoryCount && inventoryCount > 0,
       weight: 10,
-      actual: inventoryWithRates,
+      actual: inventoryWithAllocation,
       required: inventoryCount,
     },
     {
@@ -182,13 +185,13 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
   });
 
   if (inventoryCount === 0) {
-    recommendations.push('Add room types and inventory to enable accommodation bookings');
+    recommendations.push('Add accommodation inventory to enable venue suitability assessment');
   } else {
-    if (inventoryWithRates !== inventoryCount) {
-      recommendations.push(`Set rates for ${inventoryCount - inventoryWithRates} room type(s)`);
+    if (inventoryWithAllocation !== inventoryCount) {
+      recommendations.push(`Complete room allocation for ${inventoryCount - inventoryWithAllocation} inventory record(s)`);
     }
     if (inventoryActive !== inventoryCount) {
-      recommendations.push(`Activate ${inventoryCount - inventoryActive} room type(s)`);
+      recommendations.push(`Activate ${inventoryCount - inventoryActive} inventory record(s)`);
     }
   }
 

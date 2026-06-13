@@ -10,7 +10,7 @@ export interface City {
   zone_id?: string;
 }
 
-export interface HotelCategory {
+export interface HotelCategoryOption {
   id: string;
   category_code: string;
   category_name: string;
@@ -125,19 +125,15 @@ export interface Hall {
   hall_name: string;
   hall_type: HallType;
   capacity?: number | null;
-  length?: number | null;
-  width?: number | null;
-  height?: number | null;
-  area?: number | null;
-  theater_capacity?: number | null;
+  floor?: string | null;
+  area_sqft?: number | null;
+  theatre_capacity?: number | null;
   classroom_capacity?: number | null;
-  cocktail_capacity?: number | null;
-  round_table_capacity?: number | null;
   u_shape_capacity?: number | null;
   cluster_capacity?: number | null;
   boardroom_capacity?: number | null;
+  round_table_capacity?: number | null;
   indoor_outdoor: IndoorOutdoor;
-  amenities?: string[] | null;
   status: VenueStatus;
   created_at: string;
   updated_at?: string | null;
@@ -153,10 +149,6 @@ export interface AccommodationInventory {
   double_rooms?: number | null;
   triple_rooms?: number | null;
   quad_rooms?: number | null;
-  suite_rooms?: number | null;
-  available_rooms?: number | null;
-  occupancy: number;
-  rate_per_night?: number | null;
   status: VenueStatus;
   created_at: string;
   updated_at?: string | null;
@@ -224,12 +216,7 @@ export interface HotelCreateInput {
   preferred_vendor?: boolean;
   blacklisted?: boolean;
   remarks?: string;
-  total_rooms?: number;
-  check_in_time?: string;
-  check_out_time?: string;
   status?: VenueStatus;
-  contact_phone?: string;
-  contact_email?: string;
 }
 
 export interface HotelUpdateInput {
@@ -250,12 +237,7 @@ export interface HotelUpdateInput {
   preferred_vendor?: boolean;
   blacklisted?: boolean;
   remarks?: string | null;
-  total_rooms?: number | null;
-  check_in_time?: string | null;
-  check_out_time?: string | null;
   status?: VenueStatus;
-  contact_phone?: string | null;
-  contact_email?: string | null;
 }
 
 export interface HallCreateInput {
@@ -263,19 +245,15 @@ export interface HallCreateInput {
   hall_name: string;
   hall_type: HallType;
   capacity?: number;
-  length?: number;
-  width?: number;
-  height?: number;
-  area?: number;
-  theater_capacity?: number;
+  floor?: string;
+  area_sqft?: number;
+  theatre_capacity?: number;
   classroom_capacity?: number;
-  cocktail_capacity?: number;
-  round_table_capacity?: number;
   u_shape_capacity?: number;
   cluster_capacity?: number;
   boardroom_capacity?: number;
+  round_table_capacity?: number;
   indoor_outdoor?: IndoorOutdoor;
-  amenities?: string[];
   status?: VenueStatus;
 }
 
@@ -283,19 +261,15 @@ export interface HallUpdateInput {
   hall_name?: string;
   hall_type?: HallType;
   capacity?: number | null;
-  length?: number | null;
-  width?: number | null;
-  height?: number | null;
-  area?: number | null;
-  theater_capacity?: number | null;
+  floor?: string | null;
+  area_sqft?: number | null;
+  theatre_capacity?: number | null;
   classroom_capacity?: number | null;
-  cocktail_capacity?: number | null;
-  round_table_capacity?: number | null;
   u_shape_capacity?: number | null;
   cluster_capacity?: number | null;
   boardroom_capacity?: number | null;
+  round_table_capacity?: number | null;
   indoor_outdoor?: IndoorOutdoor;
-  amenities?: string[] | null;
   status?: VenueStatus;
 }
 
@@ -306,10 +280,6 @@ export interface AccommodationInventoryCreateInput {
   double_rooms?: number;
   triple_rooms?: number;
   quad_rooms?: number;
-  suite_rooms?: number;
-  available_rooms?: number;
-  occupancy: number;
-  rate_per_night?: number;
   status?: VenueStatus;
 }
 

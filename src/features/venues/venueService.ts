@@ -21,17 +21,24 @@ const HOTEL_SELECT = `
   id,
   hotel_name,
   city_id,
+  zone_id,
+  hotel_brand,
+  hotel_category,
   address,
-  contact_phone,
-  contact_email,
+  gst_number,
   website,
-  total_rooms,
-  check_in_time,
-  check_out_time,
+  latitude,
+  longitude,
+  sales_contact_name,
+  sales_contact_designation,
+  sales_contact_mobile,
+  sales_contact_email,
+  preferred_vendor,
+  blacklisted,
+  remarks,
   status,
   created_at,
-  updated_at,
-  cities:city_id (id, city_name, zone_id)
+  updated_at
 `;
 
 const HALL_SELECT = `
@@ -40,16 +47,15 @@ const HALL_SELECT = `
   hall_name,
   hall_type,
   capacity,
-  length,
-  width,
-  height,
-  area,
-  theater_capacity,
+  floor,
+  area_sqft,
+  theatre_capacity,
   classroom_capacity,
-  cocktail_capacity,
+  u_shape_capacity,
+  cluster_capacity,
+  boardroom_capacity,
   round_table_capacity,
   indoor_outdoor,
-  amenities,
   status,
   created_at,
   updated_at
@@ -76,30 +82,156 @@ export async function getHotels(): Promise<Hotel[]> {
 
 export async function getHotelById(id: string): Promise<HotelWithRelations> {
   try {
-    const { data, error } = await supabase
+    console.log('=== getHotelById START ===');
+    console.log('Fetching hotel ID:', id);
+
+    // First, fetch the basic hotel data
+    const { data: hotelData, error: hotelError } = await supabase
       .from('hotels')
-      .select(`
-        ${HOTEL_SELECT},
-        halls:id (${HALL_SELECT}),
-        accommodation_inventory:id (
-          id, hotel_id, room_type, total_rooms, available_rooms, single_bed, double_bed, occupancy, rate_per_night, status, created_at
-        ),
-        hotel_occupancy_rules:id (
-          id, hotel_id, rule_type, min_occupancy, max_occupancy, rate_adjustment, is_active, created_at
-        ),
-        venue_photos:id (
-          id, hotel_id, hall_id, photo_url, photo_name, display_order, created_at
-        )
-      `)
+      .select(HOTEL_SELECT)
       .eq('id', id)
       .single();
 
-    if (error) throw new Error(error.message);
-    if (!data) throw new Error('Hotel not found');
+    console.log('Hotel fetch result:', { hotelData, hotelError });
+    if (hotelError) throw new Error(`Hotel fetch failed: ${hotelError.message}`);
+    if (!hotelData) throw new Error('Hotel not found');
 
-    return data;
+    console.log('Hotel fetched successfully:', hotelData.hotel_name);
+
+    // Then fetch relations separately - COLLECT ERRORS but don't fail completely
+    const errors: string[] = [];
+
+    // Fetch city
+    let city = null;
+    try {
+      console.log('Fetching city for hotel:', hotelData.city_id);
+      const res = await supabase
+        .from('cities')
+        .select('id, city_name, zone_id')
+        .eq('id', hotelData.city_id)
+        .single();
+      if (res.error) {
+        console.warn('City fetch warning:', res.error.message);
+        errors.push(`City: ${res.error.message}`);
+      } else {
+        city = res.data;
+        console.log('City fetched successfully:', city?.city_name);
+      }
+    } catch (err) {
+      console.warn('City fetch exception:', err);
+      errors.push(`City: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+
+    // Fetch halls
+    let halls: Hall[] = [];
+    try {
+      console.log('Fetching halls for hotel:', id);
+      const res = await supabase
+        .from('halls')
+        .select(HALL_SELECT)
+        .eq('hotel_id', id);
+      if (res.error) {
+        console.warn('Halls fetch warning:', res.error.message);
+        errors.push(`Halls: ${res.error.message}`);
+      } else {
+        halls = res.data || [];
+        console.log('Halls fetched successfully:', halls.length, 'halls');
+      }
+    } catch (err) {
+      console.warn('Halls fetch exception:', err);
+      errors.push(`Halls: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+
+    // Fetch accommodation
+    let accommodation: AccommodationInventory[] = [];
+    try {
+      console.log('Fetching accommodation for hotel:', id);
+      const res = await supabase
+        .from('hotel_accommodation_inventory')
+        .select('id, hotel_id, total_rooms, single_rooms, double_rooms, triple_rooms, quad_rooms, status, created_at, updated_at')
+        .eq('hotel_id', id);
+      if (res.error) {
+        console.warn('Accommodation fetch warning:', res.error.message);
+        errors.push(`Accommodation: ${res.error.message}`);
+      } else {
+        accommodation = res.data || [];
+        console.log('Accommodation fetched successfully:', accommodation.length, 'records');
+      }
+    } catch (err) {
+      console.warn('Accommodation fetch exception:', err);
+      errors.push(`Accommodation: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+
+    // Fetch occupancy rules
+    let rules: OccupancyRule[] = [];
+    try {
+      console.log('Fetching occupancy rules for hotel:', id);
+      const res = await supabase
+        .from('hotel_occupancy_rules')
+        .select('id, hotel_id, rule_type, min_occupancy, max_occupancy, rate_adjustment, is_active, created_at')
+        .eq('hotel_id', id);
+      if (res.error) {
+        console.warn('Rules fetch warning:', res.error.message);
+        errors.push(`Occupancy Rules: ${res.error.message}`);
+      } else {
+        rules = res.data || [];
+        console.log('Rules fetched successfully:', rules.length, 'rules');
+      }
+    } catch (err) {
+      console.warn('Rules fetch exception:', err);
+      errors.push(`Occupancy Rules: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+
+    // Fetch photos
+    let photos: VenuePhoto[] = [];
+    try {
+      console.log('Fetching photos for hotel:', id);
+      const res = await supabase
+        .from('venue_photos')
+        .select('id, hotel_id, hall_id, photo_url, photo_name, display_order, created_at')
+        .eq('hotel_id', id);
+      if (res.error) {
+        console.warn('Photos fetch warning:', res.error.message);
+        errors.push(`Photos: ${res.error.message}`);
+      } else {
+        photos = res.data || [];
+        console.log('Photos fetched successfully:', photos.length, 'photos');
+      }
+    } catch (err) {
+      console.warn('Photos fetch exception:', err);
+      errors.push(`Photos: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+
+    // Log any collection errors
+    if (errors.length > 0) {
+      console.warn('=== Partial Data Loading - Errors Encountered ===');
+      errors.forEach(err => console.warn('  -', err));
+      console.warn('Hotel details will load with available data only');
+    }
+
+    // Combine results - HOTEL DATA IS CRITICAL, RELATIONS ARE OPTIONAL
+    const result: HotelWithRelations = {
+      ...hotelData,
+      city,
+      halls,
+      accommodation_inventory: accommodation,
+      occupancy_rules: rules,
+      venue_photos: photos,
+    };
+
+    console.log('=== getHotelById SUCCESS ===');
+    console.log('Hotel loaded with:', {
+      hotel: result.hotel_name,
+      city: result.city?.city_name || 'N/A',
+      halls: result.halls.length,
+      accommodation: result.accommodation_inventory.length,
+      rules: result.occupancy_rules.length,
+      photos: result.venue_photos.length,
+      errors: errors.length,
+    });
+    return result;
   } catch (error) {
-    console.error('Error fetching hotel:', error);
+    console.error('=== getHotelById ERROR ===', error);
     throw error;
   }
 }
@@ -126,11 +258,6 @@ export async function createHotel(input: HotelCreateInput): Promise<Hotel> {
         preferred_vendor: input.preferred_vendor || false,
         blacklisted: input.blacklisted || false,
         remarks: input.remarks?.trim() || null,
-        contact_phone: input.contact_phone?.trim() || null,
-        contact_email: input.contact_email?.trim() || null,
-        total_rooms: input.total_rooms || null,
-        check_in_time: input.check_in_time || null,
-        check_out_time: input.check_out_time || null,
         status: input.status || 'PENDING_APPROVAL',
       })
       .select(HOTEL_SELECT)
@@ -164,11 +291,6 @@ export async function updateHotel(id: string, input: HotelUpdateInput): Promise<
     if (input.preferred_vendor !== undefined) updateData.preferred_vendor = input.preferred_vendor;
     if (input.blacklisted !== undefined) updateData.blacklisted = input.blacklisted;
     if (input.remarks !== undefined) updateData.remarks = input.remarks?.trim() || null;
-    if (input.contact_phone !== undefined) updateData.contact_phone = input.contact_phone?.trim() || null;
-    if (input.contact_email !== undefined) updateData.contact_email = input.contact_email?.trim() || null;
-    if (input.total_rooms !== undefined) updateData.total_rooms = input.total_rooms;
-    if (input.check_in_time !== undefined) updateData.check_in_time = input.check_in_time;
-    if (input.check_out_time !== undefined) updateData.check_out_time = input.check_out_time;
     if (input.status) updateData.status = input.status;
     updateData.updated_at = new Date().toISOString();
 
@@ -247,16 +369,15 @@ export async function createHall(input: HallCreateInput): Promise<Hall> {
         hall_name: input.hall_name.trim(),
         hall_type: input.hall_type,
         capacity: input.capacity || null,
-        length: input.length || null,
-        width: input.width || null,
-        height: input.height || null,
-        area: input.area || null,
-        theater_capacity: input.theater_capacity || null,
+        floor: input.floor || null,
+        area_sqft: input.area_sqft || null,
+        theatre_capacity: input.theatre_capacity || null,
         classroom_capacity: input.classroom_capacity || null,
-        cocktail_capacity: input.cocktail_capacity || null,
+        u_shape_capacity: input.u_shape_capacity || null,
+        cluster_capacity: input.cluster_capacity || null,
+        boardroom_capacity: input.boardroom_capacity || null,
         round_table_capacity: input.round_table_capacity || null,
         indoor_outdoor: input.indoor_outdoor || 'INDOOR',
-        amenities: input.amenities || null,
         status: input.status || 'ACTIVE',
       })
       .select(HALL_SELECT)
@@ -276,16 +397,15 @@ export async function updateHall(id: string, input: HallUpdateInput): Promise<Ha
     if (input.hall_name) updateData.hall_name = input.hall_name.trim();
     if (input.hall_type) updateData.hall_type = input.hall_type;
     if (input.capacity !== undefined) updateData.capacity = input.capacity;
-    if (input.length !== undefined) updateData.length = input.length;
-    if (input.width !== undefined) updateData.width = input.width;
-    if (input.height !== undefined) updateData.height = input.height;
-    if (input.area !== undefined) updateData.area = input.area;
-    if (input.theater_capacity !== undefined) updateData.theater_capacity = input.theater_capacity;
+    if (input.floor !== undefined) updateData.floor = input.floor;
+    if (input.area_sqft !== undefined) updateData.area_sqft = input.area_sqft;
+    if (input.theatre_capacity !== undefined) updateData.theatre_capacity = input.theatre_capacity;
     if (input.classroom_capacity !== undefined) updateData.classroom_capacity = input.classroom_capacity;
-    if (input.cocktail_capacity !== undefined) updateData.cocktail_capacity = input.cocktail_capacity;
+    if (input.u_shape_capacity !== undefined) updateData.u_shape_capacity = input.u_shape_capacity;
+    if (input.cluster_capacity !== undefined) updateData.cluster_capacity = input.cluster_capacity;
+    if (input.boardroom_capacity !== undefined) updateData.boardroom_capacity = input.boardroom_capacity;
     if (input.round_table_capacity !== undefined) updateData.round_table_capacity = input.round_table_capacity;
     if (input.indoor_outdoor) updateData.indoor_outdoor = input.indoor_outdoor;
-    if (input.amenities !== undefined) updateData.amenities = input.amenities;
     if (input.status) updateData.status = input.status;
     updateData.updated_at = new Date().toISOString();
 
@@ -327,8 +447,7 @@ export async function getAccommodationByHotel(hotelId: string): Promise<Accommod
     const { data, error } = await supabase
       .from('hotel_accommodation_inventory')
       .select('*')
-      .eq('hotel_id', hotelId)
-      .order('room_type', { ascending: true });
+      .eq('hotel_id', hotelId);
 
     if (error) throw new Error(error.message);
     return data || [];
@@ -344,14 +463,11 @@ export async function createAccommodation(input: AccommodationInventoryCreateInp
       .from('hotel_accommodation_inventory')
       .insert({
         hotel_id: input.hotel_id,
-        room_type: input.room_type,
         total_rooms: input.total_rooms,
-        available_rooms: input.available_rooms || input.total_rooms,
-        single_bed: input.single_bed || null,
-        double_bed: input.double_bed || null,
-        occupancy: input.occupancy,
-        rate_per_night: input.rate_per_night || null,
-        status: input.status || 'ACTIVE',
+        single_rooms: input.single_rooms || 0,
+        double_rooms: input.double_rooms || 0,
+        triple_rooms: input.triple_rooms || 0,
+        quad_rooms: input.quad_rooms || 0,
       })
       .select('*')
       .single();
@@ -360,6 +476,45 @@ export async function createAccommodation(input: AccommodationInventoryCreateInp
     return data;
   } catch (error) {
     console.error('Error creating accommodation:', error);
+    throw error;
+  }
+}
+
+export async function updateAccommodation(id: string, input: Partial<AccommodationInventoryCreateInput>): Promise<AccommodationInventory> {
+  try {
+    const updateData: any = {};
+    if (input.total_rooms !== undefined) updateData.total_rooms = input.total_rooms;
+    if (input.single_rooms !== undefined) updateData.single_rooms = input.single_rooms;
+    if (input.double_rooms !== undefined) updateData.double_rooms = input.double_rooms;
+    if (input.triple_rooms !== undefined) updateData.triple_rooms = input.triple_rooms;
+    if (input.quad_rooms !== undefined) updateData.quad_rooms = input.quad_rooms;
+    updateData.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('hotel_accommodation_inventory')
+      .update(updateData)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  } catch (error) {
+    console.error('Error updating accommodation:', error);
+    throw error;
+  }
+}
+
+export async function deleteAccommodation(id: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('hotel_accommodation_inventory')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw new Error(error.message);
+  } catch (error) {
+    console.error('Error deleting accommodation:', error);
     throw error;
   }
 }

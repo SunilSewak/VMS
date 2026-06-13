@@ -371,19 +371,19 @@ export function VenueDetails() {
               Contact Details
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-              {venue.contact_person && (
-                <ContactRow icon={<User size={15} />} label="Contact Person" value={venue.contact_person} />
+              {venue.sales_contact_name && (
+                <ContactRow icon={<User size={15} />} label="Contact Person" value={venue.sales_contact_name} />
               )}
-              {venue.contact_number && (
-                <ContactRow icon={<Phone size={15} />} label="Phone" value={venue.contact_number} />
+              {venue.sales_contact_mobile && (
+                <ContactRow icon={<Phone size={15} />} label="Phone" value={venue.sales_contact_mobile} />
               )}
-              {venue.email && (
-                <ContactRow icon={<Mail size={15} />} label="Email" value={venue.email} />
+              {venue.sales_contact_email && (
+                <ContactRow icon={<Mail size={15} />} label="Email" value={venue.sales_contact_email} />
               )}
               {venue.address && (
                 <ContactRow icon={<MapPin size={15} />} label="Address" value={venue.address} />
               )}
-              {!venue.contact_person && !venue.contact_number && !venue.email && (
+              {!venue.sales_contact_name && !venue.sales_contact_mobile && !venue.sales_contact_email && (
                 <p style={{ color: 'var(--text-light)', fontSize: 'var(--font-sm)' }}>No contact information recorded.</p>
               )}
             </div>
