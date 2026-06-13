@@ -6,6 +6,8 @@ import { createMeetingRequest, updateMeetingRequest } from '../features/meetings
 import { useRequestShortlists } from '../features/venues/hooks';
 import { ROUTES } from '../routes/routeRegistry';
 import { Search, AlertCircle, Utensils, Settings } from 'lucide-react';
+import { ROLES } from '../auth/permissions';
+import { ZONE_OPTIONS } from '../constants/zones';
 import { ParticipantMixGrid } from '../components/ParticipantMixGrid';
 import { MultiSelectCheckbox, RadioGroup, FormSection } from '../components/FormControls';
 import { createEmptyParticipantMix, calculateTotalPlannedPax, validateGuaranteedPax } from '../features/rooms/roomCalculator';
@@ -611,7 +613,7 @@ export function MeetingRequestForm() {
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--space-2)' }}>Transport Requirements</label>
                   <RadioGroup
-                    options={TRANSFER_OPTIONS}
+                    options={Array.from(TRANSFER_OPTIONS)}
                     selectedValue={form.transfer_requirements}
                     onChange={(value) => handleChange('transfer_requirements', value)}
                     disabled={!canEdit}

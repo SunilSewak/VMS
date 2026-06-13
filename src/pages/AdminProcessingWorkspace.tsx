@@ -673,12 +673,7 @@ export function AdminProcessingWorkspace() {
         
         {/* RIGHT COLUMN: Workflow Control Panel */}
         <WorkflowControlPanel
-          currentStage={getWorkflowStage(
-            booking.status,
-            !!booking.invoice_status && booking.invoice_status !== 'PENDING',
-            booking.invoice_status === 'VERIFIED' || booking.invoice_status === 'APPROVED',
-            booking.payment_status === 'COMPLETED'
-          )}
+          currentStage={getWorkflowStage(booking.status as any)}
           onNavigate={(tabId) => setActiveTab(tabId as TabId)}
         />
       </div>

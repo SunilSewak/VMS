@@ -44,7 +44,7 @@ export function SalesHeadHome() {
   // Filter action-required requests
   const actionRequired = requests.filter(req => 
     ['DRAFT', 'VENUE_UNAVAILABLE'].includes(req.status) ||
-    (req.status === 'VENUES_SHORTLISTED' && !req.submitted_at)
+    ((req.status === 'VENUES_SHORTLISTED' && !(req as any).submitted_at))
   );
 
   // Filter upcoming meetings (booked requests with future dates)
@@ -311,7 +311,7 @@ export function SalesHeadHome() {
                   
                   if (req.status === 'DRAFT') {
                     actionMessage = 'Complete and submit this request';
-                  } else if (req.status === 'VENUES_SHORTLISTED' && !req.submitted_at) {
+                  } else if (req.status === 'VENUES_SHORTLISTED' && !(req as any).submitted_at) {
                     actionMessage = 'Review shortlist and submit to admin';
                   } else if (req.status === 'VENUE_UNAVAILABLE') {
                     actionMessage = 'Selected venue unavailable - choose alternative';

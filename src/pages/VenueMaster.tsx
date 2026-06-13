@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, AlertCircle, MapPin } from 'lucide-react';
 import { ResponsiveDataTable, ColumnDefinition } from '../components/ResponsiveDataTable';
 import { HotelFormModal } from '../components/HotelFormModal';
-import { HotelDetailsWorkspace } from '../components/HotelDetailsWorkspace';
 import { getHotels, createHotel, updateHotel, deleteHotel } from '../features/venues/venueService';
+import { ROUTES } from '../routes/routeRegistry';
 import type { Hotel } from '../features/venues/types';
 import type { HotelCreateInput, HotelUpdateInput } from '../features/venues/types';
 
@@ -13,7 +14,6 @@ export function VenueMaster() {
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -48,9 +48,10 @@ export function VenueMaster() {
     setIsFormOpen(true);
   };
 
+  const navigate = useNavigate();
+
   const handleDetailsClick = (hotel: Hotel) => {
-    setSelectedHotel(hotel);
-    setShowDetails(true);
+    navigate(ROUTES.venueAdminDetails.replace(':id', hotel.id));
   };
 
   const handleFormSave = async (input: HotelCreateInput | HotelUpdateInput) => {
@@ -103,18 +104,7 @@ export function VenueMaster() {
     }
   };
 
-  if (showDetails && selectedHotel) {
-    return (
-      <HotelDetailsWorkspace
-        hotelId={selectedHotel.id}
-        onBack={() => {
-          setShowDetails(false);
-          setSelectedHotel(null);
-          loadHotels();
-        }}
-      />
-    );
-  }
+  
 
   const columns: ColumnDefinition<Hotel>[] = [
     {

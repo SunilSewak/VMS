@@ -51,7 +51,7 @@ export function CurrentStageCard({ currentStage }: CurrentStageCardProps) {
         color: 'var(--primary)',
         lineHeight: 1.3,
       }}>
-        {stageInfo.title}
+        {stageInfo?.label ?? 'Unknown Stage'}
       </div>
 
       {/* Objective Label */}
@@ -71,7 +71,7 @@ export function CurrentStageCard({ currentStage }: CurrentStageCardProps) {
         color: 'var(--text)',
         lineHeight: 1.5,
       }}>
-        {stageInfo.objective}
+        {stageInfo?.description ?? ''}
       </div>
     </div>
   );

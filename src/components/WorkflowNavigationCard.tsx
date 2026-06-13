@@ -24,42 +24,32 @@ interface NavigationConfig {
 }
 
 const NAVIGATION_CONFIG: Record<WorkflowStageId, NavigationConfig> = {
-  REQUEST_SUBMITTED: {
+  'request-submitted': {
     label: 'Open Overview',
     tabId: 'overview',
     icon: <FileText size={16} />,
   },
-  VENUE_EVALUATION: {
+  'venue-evaluation': {
     label: 'Open Venue Evaluation',
     tabId: 'venue-evaluation',
     icon: <MapPin size={16} />,
   },
-  AVAILABILITY_CONFIRMATION: {
-    label: 'Open Availability Workspace',
-    tabId: 'venue-evaluation',
-    icon: <MapPin size={16} />,
-  },
-  VENUE_FINALIZATION: {
-    label: 'Open Venue Finalization',
-    tabId: 'venue-evaluation',
-    icon: <MapPin size={16} />,
-  },
-  BOOKING_CREATION: {
+  'booking': {
     label: 'Open Booking Workspace',
     tabId: 'booking',
     icon: <CheckCircle size={16} />,
   },
-  INVOICE_VERIFICATION: {
+  'invoice': {
     label: 'Open Invoice Workspace',
     tabId: 'invoice',
     icon: <Receipt size={16} />,
   },
-  PAYMENT_TRACKING: {
+  'payment': {
     label: 'Open Payment Workspace',
     tabId: 'payment',
     icon: <CreditCard size={16} />,
   },
-  CLOSURE: {
+  'closed': {
     label: 'View Overview',
     tabId: 'overview',
     icon: <FileText size={16} />,

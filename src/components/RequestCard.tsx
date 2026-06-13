@@ -11,7 +11,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   mapToSalesHeadStatus,
   getStatusConfig,
-  type SalesHeadStatus,
 } from '../features/meetings/statusArchitecture';
 import { MiniProgress } from './StatusTimeline';
 import { calculateTotalPlannedPax } from '../features/rooms/roomCalculator';
@@ -78,7 +77,7 @@ export function RequestCard({
     switch (salesHeadStatus) {
       case 'DRAFT':
       case 'VENUE_EXPLORATION':
-        navigate(ROUTES.meetingRequestForm.replace(':id', request.id));
+        navigate(ROUTES.meetingRequestEdit.replace(':id', request.id));
         break;
       case 'VENUE_SHORTLISTED':
         navigate(ROUTES.meetingRequestView.replace(':id', request.id));

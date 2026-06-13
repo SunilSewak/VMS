@@ -15,14 +15,12 @@ interface WorkflowNextActionCardProps {
 }
 
 const NEXT_ACTIONS: Record<WorkflowStageId, string> = {
-  REQUEST_SUBMITTED: 'Begin reviewing the request and identify venue requirements.',
-  VENUE_EVALUATION: 'Review venue options and shortlist suitable venues.',
-  AVAILABILITY_CONFIRMATION: 'Confirm availability from shortlisted venues.',
-  VENUE_FINALIZATION: 'Finalize the selected venue and lock venue decision.',
-  BOOKING_CREATION: 'Create booking for the finalized venue.',
-  INVOICE_VERIFICATION: 'Review and verify the submitted invoice.',
-  PAYMENT_TRACKING: 'Track payment status until completion.',
-  CLOSURE: 'Workflow completed. Archive or close the request.',
+  'request-submitted': 'Begin reviewing the request and identify venue requirements.',
+  'venue-evaluation': 'Review venue options and shortlist suitable venues.',
+  'booking': 'Create booking for the finalized venue.',
+  'invoice': 'Review and verify the submitted invoice.',
+  'payment': 'Track payment status until completion.',
+  'closed': 'Workflow completed. Archive or close the request.',
 };
 
 export function WorkflowNextActionCard({ currentStage }: WorkflowNextActionCardProps) {

@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type { AppUser, AppUserCreateInput, AppUserQueryFilters, AppUserUpdateInput, UserStatus } from './types';
-import type { AppRole } from '../auth/permissions';
+import type { AppRole } from '../../auth/permissions';
 
 const USER_SELECT = `
   id,
@@ -68,7 +68,7 @@ function mapDbUserToAppUser(user: DbUserWithRole): AppUser {
 async function getRoleRecord(role: AppRole): Promise<RoleRecord> {
   const roleCodes = [role, `ROLE_${role}`];
   const { data, error } = await supabase
-    .from<RoleRecord>('roles')
+    .from('roles')
     .select('id,role_code,role_name')
     .in('role_code', roleCodes)
     .limit(1);
@@ -90,7 +90,7 @@ async function getRoleRecord(role: AppRole): Promise<RoleRecord> {
 export async function getUsers(filters?: AppUserQueryFilters): Promise<AppUser[]> {
   try {
     let query = supabase
-      .from<DbUserWithRole>('users')
+      .from('users')
       .select(USER_SELECT)
       .order('created_at', { ascending: false });
 
@@ -127,7 +127,7 @@ export async function getUsers(filters?: AppUserQueryFilters): Promise<AppUser[]
 export async function getUserById(id: string): Promise<AppUser> {
   try {
     const { data, error } = await supabase
-      .from<DbUserWithRole>('users')
+      .from('users')
       .select(USER_SELECT)
       .eq('id', id)
       .single();
@@ -256,7 +256,7 @@ export async function updateUser(id: string, input: AppUserUpdateInput): Promise
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from<DbUserWithRole>('users')
+      .from('users')
       .update(updateData)
       .eq('id', id)
       .select(USER_SELECT)
@@ -301,7 +301,7 @@ export async function toggleUserStatus(id: string): Promise<AppUser> {
     const newStatus = user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 
     const { data, error } = await supabase
-      .from<DbUserWithRole>('users')
+      .from('users')
       .update({
         status: newStatus,
         updated_at: new Date().toISOString(),

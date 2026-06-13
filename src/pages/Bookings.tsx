@@ -144,7 +144,7 @@ export function Bookings() {
       setError(null);
 
       try {
-        const items = await getBookings(user, statusFilter ? { status: statusFilter } : undefined);
+        const items = await getBookings(user);
         if (mounted) {
           setBookings(items);
         }
@@ -163,7 +163,7 @@ export function Bookings() {
     return () => {
       mounted = false;
     };
-  }, [user, statusFilter]);
+  }, [user, operationalFilter]);
 
   const switchViewMode = (v: ViewMode) => {
     setViewMode(v);

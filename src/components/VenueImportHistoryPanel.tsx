@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { History, Check, AlertCircle, Clock, Users, FileText } from 'lucide-react';
+import { History, Check, AlertCircle, Clock, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { VenueImportHistory } from '../features/venues/types';
 
@@ -48,18 +48,6 @@ export function VenueImportHistoryPanel({ limit = 10 }: VenueImportHistoryPanelP
     }
   }
 
-  function getStatusColor(status: string) {
-    switch (status) {
-      case 'SUCCESS':
-        return 'bg-green-50 border-green-200';
-      case 'FAILED':
-        return 'bg-red-50 border-red-200';
-      case 'PARTIAL':
-        return 'bg-yellow-50 border-yellow-200';
-      default:
-        return 'bg-gray-50 border-gray-200';
-    }
-  }
 
   function getStatusLabel(status: string) {
     switch (status) {
@@ -90,15 +78,7 @@ export function VenueImportHistoryPanel({ limit = 10 }: VenueImportHistoryPanelP
     });
   }
 
-  function calculateDuration(startDate: string): string {
-    const start = new Date(startDate);
-    const now = new Date();
-    const seconds = Math.round((now.getTime() - start.getTime()) / 1000);
-
-    if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-    return `${Math.floor(seconds / 3600)}h`;
-  }
+  
 
   if (loading) {
     return (

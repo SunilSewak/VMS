@@ -1,4 +1,4 @@
-import { AppRole } from '../auth/permissions';
+import { AppRole } from '../../auth/permissions';
 
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 

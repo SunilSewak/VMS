@@ -36,7 +36,7 @@ export function AccommodationInventoryEditor({
 
   const isAllocationValid = allocatedRooms === formData.total_rooms;
   const allocationPercentage = formData.total_rooms > 0 
-    ? ((allocatedRooms / formData.total_rooms) * 100).toFixed(0)
+    ? Number(((allocatedRooms / formData.total_rooms) * 100).toFixed(0))
     : 0;
 
   function validateForm(): boolean {

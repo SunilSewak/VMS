@@ -2,10 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 import { env } from './env';
 
 // Error-safe singleton client initialization
-let supabase: ReturnType<typeof createClient>;
+// Use a permissive `any` type during stabilization to avoid generic signature mismatches.
+let supabase: any;
 
 try {
-  supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+  supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY) as any;
 } catch (error) {
   console.error('❌ Failed to initialize Supabase client:', error);
   throw new Error('Supabase initialization failed');

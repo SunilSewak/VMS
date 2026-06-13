@@ -90,7 +90,7 @@ export function WorkflowProgressTracker({ currentStage }: WorkflowProgressTracke
                   lineHeight: 1.3,
                   transition: 'all 0.3s ease',
                 }}>
-                  {stage.title}
+                  {stage.label}
                   {isCurrent && (
                     <span style={{
                       marginLeft: 'var(--space-2)',

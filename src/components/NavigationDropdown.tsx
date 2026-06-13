@@ -94,11 +94,11 @@ export function NavigationDropdown({ group, isActive }: NavigationDropdownProps)
             borderBottom: isActive ? '3px solid #38bdf8' : '3px solid transparent',
             textDecoration: 'none',
           }}
-          onMouseEnter={(e) => {
+          onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
             e.currentTarget.style.color = '#ffffff';
             e.currentTarget.style.fontWeight = '600';
           }}
-          onMouseLeave={(e) => {
+          onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
             if (!isActive) {
               e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
               e.currentTarget.style.fontWeight = '500';
