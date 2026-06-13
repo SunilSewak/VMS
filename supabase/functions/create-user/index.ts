@@ -115,14 +115,6 @@ serve(async (req) => {
 
     const authUserId = authData.user.id
 
-    // Verify email was confirmed
-    console.log('Auth user created:', {
-      id: authUserId,
-      email: authData.user.email,
-      email_confirmed_at: authData.user.email_confirmed_at,
-      confirmed: !!authData.user.email_confirmed_at
-    })
-
     // STEP 2: Insert into public.users with auth_user_id linkage
     const { data: publicUser, error: publicUserError } = await supabaseAdmin
       .from('users')

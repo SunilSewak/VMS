@@ -169,7 +169,7 @@ export async function createUser(input: AppUserCreateInput): Promise<AppUser> {
     }
 
     // Call Edge Function (supabase.functions.invoke automatically sends auth token)
-    const { data, error } = await supabase.functions.invoke('hyper-processor', {
+    const { data, error } = await supabase.functions.invoke('create-user', {
       body: {
         email: input.email,
         employee_name: input.employee_name,

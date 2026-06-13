@@ -1,88 +1,194 @@
-// Venue Feature Types — strictly mapped to verified Supabase schema
-// Do NOT add fields that don't exist in the database.
+// Venue Master Types
 
-export interface HotelCategory {
+export type VenueStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING_APPROVAL';
+export type HallType = 'BALLROOM' | 'CONFERENCE' | 'BANQUET' | 'BOARDROOM' | 'THEATRE' | 'OTHER';
+export type IndoorOutdoor = 'INDOOR' | 'OUTDOOR' | 'BOTH';
+export type RoomType = 'SINGLE' | 'DOUBLE' | 'SUITE' | 'DELUXE' | 'PRESIDENTIAL';
+export type OccupancyRuleType = 'MIN_OCCUPANCY' | 'MAX_OCCUPANCY' | 'STANDARD';
+
+// Hotel
+export interface Hotel {
   id: string;
-  category_code: string;
-  category_name: string;
+  hotel_name: string;
+  city_id: string;
+  address?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  website?: string | null;
+  total_rooms?: number | null;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  status: VenueStatus;
+  created_at: string;
+  updated_at?: string | null;
+  city?: { id: string; city_name: string; zone_id: string } | null;
 }
 
-export interface City {
-  id: string;
-  city_name: string;
+export interface HotelWithRelations extends Hotel {
+  halls?: Hall[];
+  accommodation_inventory?: AccommodationInventory[];
+  occupancy_rules?: OccupancyRule[];
+  photos?: VenuePhoto[];
 }
 
-export interface VenuePhoto {
-  id: string;
-  hotel_id: string;
-  hall_id?: string | null;
-  photo_type: string;
-  file_name?: string | null;
-  storage_path: string;
-  display_order?: number | null;
-}
-
+// Hall
 export interface Hall {
   id: string;
   hotel_id: string;
   hall_name: string;
-  capacity: number;
+  hall_type: HallType;
+  capacity?: number | null;
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
   area?: number | null;
-  floor_name?: string | null;
-  seating_types?: string | null;
+  theater_capacity?: number | null;
+  classroom_capacity?: number | null;
+  cocktail_capacity?: number | null;
+  round_table_capacity?: number | null;
+  indoor_outdoor: IndoorOutdoor;
+  amenities?: string[] | null;
+  status: VenueStatus;
+  created_at: string;
+  updated_at?: string | null;
+  hotel?: Hotel | null;
 }
 
-export interface Hotel {
+// Accommodation Inventory
+export interface AccommodationInventory {
   id: string;
-  hotel_name: string;
-  category_id: string;
-  city_id: string;
-  address?: string | null;
-  contact_person?: string | null;
-  contact_number?: string | null;
-  email?: string | null;
-  remarks?: string | null;
-  status: string;
-  // Joined relations (populated by API layer)
-  hotel_categories?: HotelCategory | null;
-  cities?: City | null;
-  venue_photos?: VenuePhoto[];
-  halls?: Hall[];
-}
-
-export interface VenueShortlist {
-  id: string;
-  request_id: string;
   hotel_id: string;
-  hall_id?: string | null;
-  shortlisted_by: string;
-  shortlisted_at: string;
-  // Joined
-  hotels?: Hotel | null;
+  room_type: RoomType;
+  total_rooms: number;
+  available_rooms?: number | null;
+  single_bed?: number | null;
+  double_bed?: number | null;
+  occupancy: number;
+  rate_per_night?: number | null;
+  status: VenueStatus;
+  created_at: string;
+  updated_at?: string | null;
+  hotel?: Hotel | null;
 }
 
-// UI-level composed type for display in Venue Cards
-export interface VenueCardViewModel {
+// Occupancy Rule
+export interface OccupancyRule {
   id: string;
-  hotelId: string;
-  hotelName: string;
-  categoryName: string;
-  cityName: string;
-  address: string;
-  primaryImage: string | null;
-  largestHallCapacity: number;
-  hallCount: number;
-  shortlisted?: boolean;
+  hotel_id: string;
+  rule_type: OccupancyRuleType;
+  min_occupancy?: number | null;
+  max_occupancy?: number | null;
+  rate_adjustment?: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string | null;
+  hotel?: Hotel | null;
 }
 
-export type VenueCardData = VenueCardViewModel;
+// Default Occupancy Rule
+export interface DefaultOccupancyRule {
+  id: string;
+  zone_id?: string | null;
+  rule_type: OccupancyRuleType;
+  min_occupancy?: number | null;
+  max_occupancy?: number | null;
+  rate_adjustment?: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string | null;
+}
 
-export interface VenueSearchFilters {
-  searchQuery: string;
-  cityId: string;
-  categoryCode: string;
-  capacityMin?: number;
-  capacityMax?: number;
-  requestId?: string;
-  zone?: string; // Zone filter (North, South, East, West)
+// Venue Photo
+export interface VenuePhoto {
+  id: string;
+  hotel_id?: string | null;
+  hall_id?: string | null;
+  photo_url: string;
+  photo_name?: string | null;
+  display_order?: number | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+// Form Inputs
+export interface HotelCreateInput {
+  hotel_name: string;
+  city_id: string;
+  address?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  website?: string;
+  total_rooms?: number;
+  check_in_time?: string;
+  check_out_time?: string;
+  status?: VenueStatus;
+}
+
+export interface HotelUpdateInput {
+  hotel_name?: string;
+  city_id?: string;
+  address?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  website?: string | null;
+  total_rooms?: number | null;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  status?: VenueStatus;
+}
+
+export interface HallCreateInput {
+  hotel_id: string;
+  hall_name: string;
+  hall_type: HallType;
+  capacity?: number;
+  length?: number;
+  width?: number;
+  height?: number;
+  area?: number;
+  theater_capacity?: number;
+  classroom_capacity?: number;
+  cocktail_capacity?: number;
+  round_table_capacity?: number;
+  indoor_outdoor?: IndoorOutdoor;
+  amenities?: string[];
+  status?: VenueStatus;
+}
+
+export interface HallUpdateInput {
+  hall_name?: string;
+  hall_type?: HallType;
+  capacity?: number | null;
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+  area?: number | null;
+  theater_capacity?: number | null;
+  classroom_capacity?: number | null;
+  cocktail_capacity?: number | null;
+  round_table_capacity?: number | null;
+  indoor_outdoor?: IndoorOutdoor;
+  amenities?: string[] | null;
+  status?: VenueStatus;
+}
+
+export interface AccommodationInventoryCreateInput {
+  hotel_id: string;
+  room_type: RoomType;
+  total_rooms: number;
+  available_rooms?: number;
+  single_bed?: number;
+  double_bed?: number;
+  occupancy: number;
+  rate_per_night?: number;
+  status?: VenueStatus;
+}
+
+export interface OccupancyRuleCreateInput {
+  hotel_id: string;
+  rule_type: OccupancyRuleType;
+  min_occupancy?: number;
+  max_occupancy?: number;
+  rate_adjustment?: number;
+  is_active?: boolean;
 }

@@ -29,6 +29,7 @@ import { Reports } from './pages/Reports';
 import { Rooming } from './pages/Rooming';
 import { RoomingDetails } from './pages/RoomingDetails';
 import { UserSettings } from './pages/UserSettings';
+import { ZoneMaster } from './pages/ZoneMaster';
 import { VenueBulkImport } from './pages/VenueBulkImport';
 import { DemoTools } from './pages/DemoTools';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -312,6 +313,14 @@ export default function App() {
                 <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                   <AppLayout>
                     <UserSettings />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/administration/masters/zones" element={
+                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                  <AppLayout>
+                    <ZoneMaster />
                   </AppLayout>
                 </ProtectedRoute>
               } />
