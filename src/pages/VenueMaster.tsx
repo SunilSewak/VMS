@@ -334,17 +334,22 @@ export function VenueMaster() {
       )}
 
       {/* Hotel Form Modal */}
-      <HotelFormModal
-        hotel={isEditMode ? selectedHotel : null}
-        isOpen={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false);
-          setSelectedHotel(null);
-          setIsEditMode(false);
-        }}
-        onSave={handleFormSave}
-        isLoading={isLoading}
-      />
+      {isFormOpen && (
+        <HotelFormModal
+          hotel={isEditMode ? selectedHotel : null}
+          onClose={() => {
+            setIsFormOpen(false);
+            setSelectedHotel(null);
+            setIsEditMode(false);
+          }}
+          onComplete={() => {
+            setIsFormOpen(false);
+            setSelectedHotel(null);
+            setIsEditMode(false);
+            loadHotels();
+          }}
+        />
+      )}
     </div>
   );
 }

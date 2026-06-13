@@ -110,11 +110,24 @@ export async function createHotel(input: HotelCreateInput): Promise<Hotel> {
       .from('hotels')
       .insert({
         hotel_name: input.hotel_name.trim(),
+        hotel_brand: input.hotel_brand?.trim() || null,
+        hotel_category: input.hotel_category || null,
+        zone_id: input.zone_id || null,
         city_id: input.city_id,
         address: input.address?.trim() || null,
+        gst_number: input.gst_number?.trim() || null,
+        website: input.website?.trim() || null,
+        latitude: input.latitude || null,
+        longitude: input.longitude || null,
+        sales_contact_name: input.sales_contact_name?.trim() || null,
+        sales_contact_designation: input.sales_contact_designation?.trim() || null,
+        sales_contact_mobile: input.sales_contact_mobile?.trim() || null,
+        sales_contact_email: input.sales_contact_email?.trim() || null,
+        preferred_vendor: input.preferred_vendor || false,
+        blacklisted: input.blacklisted || false,
+        remarks: input.remarks?.trim() || null,
         contact_phone: input.contact_phone?.trim() || null,
         contact_email: input.contact_email?.trim() || null,
-        website: input.website?.trim() || null,
         total_rooms: input.total_rooms || null,
         check_in_time: input.check_in_time || null,
         check_out_time: input.check_out_time || null,
@@ -135,11 +148,24 @@ export async function updateHotel(id: string, input: HotelUpdateInput): Promise<
   try {
     const updateData: any = {};
     if (input.hotel_name) updateData.hotel_name = input.hotel_name.trim();
+    if (input.hotel_brand !== undefined) updateData.hotel_brand = input.hotel_brand?.trim() || null;
+    if (input.hotel_category !== undefined) updateData.hotel_category = input.hotel_category || null;
+    if (input.zone_id !== undefined) updateData.zone_id = input.zone_id || null;
     if (input.city_id) updateData.city_id = input.city_id;
     if (input.address !== undefined) updateData.address = input.address?.trim() || null;
+    if (input.gst_number !== undefined) updateData.gst_number = input.gst_number?.trim() || null;
+    if (input.website !== undefined) updateData.website = input.website?.trim() || null;
+    if (input.latitude !== undefined) updateData.latitude = input.latitude || null;
+    if (input.longitude !== undefined) updateData.longitude = input.longitude || null;
+    if (input.sales_contact_name !== undefined) updateData.sales_contact_name = input.sales_contact_name?.trim() || null;
+    if (input.sales_contact_designation !== undefined) updateData.sales_contact_designation = input.sales_contact_designation?.trim() || null;
+    if (input.sales_contact_mobile !== undefined) updateData.sales_contact_mobile = input.sales_contact_mobile?.trim() || null;
+    if (input.sales_contact_email !== undefined) updateData.sales_contact_email = input.sales_contact_email?.trim() || null;
+    if (input.preferred_vendor !== undefined) updateData.preferred_vendor = input.preferred_vendor;
+    if (input.blacklisted !== undefined) updateData.blacklisted = input.blacklisted;
+    if (input.remarks !== undefined) updateData.remarks = input.remarks?.trim() || null;
     if (input.contact_phone !== undefined) updateData.contact_phone = input.contact_phone?.trim() || null;
     if (input.contact_email !== undefined) updateData.contact_email = input.contact_email?.trim() || null;
-    if (input.website !== undefined) updateData.website = input.website?.trim() || null;
     if (input.total_rooms !== undefined) updateData.total_rooms = input.total_rooms;
     if (input.check_in_time !== undefined) updateData.check_in_time = input.check_in_time;
     if (input.check_out_time !== undefined) updateData.check_out_time = input.check_out_time;

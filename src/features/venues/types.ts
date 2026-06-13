@@ -54,25 +54,58 @@ export interface VenueShortlist {
 // CORE VENUE TYPES
 // ============================================================================
 
-export type VenueStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING_APPROVAL';
+export type VenueStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING_APPROVAL' | 'UNDER_REVIEW';
+export type HotelCategory = '5_STAR' | '4_STAR' | '3_STAR' | 'BUSINESS' | 'BUDGET' | 'RESORT' | 'BOUTIQUE';
 export type HallType = 'BALLROOM' | 'CONFERENCE' | 'BANQUET' | 'BOARDROOM' | 'THEATRE' | 'OTHER';
 export type IndoorOutdoor = 'INDOOR' | 'OUTDOOR' | 'BOTH';
 export type RoomType = 'SINGLE' | 'DOUBLE' | 'SUITE' | 'DELUXE' | 'PRESIDENTIAL';
 export type OccupancyRuleType = 'MIN_OCCUPANCY' | 'MAX_OCCUPANCY' | 'STANDARD';
+
+export const HOTEL_CATEGORY_OPTIONS: { value: HotelCategory; label: string }[] = [
+  { value: '5_STAR', label: '5 Star' },
+  { value: '4_STAR', label: '4 Star' },
+  { value: '3_STAR', label: '3 Star' },
+  { value: 'BUSINESS', label: 'Business Hotel' },
+  { value: 'BUDGET', label: 'Budget Hotel' },
+  { value: 'RESORT', label: 'Resort' },
+  { value: 'BOUTIQUE', label: 'Boutique Hotel' },
+];
 
 // Hotel
 export interface Hotel {
   id: string;
   hotel_name: string;
   city_id: string;
+  zone_id?: string | null;
+  hotel_brand?: string | null;
+  hotel_category?: HotelCategory | null;
   address?: string | null;
+  gst_number?: string | null;
+  website?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   contact_phone?: string | null;
   contact_email?: string | null;
-  website?: string | null;
+  sales_contact_name?: string | null;
+  sales_contact_designation?: string | null;
+  sales_contact_mobile?: string | null;
+  sales_contact_email?: string | null;
+  preferred_vendor?: boolean;
+  blacklisted?: boolean;
+  remarks?: string | null;
   total_rooms?: number | null;
   check_in_time?: string | null;
   check_out_time?: string | null;
   status: VenueStatus;
+  residential_supported?: boolean;
+  non_residential_supported?: boolean;
+  max_residential_pax?: number;
+  max_meeting_pax?: number;
+  multiple_halls?: boolean;
+  total_ajanta_events?: number;
+  last_used_date?: string | null;
+  ajanta_rating?: number | null;
+  ajanta_feedback_count?: number;
   created_at: string;
   updated_at?: string | null;
   city?: { id: string; city_name: string; zone_id: string } | null;
@@ -175,28 +208,54 @@ export interface VenuePhoto {
 // Form Inputs
 export interface HotelCreateInput {
   hotel_name: string;
+  hotel_brand?: string;
+  hotel_category?: HotelCategory;
   city_id: string;
+  zone_id?: string;
   address?: string;
-  contact_phone?: string;
-  contact_email?: string;
+  gst_number?: string;
   website?: string;
+  latitude?: number;
+  longitude?: number;
+  sales_contact_name?: string;
+  sales_contact_designation?: string;
+  sales_contact_mobile?: string;
+  sales_contact_email?: string;
+  preferred_vendor?: boolean;
+  blacklisted?: boolean;
+  remarks?: string;
   total_rooms?: number;
   check_in_time?: string;
   check_out_time?: string;
   status?: VenueStatus;
+  contact_phone?: string;
+  contact_email?: string;
 }
 
 export interface HotelUpdateInput {
   hotel_name?: string;
+  hotel_brand?: string | null;
+  hotel_category?: HotelCategory | null;
   city_id?: string;
+  zone_id?: string | null;
   address?: string | null;
-  contact_phone?: string | null;
-  contact_email?: string | null;
+  gst_number?: string | null;
   website?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  sales_contact_name?: string | null;
+  sales_contact_designation?: string | null;
+  sales_contact_mobile?: string | null;
+  sales_contact_email?: string | null;
+  preferred_vendor?: boolean;
+  blacklisted?: boolean;
+  remarks?: string | null;
   total_rooms?: number | null;
   check_in_time?: string | null;
   check_out_time?: string | null;
   status?: VenueStatus;
+  contact_phone?: string | null;
+  contact_email?: string | null;
 }
 
 export interface HallCreateInput {
@@ -337,4 +396,76 @@ export interface DataQualityMetrics {
 
 export interface ExcelRow {
   [key: string]: any;
+}
+
+// ============================================================================
+// MULTI-SHEET BULK IMPORT TYPES
+// ============================================================================
+
+export interface BulkImportRequest {
+  file: File;
+  uploadedBy: string;
+  fileName: string;
+}
+
+export interface MultiSheetValidationResult {
+  hotels: SheetValidationResult;
+  halls: SheetValidationResult;
+  inventory: SheetValidationResult;
+  occupancy: SheetValidationResult;
+  photos: SheetValidationResult;
+  totalValid: number;
+  totalInvalid: number;
+  allErrors: ImportValidationError[];
+}
+
+export interface SheetValidationResult {
+  sheetName: string;
+  validRows: number;
+  invalidRows: number;
+  errors: ImportValidationError[];
+  toCreate: number;
+  toUpdate: number;
+}
+
+export interface ImportedHotel {
+  id: string;
+  hotel_name: string;
+  city_id: string;
+  isNew: boolean;
+}
+
+export interface ImportedHall {
+  id: string;
+  hotel_id: string;
+  hall_name: string;
+  isNew: boolean;
+}
+
+export interface BulkImportResult extends ImportResult {
+  inventoryCreated: number;
+  occupancyCreated: number;
+  photosCreated: number;
+}
+
+export interface DataQualityIssue {
+  hotel_id: string;
+  hotel_name: string;
+  issue_type: 'MISSING_HALLS' | 'MISSING_INVENTORY' | 'MISSING_OCCUPANCY' | 'MISSING_PHOTOS';
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  message: string;
+}
+
+export interface VenueReadinessReport {
+  totalHotels: number;
+  venueReadyCount: number;
+  partialReadyCount: number;
+  notReadyCount: number;
+  readinessByHotel: Array<{
+    hotel_id: string;
+    hotel_name: string;
+    readinessScore: number;
+    status: 'READY' | 'PARTIAL' | 'NOT_READY';
+    missingComponents: string[];
+  }>;
 }

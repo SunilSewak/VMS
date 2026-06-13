@@ -91,12 +91,26 @@ export function VenueAdmin() {
               <h1 className="text-3xl font-bold text-gray-900">Venue Repository</h1>
               <p className="text-gray-600 text-sm mt-1">Manage all hotels, halls, and accommodations</p>
             </div>
-            <button
-              onClick={handleCreateHotel}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-            >
-              + Create Hotel
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate('/administration/masters/venues/data-center')}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors"
+              >
+                📊 Data Center
+              </button>
+              <button
+                onClick={() => navigate('/administration/masters/venues/bulk-upload')}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
+              >
+                ⬆ Bulk Upload
+              </button>
+              <button
+                onClick={handleCreateHotel}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+              >
+                + Create Hotel
+              </button>
+            </div>
           </div>
         </div>
       </div>

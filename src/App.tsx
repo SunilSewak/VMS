@@ -31,7 +31,9 @@ import { RoomingDetails } from './pages/RoomingDetails';
 import { UserSettings } from './pages/UserSettings';
 import { ZoneMaster } from './pages/ZoneMaster';
 import { VenueBulkImport } from './pages/VenueBulkImport';
+import { VenueUploadCenter } from './pages/VenueUploadCenter';
 import { VenueAdmin } from './pages/VenueAdmin';
+import { VenueDataCenter } from './pages/VenueDataCenter';
 import { HotelDetailsWorkspace } from './components/HotelDetailsWorkspace';
 import { DemoTools } from './pages/DemoTools';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -335,10 +337,26 @@ export default function App() {
                 </ProtectedRoute>
               } />
 
+              <Route path="/administration/masters/venues/data-center" element={
+                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                  <AppLayout>
+                    <VenueDataCenter />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
               <Route path="/administration/masters/venues/:id" element={
                 <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
                   <AppLayout>
                     <HotelDetailsWorkspace />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/administration/masters/venues/bulk-upload" element={
+                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                  <AppLayout>
+                    <VenueUploadCenter />
                   </AppLayout>
                 </ProtectedRoute>
               } />
