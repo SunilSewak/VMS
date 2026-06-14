@@ -23,7 +23,13 @@ import {
   calculateExpectedHallCharges,
   buildAuditVariance,
   toInvoiceVarianceInput,
+  classifyVarianceSeverity,
+  variancePercent,
+  interpretVariance,
+  rollUpAuditStatus,
   type AuditVariance,
+  type VarianceSeverity,
+  type OverallAuditStatus,
 } from './invoiceAuditCalculationService';
 import {
   createInvoiceVariances,
@@ -31,6 +37,15 @@ import {
   getInvoiceVarianceRecords,
 } from '../features/invoices/api';
 import type { InvoiceVarianceRecord } from '../features/invoices/types';
+
+export interface CommercialAuditSummary {
+  overallStatus: OverallAuditStatus;
+  totalExpected: number;
+  totalActual: number;
+  netVariance: number;
+  criticalCount: number;
+  warningCount: number;
+}
 
 export interface CommercialAuditResult {
   invoiceId: string;
@@ -51,6 +66,7 @@ export interface CommercialAuditResult {
     total: number;
   };
   variances: AuditVariance[];
+  summary: CommercialAuditSummary;
   persisted: InvoiceVarianceRecord[];
 }
 
@@ -100,29 +116,29 @@ export async function runCommercialAudit(invoiceId: string): Promise<CommercialA
   const actualTotal =
     invoice.subtotal_amount ?? round2(actualRoom + actualFood + actualHall + (invoice.other_charges ?? 0));
 
-  // ── Variance generation (Phase 2 categories) ──
+  // ── Variance generation (Phase 2 categories) with interpretation remarks ──
   const variances: AuditVariance[] = [
-    buildAuditVariance(
-      'ROOM_VARIANCE', expectedRoom, actualRoom,
-      `Expected room = Σ(occupancy × per-occupant rate) × ${nights} nights from approved commercial & room inventory.`
-    ),
-    buildAuditVariance(
-      'FOOD_VARIANCE', expectedFood, actualFood,
-      `Expected food = ₹${commercial.foodRatePerPax}/pax × ${foodPax} pax × ${nights} days.`
-    ),
-    buildAuditVariance(
-      'NRC_VARIANCE', expectedNrc, actualNrc,
-      'NRC quantities are not stored separately; baseline 0. Review NRC food lines on the invoice manually.'
-    ),
-    buildAuditVariance(
-      'HALL_VARIANCE', expectedHall, actualHall,
-      `Expected hall = ₹${commercial.hallRate}/hall × ${hallCount} hall(s) × ${nights} days.`
-    ),
-    buildAuditVariance(
-      'TOTAL_VARIANCE', expectedTotal, actualTotal,
-      'Expected total (room+food+nrc+hall) vs invoice taxable subtotal.'
-    ),
+    buildAuditVariance('ROOM_VARIANCE', expectedRoom, actualRoom, interpretVariance('ROOM_VARIANCE', expectedRoom, actualRoom)),
+    buildAuditVariance('FOOD_VARIANCE', expectedFood, actualFood, interpretVariance('FOOD_VARIANCE', expectedFood, actualFood)),
+    buildAuditVariance('NRC_VARIANCE', expectedNrc, actualNrc, interpretVariance('NRC_VARIANCE', expectedNrc, actualNrc)),
+    buildAuditVariance('HALL_VARIANCE', expectedHall, actualHall, interpretVariance('HALL_VARIANCE', expectedHall, actualHall)),
+    buildAuditVariance('TOTAL_VARIANCE', expectedTotal, actualTotal, interpretVariance('TOTAL_VARIANCE', expectedTotal, actualTotal)),
   ];
+
+  // ── Severity classification + summary (in-memory only) ──
+  const severities: VarianceSeverity[] = variances.map((v) =>
+    classifyVarianceSeverity(v.varianceType, v.expectedAmount, v.actualAmount)
+  );
+  // TOTAL_VARIANCE is a roll-up; exclude it from the status roll-up to avoid double-counting.
+  const categorySeverities = severities.slice(0, 4);
+  const summary: CommercialAuditSummary = {
+    overallStatus: rollUpAuditStatus(categorySeverities),
+    totalExpected: expectedTotal,
+    totalActual: actualTotal,
+    netVariance: round2(actualTotal - expectedTotal),
+    criticalCount: categorySeverities.filter((s) => s === 'CRITICAL').length,
+    warningCount: categorySeverities.filter((s) => s === 'WARNING').length,
+  };
 
   // ── Persist (replace prior run) ──
   await deleteInvoiceVariances(invoiceId);
@@ -141,9 +157,14 @@ export async function runCommercialAudit(invoiceId: string): Promise<CommercialA
     expected: { room: expectedRoom, food: expectedFood, nrc: expectedNrc, hall: expectedHall, total: expectedTotal },
     actual: { room: actualRoom, food: actualFood, nrc: actualNrc, hall: actualHall, total: actualTotal },
     variances,
+    summary,
     persisted,
   };
 }
+
+// Avoid unused-import lint on variancePercent in environments that tree-shake;
+// it's part of the public calc API used by the UI.
+void variancePercent;
 
 /** Reads the persisted commercial variances for an invoice (UI source of truth). */
 export async function getPersistedVariances(invoiceId: string): Promise<InvoiceVarianceRecord[]> {

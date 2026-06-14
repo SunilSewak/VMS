@@ -11,6 +11,7 @@ import {
 } from '../features/invoices/invoiceDocumentService';
 import { validateInvoicePackage, getValidationSummary } from '../features/invoices/invoiceValidationService';
 import { runCommercialAudit, getPersistedVariances } from '../services/commercialAuditService';
+import { classifyVarianceSeverity, rollUpAuditStatus, type VarianceSeverity } from '../services/invoiceAuditCalculationService';
 import { getBookingById } from '../features/bookings/bookingService';
 import type { Invoice, InvoiceValidationCheck, InvoiceDocument, InvoiceDocumentType, InvoiceVarianceRecord } from '../features/invoices/types';
 import type { Booking } from '../features/bookings/types';
@@ -30,6 +31,16 @@ function formatDate(value?: string | null) {
 function formatCurrency(amount: number | null | undefined) {
   return `₹${(amount ?? 0).toLocaleString('en-IN')}`;
 }
+
+const SEVERITY_COLOR: Record<string, string> = {
+  PASS: 'var(--success)',
+  INFO: 'var(--primary)',
+  REVIEW_REQUIRED: 'var(--warning)',
+  WARNING: 'var(--warning)',
+  CRITICAL: 'var(--danger)',
+};
+
+const CATEGORY_VARIANCE_TYPES = ['ROOM_VARIANCE', 'FOOD_VARIANCE', 'NRC_VARIANCE', 'HALL_VARIANCE'];
 
 const statusBadge = (status: string) => {
   const color =
@@ -790,36 +801,96 @@ export function InvoiceDetails() {
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>
                     No commercial variances recorded yet. Run the commercial audit to compare the approved commercial baseline against this invoice.
                   </p>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-sm)' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                          <th style={{ textAlign: 'left', padding: '0.75rem 0', fontWeight: 700, color: 'var(--text-muted)' }}>Variance Type</th>
-                          <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Expected</th>
-                          <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Actual</th>
-                          <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Variance</th>
-                          <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {commercialVariances.map((v) => {
-                          const variance = v.variance_amount ?? 0;
-                          const varianceColor = Math.abs(variance) < 0.5 ? 'var(--success)' : variance < 0 ? 'var(--warning)' : 'var(--danger)';
-                          return (
-                            <tr key={v.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                              <td style={{ padding: '0.85rem 0', fontWeight: 600 }}>{v.variance_type}</td>
-                              <td style={{ textAlign: 'right', padding: '0.85rem 1rem' }}>{formatCurrency(v.expected_amount)}</td>
-                              <td style={{ textAlign: 'right', padding: '0.85rem 1rem', fontWeight: 600 }}>{formatCurrency(v.actual_amount)}</td>
-                              <td style={{ textAlign: 'right', padding: '0.85rem 1rem', fontWeight: 700, color: varianceColor }}>{formatCurrency(variance)}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '320px' }}>{v.remarks ?? '—'}</td>
+                ) : (() => {
+                  // Recompute severity (in-memory) from persisted expected/actual.
+                  const withSeverity = commercialVariances.map((v) => ({
+                    ...v,
+                    severity: classifyVarianceSeverity(v.variance_type, v.expected_amount ?? 0, v.actual_amount ?? 0) as VarianceSeverity,
+                  }));
+                  const categories = withSeverity.filter((v) => CATEGORY_VARIANCE_TYPES.includes(v.variance_type));
+                  const totalRow = withSeverity.find((v) => v.variance_type === 'TOTAL_VARIANCE');
+                  const totalExpected = totalRow?.expected_amount ?? categories.reduce((s, v) => s + (v.expected_amount ?? 0), 0);
+                  const totalActual = totalRow?.actual_amount ?? categories.reduce((s, v) => s + (v.actual_amount ?? 0), 0);
+                  const netVariance = Math.round((totalActual - totalExpected) * 100) / 100;
+                  const overallStatus = rollUpAuditStatus(categories.map((v) => v.severity));
+                  const criticalCount = categories.filter((v) => v.severity === 'CRITICAL').length;
+                  const warningCount = categories.filter((v) => v.severity === 'WARNING').length;
+                  const reviewCount = categories.filter((v) => v.severity === 'REVIEW_REQUIRED').length;
+
+                  return (
+                    <>
+                      {/* Summary card */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+                        <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Audit Status</div>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: SEVERITY_COLOR[overallStatus] }}>{overallStatus}</div>
+                        </div>
+                        <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Total Expected</div>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{formatCurrency(totalExpected)}</div>
+                        </div>
+                        <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Total Actual</div>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{formatCurrency(totalActual)}</div>
+                        </div>
+                        <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Net Variance</div>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: Math.abs(netVariance) < 0.5 ? 'var(--success)' : netVariance < 0 ? 'var(--warning)' : 'var(--danger)' }}>{formatCurrency(netVariance)}</div>
+                        </div>
+                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginBottom: '0.35rem' }}>Critical Findings</div>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--danger)' }}>{criticalCount}</div>
+                        </div>
+                        <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--warning)', marginBottom: '0.35rem' }}>Warning Findings</div>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--warning)' }}>{warningCount}</div>
+                        </div>
+                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--warning)', marginBottom: '0.35rem' }}>Review Required</div>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--warning)' }}>{reviewCount}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-sm)' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                              <th style={{ textAlign: 'left', padding: '0.75rem 0', fontWeight: 700, color: 'var(--text-muted)' }}>Variance Type</th>
+                              <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Expected</th>
+                              <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Actual</th>
+                              <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Variance</th>
+                              <th style={{ textAlign: 'center', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Severity</th>
+                              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Interpretation</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                          </thead>
+                          <tbody>
+                            {withSeverity.map((v) => {
+                              const variance = v.variance_amount ?? 0;
+                              return (
+                                <tr key={v.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <td style={{ padding: '0.85rem 0', fontWeight: 600 }}>{v.variance_type}</td>
+                                  <td style={{ textAlign: 'right', padding: '0.85rem 1rem' }}>{formatCurrency(v.expected_amount)}</td>
+                                  <td style={{ textAlign: 'right', padding: '0.85rem 1rem', fontWeight: 600 }}>{formatCurrency(v.actual_amount)}</td>
+                                  <td style={{ textAlign: 'right', padding: '0.85rem 1rem', fontWeight: 700, color: SEVERITY_COLOR[v.severity] }}>{formatCurrency(variance)}</td>
+                                  <td style={{ textAlign: 'center', padding: '0.85rem 1rem' }}>
+                                    <span style={{
+                                      display: 'inline-flex', padding: '0.25rem 0.75rem', borderRadius: '999px',
+                                      backgroundColor: SEVERITY_COLOR[v.severity] + '1a', color: SEVERITY_COLOR[v.severity],
+                                      fontWeight: 700, fontSize: '0.72rem',
+                                    }}>
+                                      {v.severity}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '320px' }}>{v.remarks ?? '—'}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </>
           ) : null}
