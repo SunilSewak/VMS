@@ -26,6 +26,8 @@ import { WorkspaceHeader } from '../components/WorkspaceHeader';
 import { RequestWorkflowPanel } from '../components/RequestWorkflowPanel';
 import { OverviewTab } from '../components/OverviewTab';
 import { PlaceholderTab } from '../components/PlaceholderTab';
+import { VenueEvaluationTab } from '../components/VenueEvaluationTab';
+import { BookingWorkspaceTab } from '../components/BookingWorkspaceTab';
 
 type TabId = 'overview' | 'venue-evaluation' | 'booking' | 'invoice' | 'payment';
 
@@ -209,16 +211,16 @@ export function RequestProcessingWorkspace() {
             {activeTab === 'overview' && <OverviewTab request={request} />}
             
             {activeTab === 'venue-evaluation' && (
-              <PlaceholderTab
-                title="Venue Evaluation Workspace"
-                description="This workspace will allow you to review venue options, contact venues for availability, record responses, and finalize venue selection."
+              <VenueEvaluationTab
+                request={request}
+                onProceedToBooking={() => setActiveTab('booking')}
               />
             )}
             
             {activeTab === 'booking' && (
-              <PlaceholderTab
-                title="Booking Workspace"
-                description="This workspace will enable you to create booking records, confirm venue reservations, and manage booking details."
+              <BookingWorkspaceTab
+                request={request}
+                onProceedToInvoice={() => setActiveTab('invoice')}
               />
             )}
             

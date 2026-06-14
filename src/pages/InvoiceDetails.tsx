@@ -1,5 +1,5 @@
 import { useEffect, useState, Fragment } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, AlertCircle, DollarSign, Users, Zap, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getInvoiceById, startVerification, verifyInvoice, approveInvoice, rejectInvoice } from '../features/invoices/invoiceService';
@@ -72,7 +72,20 @@ const statusBadge = (status: string) => {
 export function InvoiceDetails() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const { id } = useParams();
+  const location = useLocation();
+  const params = useParams();
+  const { id } = params;
+  
+  console.log('InvoiceDetails Debug', JSON.stringify({
+    pathname: window.location.pathname,
+    params,
+    id: params.id,
+  }, null, 2));
+
+  console.log('Matched Route Debug', JSON.stringify({
+    pathname: location.pathname,
+  }, null, 2));
+
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [validationChecks, setValidationChecks] = useState<InvoiceValidationCheck[]>([]);
@@ -99,7 +112,7 @@ export function InvoiceDetails() {
 
   useEffect(() => {
     if (!id || id === 'undefined') {
-      setError('Invoice ID is missing.');
+      setError(`Invoice ID is missing. (Extracted ID: ${id}, URL: ${window.location.pathname})`);
       setLoading(false);
       return;
     }

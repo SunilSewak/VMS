@@ -364,7 +364,7 @@ export function BookingCard({ booking }: BookingCardProps) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(ROUTES.bookingDetails.replace(':id', booking.id));
+              navigate(`${ROUTES.invoiceUpload}?bookingId=${booking.id}`);
             }}
             style={{
               display: 'flex',

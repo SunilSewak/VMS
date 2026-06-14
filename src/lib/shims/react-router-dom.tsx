@@ -62,6 +62,24 @@ export function useParams() {
   if (segments[1] === 'venue-explorer' && segments[2]) {
     return { id: segments[2] };
   }
+  // /invoices/:id
+  if (segments[1] === 'invoices') {
+    const id = segments[2];
+    if (id && id !== 'upload') {
+      return { id };
+    }
+  }
+  // /payments/:id
+  if (segments[1] === 'payments') {
+    const id = segments[2];
+    if (id && id !== 'new') {
+      return { id };
+    }
+  }
+  // /rooming/:id
+  if (segments[1] === 'rooming' && segments[2]) {
+    return { id: segments[2] };
+  }
   return {} as Record<string, string>;
 }
 

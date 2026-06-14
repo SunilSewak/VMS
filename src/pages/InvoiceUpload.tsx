@@ -452,7 +452,7 @@ export function InvoiceUpload() {
                   >
                     <option value="">Select a booking</option>
                     {bookings
-                      .filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+                      .filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED' || b.status === 'REQUESTED')
                       .map((booking) => (
                         <option key={booking.id} value={booking.id}>
                           {booking.booking_reference} — {booking.check_in_date}

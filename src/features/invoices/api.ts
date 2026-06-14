@@ -194,10 +194,11 @@ export async function createInvoice(input: InvoiceCreateInput, user: UserProfile
 
   if (error) throw new Error(error.message);
   
-  // Failsafe: if data is an array for some reason, use the first element
   const finalData = Array.isArray(data) ? data[0] : data;
+  if (!finalData || !finalData.id) {
+    throw new Error('Invoice was created but no data was returned by the database. Please check your permissions or try again.');
+  }
   
-  // Map invoice_status to status to match TypeScript interface
   return {
     ...finalData,
     status: finalData.invoice_status,

@@ -27,7 +27,10 @@ export async function getBookings(user: UserProfile): Promise<Booking[]> {
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []) as Booking[];
+  return (data ?? []).map((b: any) => ({
+    ...b,
+    meeting_request_id: b.request_id || b.meeting_request_id,
+  })) as Booking[];
 }
 
 export async function getBookingById(id: string): Promise<Booking> {
@@ -57,18 +60,21 @@ export async function getBookingById(id: string): Promise<Booking> {
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Booking not found');
-  return data as Booking;
+  return { ...data, meeting_request_id: data.request_id || data.meeting_request_id } as Booking;
 }
 
 export async function createBooking(input: BookingCreateInput, user: UserProfile): Promise<Booking> {
+  // Map frontend's meeting_request_id to database's request_id
+  const { meeting_request_id, ...restInput } = input;
+  
   const payload = {
-    ...input,
+    ...restInput,
+    request_id: meeting_request_id,
     booking_reference: generateBookingReference(),
-    status: 'REQUESTED',
+    status: 'CONFIRMED',
     created_by: user.id,
     created_at: new Date().toISOString(),
   } as const;
-
 
   const { data, error } = await (supabase as any)
     .from('bookings')
@@ -78,18 +84,28 @@ export async function createBooking(input: BookingCreateInput, user: UserProfile
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Booking was created but no data was returned. Please check the bookings list.');
-  return data as Booking;
+  
+  // Map back for the frontend
+  return { ...data, meeting_request_id: data.request_id || data.meeting_request_id } as Booking;
 }
 
 export async function updateBooking(id: string, input: BookingUpdateInput, user: UserProfile): Promise<Booking> {
+  const { meeting_request_id, ...restInput } = input;
+  const updatePayload = {
+    ...restInput,
+    ...(meeting_request_id !== undefined ? { request_id: meeting_request_id } : {}),
+    updated_at: new Date().toISOString(),
+    updated_by: user.id
+  };
+
   const { data, error } = await (supabase as any)
     .from('bookings')
-    .update({ ...input, updated_at: new Date().toISOString(), updated_by: user.id })
+    .update(updatePayload)
     .eq('id', id)
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Booking;
+  return { ...data, meeting_request_id: data.request_id || data.meeting_request_id } as Booking;
 }
 
 export async function confirmBooking(id: string, user: UserProfile): Promise<Booking> {

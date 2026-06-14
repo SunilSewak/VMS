@@ -267,7 +267,11 @@ export function BookingWorkspace() {
                 </span>
               </div>
               {booking.invoice_status === 'PENDING' && (
-                <button className="btn btn-primary" style={{ width: '100%' }}>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ width: '100%' }}
+                  onClick={() => navigate(`${ROUTES.invoiceUpload}?bookingId=${booking.id}`)}
+                >
                   <Upload size={16} />
                   Upload Invoice
                 </button>

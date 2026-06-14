@@ -143,15 +143,18 @@ ALTER TABLE hotel_occupancy_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE default_occupancy_rules ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Everyone can read occupancy rules
+DROP POLICY IF EXISTS "Occupancy rules are publicly readable" ON hotel_occupancy_rules;
 CREATE POLICY "Occupancy rules are publicly readable"
   ON hotel_occupancy_rules FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Default occupancy rules are publicly readable" ON default_occupancy_rules;
 CREATE POLICY "Default occupancy rules are publicly readable"
   ON default_occupancy_rules FOR SELECT
   USING (true);
 
 -- Policy: Only admins can modify occupancy rules
+DROP POLICY IF EXISTS "Admins can manage hotel occupancy rules" ON hotel_occupancy_rules;
 CREATE POLICY "Admins can manage hotel occupancy rules"
   ON hotel_occupancy_rules FOR ALL
   USING (
