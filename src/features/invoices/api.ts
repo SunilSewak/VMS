@@ -285,6 +285,16 @@ export async function createInvoiceVariances(
   return (data ?? []) as InvoiceVarianceRecord[];
 }
 
+/** Remove all persisted variances for an invoice (used before a re-audit). */
+export async function deleteInvoiceVariances(invoiceId: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from('invoice_variances')
+    .delete()
+    .eq('invoice_id', invoiceId);
+
+  if (error) throw new Error(error.message);
+}
+
 export async function deleteInvoice(id: string, user: UserProfile): Promise<void> {
   const { error } = await (supabase as any)
     .from('invoices')

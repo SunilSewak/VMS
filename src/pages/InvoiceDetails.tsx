@@ -10,8 +10,9 @@ import {
   downloadInvoiceDocument,
 } from '../features/invoices/invoiceDocumentService';
 import { validateInvoicePackage, getValidationSummary } from '../features/invoices/invoiceValidationService';
+import { runCommercialAudit, getPersistedVariances } from '../services/commercialAuditService';
 import { getBookingById } from '../features/bookings/bookingService';
-import type { Invoice, InvoiceValidationCheck, InvoiceDocument, InvoiceDocumentType } from '../features/invoices/types';
+import type { Invoice, InvoiceValidationCheck, InvoiceDocument, InvoiceDocumentType, InvoiceVarianceRecord } from '../features/invoices/types';
 import type { Booking } from '../features/bookings/types';
 import { ROUTES } from '../routes/routeRegistry';
 import { ROLES } from '../auth/permissions';
@@ -65,6 +66,9 @@ export function InvoiceDetails() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [validationChecks, setValidationChecks] = useState<InvoiceValidationCheck[]>([]);
   const [validationSummary, setValidationSummary] = useState<any>(null);
+  const [commercialVariances, setCommercialVariances] = useState<InvoiceVarianceRecord[]>([]);
+  const [runningAudit, setRunningAudit] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const [documents, setDocuments] = useState<InvoiceDocument[]>([]);
   const [activeTab, setActiveTab] = useState<'info' | 'validation' | 'documents'>('info');
   const [selectedDocumentType, setSelectedDocumentType] = useState<InvoiceDocumentType>('PRIMARY_INVOICE');
@@ -108,6 +112,13 @@ export function InvoiceDetails() {
           const validationResult = await validateInvoicePackage(invoiceData);
           setValidationChecks(validationResult.checks);
           setValidationSummary(getValidationSummary(validationResult));
+
+          try {
+            const variances = await getPersistedVariances(invoiceData.id);
+            setCommercialVariances(variances);
+          } catch (vErr) {
+            console.error('Failed to load persisted variances:', vErr);
+          }
         }
       } catch (loadError) {
         setError('Failed to load invoice details.');
@@ -310,6 +321,21 @@ export function InvoiceDetails() {
       setActionError((transitionError as Error).message || 'Unable to reject invoice.');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleRunCommercialAudit = async () => {
+    if (!invoice) return;
+    setRunningAudit(true);
+    setAuditError(null);
+    try {
+      await runCommercialAudit(invoice.id);
+      const variances = await getPersistedVariances(invoice.id);
+      setCommercialVariances(variances);
+    } catch (err: any) {
+      setAuditError(err?.message ?? 'Unable to run commercial audit.');
+    } finally {
+      setRunningAudit(false);
     }
   };
 
@@ -727,6 +753,74 @@ export function InvoiceDetails() {
                   </div>
                 </div>
               ) : null}
+
+              {/* ── Commercial Audit V2 (persisted variances) ── */}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: 'var(--space-4)' }}>
+                  <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
+                    <TrendingUp size={18} /> Commercial Audit (V2)
+                  </h2>
+                  {canManageWorkflow ? (
+                    <button
+                      onClick={handleRunCommercialAudit}
+                      disabled={runningAudit}
+                      style={{
+                        padding: '0.7rem 1.1rem',
+                        borderRadius: 'var(--radius-lg)',
+                        border: 'none',
+                        background: 'var(--primary)',
+                        color: '#fff',
+                        fontWeight: 700,
+                        cursor: runningAudit ? 'not-allowed' : 'pointer',
+                        opacity: runningAudit ? 0.6 : 1,
+                      }}
+                    >
+                      {runningAudit ? 'Running…' : 'Run Commercial Audit'}
+                    </button>
+                  ) : null}
+                </div>
+
+                {auditError ? (
+                  <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontSize: '0.85rem', marginBottom: 'var(--space-3)' }}>
+                    {auditError}
+                  </div>
+                ) : null}
+
+                {commercialVariances.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>
+                    No commercial variances recorded yet. Run the commercial audit to compare the approved commercial baseline against this invoice.
+                  </p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-sm)' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                          <th style={{ textAlign: 'left', padding: '0.75rem 0', fontWeight: 700, color: 'var(--text-muted)' }}>Variance Type</th>
+                          <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Expected</th>
+                          <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Actual</th>
+                          <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Variance</th>
+                          <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {commercialVariances.map((v) => {
+                          const variance = v.variance_amount ?? 0;
+                          const varianceColor = Math.abs(variance) < 0.5 ? 'var(--success)' : variance < 0 ? 'var(--warning)' : 'var(--danger)';
+                          return (
+                            <tr key={v.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '0.85rem 0', fontWeight: 600 }}>{v.variance_type}</td>
+                              <td style={{ textAlign: 'right', padding: '0.85rem 1rem' }}>{formatCurrency(v.expected_amount)}</td>
+                              <td style={{ textAlign: 'right', padding: '0.85rem 1rem', fontWeight: 600 }}>{formatCurrency(v.actual_amount)}</td>
+                              <td style={{ textAlign: 'right', padding: '0.85rem 1rem', fontWeight: 700, color: varianceColor }}>{formatCurrency(variance)}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '320px' }}>{v.remarks ?? '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </>
           ) : null}
 
