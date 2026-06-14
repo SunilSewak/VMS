@@ -23,7 +23,10 @@ export type ValidationCheckType =
   | 'FOOD_VARIANCE'
   | 'HALL_CHARGE_VARIANCE'
   | 'GST_VARIANCE'
-  | 'TOTAL_VARIANCE';
+  | 'TOTAL_VARIANCE'
+  | 'CATEGORY_RECONCILIATION'
+  | 'GST_RECONCILIATION'
+  | 'GRAND_TOTAL_RECONCILIATION';
 
 export interface InvoiceDocument {
   id: string;
@@ -84,6 +87,13 @@ export interface Invoice {
   food_charges: number;
   tax_amount: number;
   pax_billed: number;
+  // Phase-3 financial breakdown columns (nullable for legacy invoices)
+  subtotal_amount?: number | null;
+  other_charges?: number | null;
+  cgst_amount?: number | null;
+  sgst_amount?: number | null;
+  igst_amount?: number | null;
+  document_url?: string | null;
   remarks?: string | null;
   status: InvoiceStatus;
   verified_by?: string | null;
@@ -120,6 +130,12 @@ export interface InvoiceCreateInput {
   food_charges: number;
   tax_amount: number;
   pax_billed: number;
+  subtotal_amount?: number | null;
+  other_charges?: number | null;
+  cgst_amount?: number | null;
+  sgst_amount?: number | null;
+  igst_amount?: number | null;
+  document_url?: string | null;
   remarks?: string | null;
 }
 

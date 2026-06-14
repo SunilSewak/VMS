@@ -71,7 +71,8 @@ function validateHotelMatch(invoice: Invoice, booking: Booking): InvoiceValidati
 
 function validatePax(invoice: Invoice, booking: Booking): InvoiceValidationCheck[] {
   const expectedPax = booking.expected_pax || 1;
-  const variance = invoice.pax_billed - expectedPax;
+  const paxBilled = invoice.pax_billed ?? 0;
+  const variance = paxBilled - expectedPax;
   const variancePercent = expectedPax > 0 ? (variance / expectedPax) * 100 : 0;
 
   const check: InvoiceValidationCheck = {
@@ -79,7 +80,7 @@ function validatePax(invoice: Invoice, booking: Booking): InvoiceValidationCheck
     invoice_id: invoice.id,
     check_type: 'PAX_VARIANCE',
     expected_value: expectedPax,
-    actual_value: invoice.pax_billed,
+    actual_value: paxBilled,
     variance_value: variance,
     variance_percentage: variancePercent,
     severity:
@@ -87,7 +88,7 @@ function validatePax(invoice: Invoice, booking: Booking): InvoiceValidationCheck
         ? 'WARNING'
         : 'INFO',
     status: Math.abs(variance) <= expectedPax * 0.15 ? 'PASS' : 'FAIL',
-    description: `Pax verification: expected ${expectedPax}, billed ${invoice.pax_billed} (variance: ${variance > 0 ? '+' : ''}${variance})`,
+    description: `Pax verification: expected ${expectedPax}, billed ${paxBilled} (variance: ${variance > 0 ? '+' : ''}${variance})`,
     created_at: new Date().toISOString(),
   };
 
@@ -154,7 +155,7 @@ function validateRoomCharges(invoice: Invoice): InvoiceValidationCheck[] {
     variance_value: 'Review Supporting Documents',
     severity: 'INFO',
     status: 'PASS',
-    description: `Room charges: ₹${invoice.room_charges.toLocaleString('en-IN')}. Requires occupancy report and room invoice verification.`,
+    description: `Room charges: ₹${(invoice.room_charges ?? 0).toLocaleString('en-IN')}. Requires occupancy report and room invoice verification.`,
     created_at: new Date().toISOString(),
   };
 
@@ -175,7 +176,7 @@ function validateFood(invoice: Invoice): InvoiceValidationCheck[] {
     variance_value: 'Review Supporting Documents',
     severity: 'INFO',
     status: 'PASS',
-    description: `Food charges: ₹${invoice.food_charges.toLocaleString('en-IN')}. Verify against banquet bill and food service invoices.`,
+    description: `Food charges: ₹${(invoice.food_charges ?? 0).toLocaleString('en-IN')}. Verify against banquet bill and food service invoices.`,
     remarks: 'Multiple food categories expected: Conference Lunch, Breakfast, NRC charges, etc.',
     created_at: new Date().toISOString(),
   };
@@ -199,7 +200,7 @@ function validateHallCharges(invoice: Invoice, booking: Booking): InvoiceValidat
     variance_value: invoice.hall_charges,
     severity: expectedHalls === 0 && invoice.hall_charges > 0 ? 'CRITICAL' : 'INFO',
     status: expectedHalls === 0 && invoice.hall_charges > 0 ? 'FAIL' : 'PASS',
-    description: `Hall charges: ₹${invoice.hall_charges.toLocaleString('en-IN')}. Booking includes ${expectedHalls} hall(s).`,
+    description: `Hall charges: ₹${(invoice.hall_charges ?? 0).toLocaleString('en-IN')}. Booking includes ${expectedHalls} hall(s).`,
     created_at: new Date().toISOString(),
   };
 
@@ -220,7 +221,7 @@ function validateTax(invoice: Invoice): InvoiceValidationCheck[] {
     variance_value: invoice.tax_amount,
     severity: 'INFO',
     status: 'PASS',
-    description: `Tax amount: ₹${invoice.tax_amount.toLocaleString('en-IN')}. Verify SGST/CGST breakdown in GST invoice.`,
+    description: `Tax amount: ₹${(invoice.tax_amount ?? 0).toLocaleString('en-IN')}. Verify SGST/CGST breakdown in GST invoice.`,
     remarks: 'Review GST invoice for SGST/CGST split and tax calculation accuracy.',
     created_at: new Date().toISOString(),
   };
@@ -233,24 +234,97 @@ function validateTax(invoice: Invoice): InvoiceValidationCheck[] {
  * Validates invoice total against component sum.
  */
 function validateTotal(invoice: Invoice): InvoiceValidationCheck[] {
-  const expectedTotal = invoice.room_charges + invoice.hall_charges + invoice.food_charges + invoice.tax_amount;
-  const variance = invoice.invoice_amount - expectedTotal;
+  const room = invoice.room_charges ?? 0;
+  const hall = invoice.hall_charges ?? 0;
+  const food = invoice.food_charges ?? 0;
+  const tax = invoice.tax_amount ?? 0;
+  const expectedTotal = room + hall + food + tax;
+  // When invoice_amount column is absent, fall back to the component sum.
+  const actualTotal = invoice.invoice_amount ?? expectedTotal;
+  const variance = actualTotal - expectedTotal;
 
   const check: InvoiceValidationCheck = {
     id: 'chk-total-' + Math.random().toString(36).slice(2),
     invoice_id: invoice.id,
     check_type: 'TOTAL_VARIANCE',
     expected_value: expectedTotal,
-    actual_value: invoice.invoice_amount,
+    actual_value: actualTotal,
     variance_value: variance,
     variance_percentage: expectedTotal > 0 ? (variance / expectedTotal) * 100 : 0,
     severity: Math.abs(variance) > 100 ? 'CRITICAL' : Math.abs(variance) > 0 ? 'WARNING' : 'INFO',
     status: Math.abs(variance) <= 100 ? 'PASS' : 'FAIL',
-    description: `Total verification: ₹${expectedTotal.toLocaleString('en-IN')} expected, ₹${invoice.invoice_amount.toLocaleString('en-IN')} invoiced (variance: ${variance > 0 ? '+' : ''}₹${variance.toLocaleString('en-IN')})`,
+    description: `Total verification: ₹${expectedTotal.toLocaleString('en-IN')} expected, ₹${actualTotal.toLocaleString('en-IN')} invoiced (variance: ${variance > 0 ? '+' : ''}₹${variance.toLocaleString('en-IN')})`,
     created_at: new Date().toISOString(),
   };
 
   return [check];
+}
+
+/**
+ * Audit V1 Reconciliation Group — uses the Phase-3 financial breakdown columns
+ * when present. Each produces a hard PASS/FAIL arithmetic check.
+ */
+function reconcileCategories(invoice: Invoice): InvoiceValidationCheck[] {
+  if (invoice.subtotal_amount == null) return [];
+  const sum = (invoice.room_charges ?? 0) + (invoice.food_charges ?? 0) + (invoice.hall_charges ?? 0) + (invoice.other_charges ?? 0);
+  const variance = round2(sum - (invoice.subtotal_amount ?? 0));
+  const pass = Math.abs(variance) <= 0.5;
+  return [{
+    id: 'chk-cat-recon-' + Math.random().toString(36).slice(2),
+    invoice_id: invoice.id,
+    check_type: 'CATEGORY_RECONCILIATION',
+    expected_value: invoice.subtotal_amount ?? 0,
+    actual_value: sum,
+    variance_value: variance,
+    severity: pass ? 'INFO' : 'CRITICAL',
+    status: pass ? 'PASS' : 'FAIL',
+    description: `Category reconciliation: room + food + hall + other (₹${sum.toLocaleString('en-IN')}) vs subtotal (₹${(invoice.subtotal_amount ?? 0).toLocaleString('en-IN')}).`,
+    created_at: new Date().toISOString(),
+  }];
+}
+
+function reconcileGst(invoice: Invoice): InvoiceValidationCheck[] {
+  const hasSplit = invoice.cgst_amount != null || invoice.sgst_amount != null || invoice.igst_amount != null;
+  if (!hasSplit || invoice.tax_amount == null) return [];
+  const sum = round2((invoice.cgst_amount ?? 0) + (invoice.sgst_amount ?? 0) + (invoice.igst_amount ?? 0));
+  const variance = round2(sum - (invoice.tax_amount ?? 0));
+  const pass = Math.abs(variance) <= 0.5;
+  return [{
+    id: 'chk-gst-recon-' + Math.random().toString(36).slice(2),
+    invoice_id: invoice.id,
+    check_type: 'GST_RECONCILIATION',
+    expected_value: invoice.tax_amount ?? 0,
+    actual_value: sum,
+    variance_value: variance,
+    severity: pass ? 'INFO' : 'CRITICAL',
+    status: pass ? 'PASS' : 'FAIL',
+    description: `GST reconciliation: CGST + SGST + IGST (₹${sum.toLocaleString('en-IN')}) vs tax amount (₹${(invoice.tax_amount ?? 0).toLocaleString('en-IN')}).`,
+    created_at: new Date().toISOString(),
+  }];
+}
+
+function reconcileGrandTotal(invoice: Invoice): InvoiceValidationCheck[] {
+  if (invoice.subtotal_amount == null || invoice.tax_amount == null) return [];
+  const expected = round2((invoice.subtotal_amount ?? 0) + (invoice.tax_amount ?? 0));
+  const actual = invoice.invoice_amount ?? expected;
+  const variance = round2(actual - expected);
+  const pass = Math.abs(variance) <= 0.5;
+  return [{
+    id: 'chk-grand-recon-' + Math.random().toString(36).slice(2),
+    invoice_id: invoice.id,
+    check_type: 'GRAND_TOTAL_RECONCILIATION',
+    expected_value: expected,
+    actual_value: actual,
+    variance_value: variance,
+    severity: pass ? 'INFO' : 'CRITICAL',
+    status: pass ? 'PASS' : 'FAIL',
+    description: `Grand total reconciliation: subtotal + tax (₹${expected.toLocaleString('en-IN')}) vs invoice total (₹${actual.toLocaleString('en-IN')}).`,
+    created_at: new Date().toISOString(),
+  }];
+}
+
+function round2(value: number): number {
+  return Math.round((Number(value) || 0) * 100) / 100;
 }
 
 /**
@@ -259,6 +333,11 @@ function validateTotal(invoice: Invoice): InvoiceValidationCheck[] {
  */
 export async function validateInvoicePackage(invoice: Invoice): Promise<InvoiceValidationResult> {
   const allChecks: InvoiceValidationCheck[] = [];
+
+  // Audit V1 reconciliation (uses Phase-3 financial breakdown when available)
+  allChecks.push(...reconcileCategories(invoice));
+  allChecks.push(...reconcileGst(invoice));
+  allChecks.push(...reconcileGrandTotal(invoice));
 
   try {
     // Load booking for context

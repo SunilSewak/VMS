@@ -24,7 +24,7 @@ export function InvoiceUpload() {
     let mounted = true;
     const loadBookings = async () => {
       try {
-        const items = await getBookings(user, { status: 'CONFIRMED' });
+        const items = await getBookings(user);
         if (mounted) setBookings(items);
       } catch (error) {
         console.error('Failed to load bookings:', error);
@@ -43,7 +43,10 @@ export function InvoiceUpload() {
   const [roomCharges, setRoomCharges] = useState('0');
   const [hallCharges, setHallCharges] = useState('0');
   const [foodCharges, setFoodCharges] = useState('0');
-  const [taxAmount, setTaxAmount] = useState('0');
+  const [otherCharges, setOtherCharges] = useState('0');
+  const [cgstAmount, setCgstAmount] = useState('0');
+  const [sgstAmount, setSgstAmount] = useState('0');
+  const [igstAmount, setIgstAmount] = useState('0');
   const [paxBilled, setPaxBilled] = useState('0');
   const [remarks, setRemarks] = useState('');
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
@@ -61,13 +64,16 @@ export function InvoiceUpload() {
     [bookings, bookingId]
   );
 
-  const invoiceAmount = Math.max(
+  const subtotalAmount = Math.max(
     0,
     (Number(roomCharges) || 0) +
       (Number(hallCharges) || 0) +
       (Number(foodCharges) || 0) +
-      (Number(taxAmount) || 0)
+      (Number(otherCharges) || 0)
   );
+  const taxTotal =
+    (Number(cgstAmount) || 0) + (Number(sgstAmount) || 0) + (Number(igstAmount) || 0);
+  const invoiceAmount = subtotalAmount + taxTotal;
 
   const handleUpload = async () => {
     if (!user) return;
@@ -99,6 +105,7 @@ export function InvoiceUpload() {
       return;
     }
 
+    const numOrNull = (v: string) => (v.trim() === '' ? null : Number(v) || 0);
     const payload: InvoiceCreateInput = {
       booking_id: bookingId,
       invoice_number: invoiceNumber.trim(),
@@ -107,8 +114,13 @@ export function InvoiceUpload() {
       room_charges: Number(roomCharges) || 0,
       hall_charges: Number(hallCharges) || 0,
       food_charges: Number(foodCharges) || 0,
-      tax_amount: Number(taxAmount) || 0,
+      tax_amount: taxTotal,
       pax_billed: Number(paxBilled),
+      subtotal_amount: subtotalAmount,
+      other_charges: numOrNull(otherCharges),
+      cgst_amount: numOrNull(cgstAmount),
+      sgst_amount: numOrNull(sgstAmount),
+      igst_amount: numOrNull(igstAmount),
       remarks: remarks.trim() || null,
     };
 
@@ -201,9 +213,9 @@ export function InvoiceUpload() {
                     onChange={(event) => setBookingId(event.target.value)}
                     style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
                   >
-                    <option value="">Select a confirmed booking</option>
+                    <option value="">Select a booking</option>
                     {bookings
-                      .filter((b) => b.status === 'CONFIRMED')
+                      .filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
                       .map((booking) => (
                         <option key={booking.id} value={booking.id}>
                           {booking.booking_reference} — {booking.check_in_date}
@@ -281,22 +293,50 @@ export function InvoiceUpload() {
                   </div>
 
                   <div style={{ display: 'grid', gap: '0.75rem' }}>
-                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Tax Amount</label>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Other Charges</label>
                     <input
                       type="number"
                       min="0"
-                      step="100"
-                      value={taxAmount}
-                      onChange={(e) => setTaxAmount(e.target.value)}
+                      step="1"
+                      value={otherCharges}
+                      onChange={(e) => setOtherCharges(e.target.value)}
                       placeholder="0"
                       style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
                     />
                   </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>CGST</label>
+                      <input type="number" min="0" step="0.01" value={cgstAmount} onChange={(e) => setCgstAmount(e.target.value)} placeholder="0"
+                        style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                    </div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>SGST</label>
+                      <input type="number" min="0" step="0.01" value={sgstAmount} onChange={(e) => setSgstAmount(e.target.value)} placeholder="0"
+                        style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                    </div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>IGST</label>
+                      <input type="number" min="0" step="0.01" value={igstAmount} onChange={(e) => setIgstAmount(e.target.value)} placeholder="0"
+                        style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 600 }}>Invoice Amount</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>₹{invoiceAmount.toLocaleString('en-IN')}</div>
+                <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', display: 'grid', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
+                    <div>Subtotal</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>₹{subtotalAmount.toLocaleString('en-IN')}</div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
+                    <div>Tax (CGST+SGST+IGST)</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>₹{taxTotal.toLocaleString('en-IN')}</div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                    <div style={{ fontWeight: 700 }}>Grand Total</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>₹{invoiceAmount.toLocaleString('en-IN')}</div>
+                  </div>
                 </div>
               </div>
 

@@ -56,7 +56,7 @@ const columns: ColumnDefinition<Invoice>[] = [
   },
   {
     header: 'Amount',
-    accessor: (invoice) => `₹${invoice.invoice_amount.toLocaleString('en-IN')}`,
+    accessor: (invoice) => `₹${(invoice.invoice_amount ?? ((invoice.room_charges ?? 0) + (invoice.hall_charges ?? 0) + (invoice.food_charges ?? 0) + (invoice.tax_amount ?? 0))).toLocaleString('en-IN')}`,
     priority: 'tablet-desktop',
     mobileLabel: 'Amount',
   },

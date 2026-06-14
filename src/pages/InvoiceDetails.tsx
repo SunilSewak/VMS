@@ -26,8 +26,8 @@ function formatDate(value?: string | null) {
   });
 }
 
-function formatCurrency(amount: number) {
-  return `₹${amount.toLocaleString('en-IN')}`;
+function formatCurrency(amount: number | null | undefined) {
+  return `₹${(amount ?? 0).toLocaleString('en-IN')}`;
 }
 
 const statusBadge = (status: string) => {
@@ -562,35 +562,54 @@ export function InvoiceDetails() {
                 </div>
 
                 <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ display: 'grid', gap: '1rem', fontSize: 'var(--font-sm)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Room Charges</span>
-                      <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.room_charges)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Hall Charges</span>
-                      <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.hall_charges)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Food Charges</span>
-                      <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.food_charges)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Tax Amount</span>
-                      <span style={{ fontWeight: 600 }}>{formatCurrency(invoice.tax_amount)}</span>
-                    </div>
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 700 }}>Total Amount</span>
-                      <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary)' }}>{formatCurrency(invoice.invoice_amount)}</span>
-                    </div>
-                  </div>
+                  {(() => {
+                    const cgst = invoice.cgst_amount;
+                    const sgst = invoice.sgst_amount;
+                    const igst = invoice.igst_amount;
+                    const hasGstSplit = cgst != null || sgst != null || igst != null;
+                    const taxTotal = hasGstSplit
+                      ? (cgst ?? 0) + (sgst ?? 0) + (igst ?? 0)
+                      : (invoice.tax_amount ?? 0);
+                    const subtotal = invoice.subtotal_amount
+                      ?? ((invoice.room_charges ?? 0) + (invoice.hall_charges ?? 0) + (invoice.food_charges ?? 0) + (invoice.other_charges ?? 0));
+                    const grandTotal = invoice.invoice_amount ?? (subtotal + taxTotal);
+
+                    const Row = ({ label, value, strong }: { label: string; value: number | null | undefined; strong?: boolean }) =>
+                      value == null ? null : (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: strong ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: strong ? 700 : 400 }}>{label}</span>
+                          <span style={{ fontWeight: strong ? 700 : 600 }}>{formatCurrency(value)}</span>
+                        </div>
+                      );
+
+                    return (
+                      <div style={{ display: 'grid', gap: '0.85rem', fontSize: 'var(--font-sm)' }}>
+                        <Row label="Room Charges" value={invoice.room_charges} />
+                        <Row label="Food Charges" value={invoice.food_charges} />
+                        <Row label="Hall Charges" value={invoice.hall_charges} />
+                        <Row label="Other Charges" value={invoice.other_charges} />
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem', display: 'grid', gap: '0.85rem' }}>
+                          <Row label="Subtotal" value={subtotal} strong />
+                          <Row label="CGST" value={cgst} />
+                          <Row label="SGST" value={sgst} />
+                          <Row label="IGST" value={igst} />
+                          {!hasGstSplit ? <Row label="Tax Amount" value={invoice.tax_amount} /> : null}
+                        </div>
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontWeight: 700 }}>Grand Total</span>
+                          <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary)' }}>{formatCurrency(grandTotal)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
+
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                   <div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Pax Billed</div>
                     <div style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Users size={16} /> {invoice.pax_billed}
+                      <Users size={16} /> {invoice.pax_billed ?? '—'}
                     </div>
                   </div>
                   {invoice.remarks ? (

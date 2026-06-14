@@ -11,18 +11,24 @@
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS booking_room_inventory (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  booking_id  uuid NOT NULL REFERENCES bookings (id) ON DELETE CASCADE,
-  room_type   text NOT NULL CHECK (room_type IN ('SINGLE','DOUBLE','TRIPLE','QUAD','DORMITORY','SUITE')),
-  room_count  integer NOT NULL DEFAULT 0 CHECK (room_count >= 0),
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  created_by  uuid REFERENCES users (id) ON DELETE SET NULL,
-  updated_at  timestamptz NOT NULL DEFAULT now(),
-  updated_by  uuid REFERENCES users (id) ON DELETE SET NULL,
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id      uuid NOT NULL REFERENCES bookings (id) ON DELETE CASCADE,
+  room_type       text NOT NULL CHECK (room_type IN ('SINGLE','DOUBLE','TRIPLE','QUAD','DORMITORY','SUITE')),
+  room_count      integer NOT NULL DEFAULT 0 CHECK (room_count >= 0),
+  -- GCC (and most hotels) bill room rent PER OCCUPANT PER NIGHT, so the audit
+  -- engine prices on occupancy_count, not room_count.
+  occupancy_count integer NOT NULL DEFAULT 0 CHECK (occupancy_count >= 0),
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  created_by      uuid REFERENCES users (id) ON DELETE SET NULL,
+  updated_at      timestamptz NOT NULL DEFAULT now(),
+  updated_by      uuid REFERENCES users (id) ON DELETE SET NULL,
 
   -- One row per (booking, room_type)
   CONSTRAINT uq_booking_room_inventory UNIQUE (booking_id, room_type)
 );
+
+-- Re-runnable guard (in case the table pre-exists without occupancy_count)
+ALTER TABLE booking_room_inventory ADD COLUMN IF NOT EXISTS occupancy_count integer NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_booking_room_inventory_booking_id
   ON booking_room_inventory (booking_id);
@@ -54,12 +60,12 @@ CREATE POLICY "booking_room_inventory_admin_write"
 -- SUITE are not present in rooming_summary and are left to be entered manually.
 -- Uncomment to run.
 --
--- INSERT INTO booking_room_inventory (booking_id, room_type, room_count)
--- SELECT booking_id, 'SINGLE', single_rooms FROM rooming_summary WHERE COALESCE(single_rooms,0) > 0
+-- INSERT INTO booking_room_inventory (booking_id, room_type, room_count, occupancy_count)
+-- SELECT booking_id, 'SINGLE', single_rooms, single_rooms FROM rooming_summary WHERE COALESCE(single_rooms,0) > 0
 -- ON CONFLICT (booking_id, room_type) DO NOTHING;
--- INSERT INTO booking_room_inventory (booking_id, room_type, room_count)
--- SELECT booking_id, 'DOUBLE', double_rooms FROM rooming_summary WHERE COALESCE(double_rooms,0) > 0
+-- INSERT INTO booking_room_inventory (booking_id, room_type, room_count, occupancy_count)
+-- SELECT booking_id, 'DOUBLE', double_rooms, double_rooms * 2 FROM rooming_summary WHERE COALESCE(double_rooms,0) > 0
 -- ON CONFLICT (booking_id, room_type) DO NOTHING;
--- INSERT INTO booking_room_inventory (booking_id, room_type, room_count)
--- SELECT booking_id, 'TRIPLE', triple_rooms FROM rooming_summary WHERE COALESCE(triple_rooms,0) > 0
+-- INSERT INTO booking_room_inventory (booking_id, room_type, room_count, occupancy_count)
+-- SELECT booking_id, 'TRIPLE', triple_rooms, triple_rooms * 3 FROM rooming_summary WHERE COALESCE(triple_rooms,0) > 0
 -- ON CONFLICT (booking_id, room_type) DO NOTHING;

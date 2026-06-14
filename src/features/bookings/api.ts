@@ -49,7 +49,7 @@ export async function getBookingById(id: string): Promise<Booking> {
         meeting_types ( meeting_type_name ),
         cities ( city_name )
       ),
-      hotels ( hotel_name, city_id, city_name ),
+      hotels ( hotel_name, city_id, cities ( city_name ) ),
       halls ( hall_name )
     `)
     .eq('id', id)
