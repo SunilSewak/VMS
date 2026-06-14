@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTES } from '../routes/routeRegistry';
 
@@ -160,6 +161,12 @@ export function Login() {
           >
             {isLoading ? 'Signing in...' : 'Sign in'}
           </button>
+
+          <div style={{ textAlign: 'right' }}>
+            <Link to={ROUTES.forgotPassword} style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)' }}>
+              Forgot password?
+            </Link>
+          </div>
         </form>
 
         <div style={{ marginTop: 'var(--space-6)', borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)' }}>

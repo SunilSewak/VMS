@@ -9,9 +9,12 @@ interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isPasswordRecovery: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, fullName: string, role: AppRole) => Promise<void>;
   logout: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  completePasswordReset: (newPassword: string) => Promise<void>;
 }
 
 // Type for app user from public.users table with role relationship
@@ -58,6 +61,7 @@ function normalizeRoleCode(roleCode?: string): AppRole {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   // Initialize auth state on mount
   useEffect(() => {
@@ -111,6 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        // Supabase fires PASSWORD_RECOVERY when the recovery link is opened and
+        // the recovery token is exchanged into a temporary session. We must NOT
+        // treat this as a normal login (which would route to /dashboard); instead
+        // flag it so the app routes to /reset-password.
+        if (_event === 'PASSWORD_RECOVERY') {
+          setIsPasswordRecovery(true);
+        }
+
         if (session?.user) {
           const authUser = session.user;
           
@@ -246,8 +258,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Send the recovery email. The link must resolve to /reset-password.
+  const requestPasswordReset = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw new Error(error.message ?? 'Unable to send recovery email');
+  };
+
+  // Complete recovery: set the new password using the active recovery session,
+  // then sign out so the user logs in fresh with the new password.
+  const completePasswordReset = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw new Error(error.message ?? 'Unable to update password');
+    setIsPasswordRecovery(false);
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, isPasswordRecovery, login, signup, logout, requestPasswordReset, completePasswordReset }}>
       {children}
     </AuthContext.Provider>
   );

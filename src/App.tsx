@@ -1,9 +1,11 @@
 import './styles/theme.css';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, ProtectedRoute, useAuth } from './contexts/AuthContext';
 import { DemoProvider } from './contexts/DemoContext';
 import { AppLayout } from './layouts/AppLayout';
 import { Login } from './pages/Login';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 import { SalesHeadHome } from './pages/SalesHeadHome';
 import { MeetingRequests } from './pages/MeetingRequests';
@@ -63,6 +65,23 @@ function RedirectToDashboard() {
   return null;
 }
 
+// Forces a user in a password-recovery session onto /reset-password, so the
+// temporary recovery session is never treated as a normal login (which would
+// otherwise land on /dashboard).
+function RecoveryGuard() {
+  const { isPasswordRecovery } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (isPasswordRecovery && location.pathname !== ROUTES.resetPassword) {
+      navigate(ROUTES.resetPassword, { replace: true });
+    }
+  }, [isPasswordRecovery, location.pathname, navigate]);
+
+  return null;
+}
+
 // Home Router - Shows different content based on role
 function HomeRouter() {
   const { user } = useAuth();
@@ -103,6 +122,12 @@ export default function App() {
             <Routes>
               {/* Public Login Route */}
               <Route path={ROUTES.login} element={<Login />} />
+              <Route path={ROUTES.forgotPassword} element={<ForgotPassword />} />
+              <Route path={ROUTES.resetPassword} element={<ResetPassword />} />
+
+              {/* Recovery guard — redirects anywhere → /reset-password when a
+                  PASSWORD_RECOVERY session is active */}
+              <Route path="*" element={<RecoveryGuard />} />
 
               {/* Redirect root to Dashboard */}
               <Route path="/" element={<RedirectToDashboard />} />

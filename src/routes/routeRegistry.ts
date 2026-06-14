@@ -30,7 +30,9 @@ export const ROUTES = {
   venueImport: "/admin/venue-import",
   venueBulkUpload: "/administration/venue-repository/bulk-upload",
   demoTools: "/admin/demo-tools",
-  login: "/login"
+  login: "/login",
+  forgotPassword: "/forgot-password",
+  resetPassword: "/reset-password"
 } as const;
 
 export type RouteKeys = keyof typeof ROUTES;
