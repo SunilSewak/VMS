@@ -38,33 +38,25 @@ export function VenueImportHistoryPanel({ limit = 10 }: VenueImportHistoryPanelP
   function getStatusIcon(status: string) {
     switch (status) {
       case 'SUCCESS':
-        return <Check className="w-5 h-5 text-green-600" />;
+        return <Check size={20} style={{ color: '#10b981' }} />;
       case 'FAILED':
-        return <AlertCircle className="w-5 h-5 text-red-600" />;
+        return <AlertCircle size={20} style={{ color: '#ef4444' }} />;
       case 'IMPORTING':
-        return <Clock className="w-5 h-5 text-blue-600 animate-spin" />;
+        return <Clock size={20} style={{ color: '#3b82f6', animation: 'spin 2s linear infinite' }} />;
       default:
-        return <Clock className="w-5 h-5 text-gray-400" />;
+        return <Clock size={20} style={{ color: 'var(--text-light)' }} />;
     }
   }
 
-
   function getStatusLabel(status: string) {
     switch (status) {
-      case 'SUCCESS':
-        return 'Completed Successfully';
-      case 'FAILED':
-        return 'Failed';
-      case 'PARTIAL':
-        return 'Partial Success';
-      case 'IMPORTING':
-        return 'Importing...';
-      case 'VALIDATED':
-        return 'Validated';
-      case 'UPLOADED':
-        return 'Uploaded';
-      default:
-        return status;
+      case 'SUCCESS': return 'Completed Successfully';
+      case 'FAILED': return 'Failed';
+      case 'PARTIAL': return 'Partial Success';
+      case 'IMPORTING': return 'Importing...';
+      case 'VALIDATED': return 'Validated';
+      case 'UPLOADED': return 'Uploaded';
+      default: return status;
     }
   }
 
@@ -78,13 +70,11 @@ export function VenueImportHistoryPanel({ limit = 10 }: VenueImportHistoryPanelP
     });
   }
 
-  
-
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-center h-48">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="card" style={{ padding: 'var(--space-6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '12rem' }}>
+          <div style={{ width: '2rem', height: '2rem', border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         </div>
       </div>
     );
@@ -92,13 +82,17 @@ export function VenueImportHistoryPanel({ limit = 10 }: VenueImportHistoryPanelP
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+      <div className="card" style={{ padding: 'var(--space-6)' }}>
+        <div style={{
+          background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
+          borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+            <AlertCircle size={20} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '2px' }} />
             <div>
-              <p className="text-sm font-medium text-red-900">Error</p>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--danger)', margin: 0 }}>Error</p>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--danger)', margin: 'var(--space-1) 0 0' }}>{error}</p>
             </div>
           </div>
         </div>
@@ -107,108 +101,119 @@ export function VenueImportHistoryPanel({ limit = 10 }: VenueImportHistoryPanelP
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <History className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-semibold text-gray-900">Import History</h2>
-          <span className="ml-auto text-sm text-gray-500">Last {limit} imports</span>
+      <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <History size={20} style={{ color: 'var(--text-muted)' }} />
+          <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>Import History</h2>
+          <span style={{ marginLeft: 'auto', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>Last {limit} imports</span>
         </div>
       </div>
 
       {/* History List */}
       {history.length === 0 ? (
-        <div className="p-6 text-center">
-          <History className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No import history available</p>
+        <div style={{ padding: '1.5rem', textAlign: 'center' }}>
+          <History size={48} style={{ color: 'var(--border)', margin: '0 auto var(--space-3)' }} />
+          <p style={{ color: 'var(--text-muted)' }}>No import history available</p>
         </div>
       ) : (
-        <div className="divide-y divide-gray-200">
-          {history.map((item) => (
-            <div
-              key={item.id}
-              className={`p-4 hover:bg-gray-50 transition-colors border-l-4 ${
-                item.status === 'SUCCESS'
-                  ? 'border-l-green-600'
-                  : item.status === 'FAILED'
-                  ? 'border-l-red-600'
-                  : 'border-l-yellow-600'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                {/* Left Side: Status and Details */}
-                <div className="flex items-start gap-3 flex-1">
-                  <div className="mt-1">{getStatusIcon(item.status)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-gray-900 truncate">{item.file_name}</p>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.status === 'SUCCESS'
-                          ? 'bg-green-100 text-green-800'
-                          : item.status === 'FAILED'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {getStatusLabel(item.status)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500 mb-2">
-                      {formatDate(item.uploaded_at)}
-                    </div>
-                    
-                    {/* Stats Row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                      <div className="bg-gray-50 px-2 py-1 rounded">
-                        <p className="text-gray-500">Hotels Created</p>
-                        <p className="font-medium text-gray-900">{item.hotels_created}</p>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {history.map((item, index) => {
+            const borderColor = item.status === 'SUCCESS' ? '#10b981' : item.status === 'FAILED' ? '#ef4444' : '#f59e0b';
+            const badgeBg = item.status === 'SUCCESS' ? '#10b98118' : item.status === 'FAILED' ? '#ef444418' : '#f59e0b18';
+            
+            return (
+              <div
+                key={item.id}
+                style={{
+                  padding: '1rem',
+                  borderBottom: index < history.length - 1 ? '1px solid var(--border)' : 'none',
+                  borderLeft: `4px solid ${borderColor}`,
+                  background: 'var(--surface)',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                  {/* Left Side: Status and Details */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1 }}>
+                    <div style={{ marginTop: '0.25rem' }}>{getStatusIcon(item.status)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                        <p style={{ fontWeight: 600, color: 'var(--text-main)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.file_name}</p>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.625rem',
+                          borderRadius: '999px', fontSize: 'var(--font-xs)', fontWeight: 600,
+                          background: badgeBg, color: borderColor,
+                        }}>
+                          {getStatusLabel(item.status)}
+                        </span>
                       </div>
-                      <div className="bg-gray-50 px-2 py-1 rounded">
-                        <p className="text-gray-500">Hotels Updated</p>
-                        <p className="font-medium text-gray-900">{item.hotels_updated}</p>
+                      <div style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                        {formatDate(item.uploaded_at)}
                       </div>
-                      <div className="bg-gray-50 px-2 py-1 rounded">
-                        <p className="text-gray-500">Halls Created</p>
-                        <p className="font-medium text-gray-900">{item.halls_created}</p>
+                      
+                      {/* Stats Row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem', fontSize: 'var(--font-xs)' }}>
+                        <div style={{ background: 'var(--surface-2)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                          <p style={{ color: 'var(--text-muted)', margin: 0 }}>Hotels Created</p>
+                          <p style={{ fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{item.hotels_created}</p>
+                        </div>
+                        <div style={{ background: 'var(--surface-2)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                          <p style={{ color: 'var(--text-muted)', margin: 0 }}>Hotels Updated</p>
+                          <p style={{ fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{item.hotels_updated}</p>
+                        </div>
+                        <div style={{ background: 'var(--surface-2)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                          <p style={{ color: 'var(--text-muted)', margin: 0 }}>Halls Created</p>
+                          <p style={{ fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{item.halls_created}</p>
+                        </div>
+                        <div style={{ background: 'var(--surface-2)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                          <p style={{ color: 'var(--text-muted)', margin: 0 }}>Records Processed</p>
+                          <p style={{ fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{item.rows_processed}</p>
+                        </div>
                       </div>
-                      <div className="bg-gray-50 px-2 py-1 rounded">
-                        <p className="text-gray-500">Records Processed</p>
-                        <p className="font-medium text-gray-900">{item.rows_processed}</p>
-                      </div>
-                    </div>
 
-                    {/* Failure Summary */}
-                    {item.rows_skipped > 0 && (
-                      <div className="mt-2 text-xs">
-                        <span className="text-red-600 font-medium">{item.rows_skipped} records skipped</span>
-                        <span className="text-gray-500"> (validation errors)</span>
-                      </div>
+                      {/* Failure Summary */}
+                      {item.rows_skipped > 0 && (
+                        <div style={{ marginTop: '0.5rem', fontSize: 'var(--font-xs)' }}>
+                          <span style={{ color: '#ef4444', fontWeight: 600 }}>{item.rows_skipped} records skipped</span>
+                          <span style={{ color: 'var(--text-muted)' }}> (validation errors)</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Side: Quick Actions */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    {item.error_report_path && (
+                      <button
+                        title="Download error report"
+                        style={{
+                          padding: '0.5rem', borderRadius: 'var(--radius-md)',
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#ef444418'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <FileText size={16} style={{ color: '#ef4444' }} />
+                      </button>
                     )}
                   </div>
                 </div>
-
-                {/* Right Side: Quick Actions */}
-                <div className="flex items-center gap-1">
-                  {item.error_report_path && (
-                    <button
-                      title="Download error report"
-                      className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <FileText className="w-4 h-4 text-red-600" />
-                    </button>
-                  )}
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Footer */}
-      <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
+      <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid var(--border)', background: 'var(--surface-2)' }}>
         <button
           onClick={loadHistory}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          style={{ fontSize: 'var(--font-sm)', color: 'var(--primary)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
         >
           Refresh History
         </button>

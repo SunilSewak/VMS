@@ -66,7 +66,6 @@ export function VenueBulkUpload() {
     setLoading(true);
     setError(null);
     try {
-      // Parse Excel file
       const rows = await parseExcelFile(file);
 
       if (rows.length === 0) {
@@ -107,7 +106,6 @@ export function VenueBulkUpload() {
     setError(null);
 
     try {
-      // Parse file again for actual import
       const rows = await parseExcelFile(file);
       
       if (!user?.id) {
@@ -130,161 +128,172 @@ export function VenueBulkUpload() {
   }
 
   // ============================================================================
+  // SHARED STYLES
+  // ============================================================================
+
+  const errorBoxStyle = {
+    background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
+    borderRadius: 'var(--radius-lg)',
+    padding: 'var(--space-4)',
+    marginBottom: 'var(--space-5)',
+  };
+
+  // ============================================================================
   // RENDER: UPLOAD STEP
   // ============================================================================
 
   if (step === 'upload') {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Venue Bulk Upload</h1>
-              <p className="text-gray-600 mt-2">Upload Excel file to import hotels and halls</p>
-            </div>
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-            >
-              <History size={18} />
-              History
-            </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Venue Bulk Upload</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: 'var(--space-2)' }}>Upload Excel file to import hotels and halls</p>
           </div>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+          >
+            <History size={18} />
+            History
+          </button>
+        </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-red-900">Error</p>
-                  <p className="text-sm text-red-700 mt-1">{error}</p>
-                </div>
+        {/* Error Display */}
+        {error && (
+          <div style={errorBoxStyle}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+              <AlertCircle size={20} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--danger)', margin: 0 }}>Error</p>
+                <p style={{ fontSize: 'var(--font-sm)', color: 'var(--danger)', marginTop: 'var(--space-1)', margin: 'var(--space-1) 0 0' }}>{error}</p>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Upload Area */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Step 1: Download Template */}
-              <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Step 1: Download Template</h2>
-                <p className="text-gray-600 mb-4">
-                  Download the Excel template and fill in your venue data. The template includes guidance for each column.
-                </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 'var(--space-5)' }}>
+          {/* Main Upload Area */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+            {/* Step 1: Download Template */}
+            <div className="card" style={{ padding: 'var(--space-5)' }}>
+              <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: 'var(--space-3)' }}>Step 1: Download Template</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)' }}>
+                Download the Excel template and fill in your venue data. The template includes guidance for each column.
+              </p>
+              <button
+                onClick={handleDownloadTemplate}
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+              >
+                <Download size={18} />
+                Download Template
+              </button>
+            </div>
+
+            {/* Step 2: Upload File */}
+            <div className="card" style={{ padding: 'var(--space-5)' }}>
+              <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: 'var(--space-3)' }}>Step 2: Upload File</h2>
+
+              {/* Drag & Drop Zone */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                style={{
+                  border: `2px dashed ${isDragging ? 'var(--primary)' : 'var(--border)'}`,
+                  borderRadius: 'var(--radius-lg)',
+                  padding: 'var(--space-12)',
+                  textAlign: 'center',
+                  transition: 'border-color 0.2s, background 0.2s',
+                  background: isDragging ? 'color-mix(in srgb, var(--primary) 5%, transparent)' : 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  {file ? (
+                    <>
+                      <Check size={48} style={{ color: '#10b981', marginBottom: 'var(--space-3)' }} />
+                      <p style={{ fontSize: 'var(--font-lg)', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{file.name}</p>
+                      <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <FileUp size={48} style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-3)', opacity: 0.5 }} />
+                      <p style={{ fontSize: 'var(--font-lg)', fontWeight: 600, color: 'var(--text-main)', margin: '0 0 var(--space-1)' }}>
+                        Drag and drop your Excel file here
+                      </p>
+                      <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0 }}>or click to select</p>
+                    </>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                  id="file-input"
+                />
+              </div>
+
+              <label htmlFor="file-input" style={{ display: 'block', marginTop: 'var(--space-3)' }}>
+                <button className="btn btn-secondary" style={{ width: '100%' }}>
+                  Select File
+                </button>
+              </label>
+            </div>
+
+            {/* Step 3: Review & Import */}
+            {file && (
+              <div className="card" style={{ padding: 'var(--space-5)' }}>
+                <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: 'var(--space-3)' }}>Step 3: Review & Import</h2>
                 <button
-                  onClick={handleDownloadTemplate}
-                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  onClick={handleGeneratePreview}
+                  disabled={loading}
+                  className="btn btn-primary"
+                  style={{ width: '100%', background: loading ? 'var(--text-muted)' : '#10b981' }}
                 >
-                  <Download size={18} />
-                  Download Template
+                  {loading ? 'Analyzing...' : 'Analyze & Preview'}
                 </button>
               </div>
+            )}
+          </div>
 
-              {/* Step 2: Upload File */}
-              <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Step 2: Upload File</h2>
-
-                {/* Drag & Drop Zone */}
-                <div
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                    isDragging
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 bg-white'
-                  }`}
-                >
-                  <div className="flex flex-col items-center">
-                    {file ? (
-                      <>
-                        <Check className="w-12 h-12 text-green-600 mb-4" />
-                        <p className="text-lg font-medium text-gray-900">{file.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <FileUp className="w-12 h-12 text-gray-400 mb-4" />
-                        <p className="text-lg font-medium text-gray-900 mb-1">
-                          Drag and drop your Excel file here
-                        </p>
-                        <p className="text-sm text-gray-500">or click to select</p>
-                      </>
-                    )}
-                  </div>
-
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    id="file-input"
-                  />
-                </div>
-
-                <label htmlFor="file-input" className="mt-4 block">
-                  <button className="w-full px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium">
-                    Select File
-                  </button>
-                </label>
-              </div>
-
-              {/* Step 3: Review & Import */}
-              {file && (
-                <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Step 3: Review & Import</h2>
-                  <button
-                    onClick={handleGeneratePreview}
-                    disabled={loading}
-                    className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:bg-gray-400"
-                  >
-                    {loading ? 'Analyzing...' : 'Analyze & Preview'}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Sidebar: Guidelines */}
-            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 h-fit">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Guidelines</h3>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex gap-2">
-                  <span className="text-blue-600 font-bold">•</span>
-                  <span>Download template first</span>
+          {/* Sidebar: Guidelines */}
+          <div className="card" style={{ padding: 'var(--space-5)', height: 'fit-content' }}>
+            <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: 'var(--space-4)' }}>Guidelines</h3>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {[
+                'Download template first',
+                'Fill hotel and hall data',
+                'Excel format only (.xlsx)',
+                'Max file size: 25 MB',
+                'All required fields must be filled',
+                'Review validation before importing',
+              ].map((text, i) => (
+                <li key={i} style={{ display: 'flex', gap: '0.5rem', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
+                  <span style={{ color: 'var(--primary)', fontWeight: 700 }}>•</span>
+                  <span>{text}</span>
                 </li>
-                <li className="flex gap-2">
-                  <span className="text-blue-600 font-bold">•</span>
-                  <span>Fill hotel and hall data</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-blue-600 font-bold">•</span>
-                  <span>Excel format only (.xlsx)</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-blue-600 font-bold">•</span>
-                  <span>Max file size: 25 MB</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-blue-600 font-bold">•</span>
-                  <span>All required fields must be filled</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-blue-600 font-bold">•</span>
-                  <span>Review validation before importing</span>
-                </li>
-              </ul>
+              ))}
+            </ul>
 
-              {/* Info Box */}
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-900 font-medium">
-                  ℹ️ Duplicate hotels (same name + city) will be updated, not created.
-                </p>
-              </div>
+            {/* Info Box */}
+            <div style={{
+              marginTop: 'var(--space-5)', padding: 'var(--space-4)',
+              background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+            }}>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--primary)', fontWeight: 600, margin: 0 }}>
+                ℹ️ Duplicate hotels (same name + city) will be updated, not created.
+              </p>
             </div>
           </div>
         </div>
@@ -300,137 +309,127 @@ export function VenueBulkUpload() {
     const hasErrors = previewData.errors.filter((e) => e.severity === 'ERROR').length > 0;
 
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-3xl font-bold text-gray-900">Import Preview</h1>
-              <button
-                onClick={() => {
-                  setStep('upload');
-                  setError(null);
-                }}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
-              >
-                Back
-              </button>
-            </div>
-            <p className="text-gray-600">Review the validation results before confirming the import</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        {/* Header */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
+            <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Import Preview</h1>
+            <button
+              onClick={() => { setStep('upload'); setError(null); }}
+              className="btn btn-secondary"
+            >
+              Back
+            </button>
           </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Review the validation results before confirming the import</p>
+        </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-red-900">Error</p>
-                  <p className="text-sm text-red-700 mt-1">{error}</p>
-                </div>
+        {/* Error Display */}
+        {error && (
+          <div style={errorBoxStyle}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+              <AlertCircle size={20} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--danger)', margin: 0 }}>Error</p>
+                <p style={{ fontSize: 'var(--font-sm)', color: 'var(--danger)', margin: 'var(--space-1) 0 0' }}>{error}</p>
               </div>
             </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-            {/* Summary Cards */}
-            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-              <p className="text-sm text-gray-600">Valid Rows</p>
-              <p className="text-2xl font-bold text-green-600">{previewData.validRows}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-              <p className="text-sm text-gray-600">Invalid Rows</p>
-              <p className="text-2xl font-bold text-red-600">{previewData.invalidRows}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-              <p className="text-sm text-gray-600">Hotels</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {previewData.hotelsSummary.toCreate + previewData.hotelsSummary.toUpdate}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {previewData.hotelsSummary.toCreate} new, {previewData.hotelsSummary.toUpdate} update
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-              <p className="text-sm text-gray-600">Halls</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {previewData.hallsSummary.toCreate + previewData.hallsSummary.toUpdate}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {previewData.hallsSummary.toCreate} new, {previewData.hallsSummary.toUpdate} update
-              </p>
-            </div>
           </div>
+        )}
 
-          {/* Validation Messages */}
-          {hasErrors && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
-              <div className="flex items-start gap-4">
-                <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="text-lg font-semibold text-red-900 mb-2">Validation Errors</h3>
-                  <p className="text-red-700 text-sm mb-4">
-                    Fix the following errors before importing:
-                  </p>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {previewData.errors
-                      .filter((e) => e.severity === 'ERROR')
-                      .slice(0, 10)
-                      .map((error, idx) => (
-                        <div key={idx} className="text-sm text-red-700 font-mono bg-white p-2 rounded">
-                          Row {error.row}: {error.field} - {error.error}
-                        </div>
-                      ))}
-                    {previewData.errors.filter((e) => e.severity === 'ERROR').length > 10 && (
-                      <p className="text-sm text-red-700 italic">
-                        And {previewData.errors.filter((e) => e.severity === 'ERROR').length - 10} more errors...
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-4)' }}>
+          {[
+            { label: 'Valid Rows', value: previewData.validRows, color: '#10b981' },
+            { label: 'Invalid Rows', value: previewData.invalidRows, color: '#ef4444' },
+            { label: 'Hotels', value: previewData.hotelsSummary.toCreate + previewData.hotelsSummary.toUpdate, color: '#3b82f6', sub: `${previewData.hotelsSummary.toCreate} new, ${previewData.hotelsSummary.toUpdate} update` },
+            { label: 'Halls', value: previewData.hallsSummary.toCreate + previewData.hallsSummary.toUpdate, color: '#8b5cf6', sub: `${previewData.hallsSummary.toCreate} new, ${previewData.hallsSummary.toUpdate} update` },
+          ].map((card) => (
+            <div key={card.label} className="card" style={{ padding: 'var(--space-4)' }}>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0 }}>{card.label}</p>
+              <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: card.color, margin: 'var(--space-1) 0 0' }}>{card.value}</p>
+              {card.sub && <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>{card.sub}</p>}
             </div>
-          )}
+          ))}
+        </div>
 
-          {/* Warnings */}
-          {previewData.errors.filter((e) => e.severity === 'WARNING').length > 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-              <h3 className="text-lg font-semibold text-yellow-900 mb-2">Warnings</h3>
-              <p className="text-yellow-700 text-sm mb-4">
-                These warnings won't block the import but should be reviewed:
-              </p>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {previewData.errors
-                  .filter((e) => e.severity === 'WARNING')
-                  .slice(0, 5)
-                  .map((error, idx) => (
-                    <p key={idx} className="text-sm text-yellow-700">
-                      Row {error.row}: {error.field} - {error.error}
+        {/* Validation Messages */}
+        {hasErrors && (
+          <div style={{
+            background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
+            borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-4)' }}>
+              <AlertCircle size={24} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: 'var(--danger)', marginBottom: 'var(--space-2)' }}>Validation Errors</h3>
+                <p style={{ color: 'var(--danger)', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-3)' }}>
+                  Fix the following errors before importing:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxHeight: '16rem', overflowY: 'auto' }}>
+                  {previewData.errors
+                    .filter((e) => e.severity === 'ERROR')
+                    .slice(0, 10)
+                    .map((error, idx) => (
+                      <div key={idx} style={{ fontSize: 'var(--font-sm)', color: 'var(--danger)', fontFamily: 'monospace', background: 'var(--surface)', padding: '0.5rem', borderRadius: 'var(--radius-md)' }}>
+                        Row {error.row}: {error.field} - {error.error}
+                      </div>
+                    ))}
+                  {previewData.errors.filter((e) => e.severity === 'ERROR').length > 10 && (
+                    <p style={{ fontSize: 'var(--font-sm)', color: 'var(--danger)', fontStyle: 'italic' }}>
+                      And {previewData.errors.filter((e) => e.severity === 'ERROR').length - 10} more errors...
                     </p>
-                  ))}
+                  )}
+                </div>
               </div>
             </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <button
-              onClick={() => {
-                setStep('upload');
-                setError(null);
-              }}
-              className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleExecuteImport}
-              disabled={loading || hasErrors}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:bg-gray-400"
-            >
-              {loading ? 'Importing...' : 'Confirm Import'}
-            </button>
           </div>
+        )}
+
+        {/* Warnings */}
+        {previewData.errors.filter((e) => e.severity === 'WARNING').length > 0 && (
+          <div style={{
+            background: '#f59e0b10', border: '1px solid #f59e0b30',
+            borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+          }}>
+            <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: '#92400e', marginBottom: 'var(--space-2)' }}>Warnings</h3>
+            <p style={{ color: '#a16207', fontSize: 'var(--font-sm)', marginBottom: 'var(--space-3)' }}>
+              These warnings won't block the import but should be reviewed:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: '12rem', overflowY: 'auto' }}>
+              {previewData.errors
+                .filter((e) => e.severity === 'WARNING')
+                .slice(0, 5)
+                .map((error, idx) => (
+                  <p key={idx} style={{ fontSize: 'var(--font-sm)', color: '#a16207', margin: 0 }}>
+                    Row {error.row}: {error.field} - {error.error}
+                  </p>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+          <button
+            onClick={() => { setStep('upload'); setError(null); }}
+            className="btn btn-secondary"
+            style={{ padding: '0.85rem 1.5rem' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleExecuteImport}
+            disabled={loading || hasErrors}
+            className="btn btn-primary"
+            style={{
+              padding: '0.85rem 1.5rem',
+              background: (loading || hasErrors) ? 'var(--text-muted)' : '#10b981',
+              cursor: (loading || hasErrors) ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {loading ? 'Importing...' : 'Confirm Import'}
+          </button>
         </div>
       </div>
     );
@@ -442,11 +441,11 @@ export function VenueBulkUpload() {
 
   if (step === 'importing') {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-lg p-12 text-center max-w-md">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Importing Data</h2>
-          <p className="text-gray-600">Processing your venue data. Please wait...</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-16)' }}>
+        <div className="card" style={{ padding: 'var(--space-12)', textAlign: 'center', maxWidth: '28rem' }}>
+          <div style={{ width: '4rem', height: '4rem', border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto var(--space-5)' }} />
+          <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--text-main)', marginBottom: 'var(--space-2)' }}>Importing Data</h2>
+          <p style={{ color: 'var(--text-muted)' }}>Processing your venue data. Please wait...</p>
         </div>
       </div>
     );
@@ -457,80 +456,75 @@ export function VenueBulkUpload() {
   // ============================================================================
 
   if (step === 'complete' && importResult) {
-    const statusColor = importResult.success ? 'green' : 'red';
+    const statusColor = importResult.success ? '#10b981' : '#ef4444';
 
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className={`flex justify-center mb-6`}>
-              {importResult.success ? (
-                <Check className={`w-16 h-16 text-${statusColor}-600`} />
-              ) : (
-                <AlertCircle className={`w-16 h-16 text-${statusColor}-600`} />
-              )}
-            </div>
-            <h1 className={`text-3xl font-bold text-${statusColor}-900`}>
-              {importResult.success ? 'Import Successful!' : 'Import Failed'}
-            </h1>
-          </div>
-
-          {/* Summary */}
-          <div className="bg-white rounded-lg shadow-sm p-8 border border-gray-200 mb-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Hotels Created</p>
-                <p className="text-2xl font-bold text-gray-900">{importResult.hotelCreated}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Hotels Updated</p>
-                <p className="text-2xl font-bold text-gray-900">{importResult.hotelUpdated}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Halls Created</p>
-                <p className="text-2xl font-bold text-gray-900">{importResult.hallCreated}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Halls Updated</p>
-                <p className="text-2xl font-bold text-gray-900">{importResult.hallUpdated}</p>
-              </div>
-            </div>
-
-            {importResult.rowsSkipped > 0 && (
-              <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600">Rows Skipped (errors)</p>
-                <p className="text-lg font-semibold text-red-600">{importResult.rowsSkipped}</p>
-              </div>
-            )}
-
-            {importResult.importSessionId && (
-              <div className="pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500">Session ID: {importResult.importSessionId}</p>
-              </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', maxWidth: '40rem', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-5)' }}>
+            {importResult.success ? (
+              <Check size={64} style={{ color: statusColor }} />
+            ) : (
+              <AlertCircle size={64} style={{ color: statusColor }} />
             )}
           </div>
+          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: statusColor }}>
+            {importResult.success ? 'Import Successful!' : 'Import Failed'}
+          </h1>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <button
-              onClick={() => {
-                setStep('upload');
-                setFile(null);
-                setPreviewData(null);
-                setImportResult(null);
-              }}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-            >
-              Import Another File
-            </button>
-            <button
-              onClick={() => (window.location.href = '/administration/masters/venues')}
-              className="flex-1 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
-            >
-              View Venues
-            </button>
+        {/* Summary */}
+        <div className="card" style={{ padding: 'var(--space-6)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-4)' }}>
+            {[
+              { label: 'Hotels Created', value: importResult.hotelCreated },
+              { label: 'Hotels Updated', value: importResult.hotelUpdated },
+              { label: 'Halls Created', value: importResult.hallCreated },
+              { label: 'Halls Updated', value: importResult.hallUpdated },
+            ].map((item) => (
+              <div key={item.label}>
+                <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0 }}>{item.label}</p>
+                <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>{item.value}</p>
+              </div>
+            ))}
           </div>
+
+          {importResult.rowsSkipped > 0 && (
+            <div style={{ paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)', marginTop: 'var(--space-4)' }}>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0 }}>Rows Skipped (errors)</p>
+              <p style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: '#ef4444', margin: 0 }}>{importResult.rowsSkipped}</p>
+            </div>
+          )}
+
+          {importResult.importSessionId && (
+            <div style={{ paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)', marginTop: 'var(--space-4)' }}>
+              <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 0 }}>Session ID: {importResult.importSessionId}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+          <button
+            onClick={() => {
+              setStep('upload');
+              setFile(null);
+              setPreviewData(null);
+              setImportResult(null);
+            }}
+            className="btn btn-primary"
+            style={{ flex: 1 }}
+          >
+            Import Another File
+          </button>
+          <button
+            onClick={() => (window.location.href = '/administration/masters/venues')}
+            className="btn btn-secondary"
+            style={{ flex: 1 }}
+          >
+            View Venues
+          </button>
         </div>
       </div>
     );

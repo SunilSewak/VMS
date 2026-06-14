@@ -26,93 +26,104 @@ export function VenueUploadCenter() {
   const [currentStep, setCurrentStep] = useState<UploadStep>('overview');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'fadeIn 0.3s ease' }}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center gap-4 mb-6">
-            <button
-              onClick={() => navigate('/administration/masters/venues')}
-              className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition-colors"
-              title="Back to venues"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Venue Bulk Upload Center</h1>
-              <p className="text-gray-600 mt-1">Manage venue repository onboarding at scale</p>
-            </div>
-          </div>
-
-          {/* Step Indicator */}
-          <div className="flex items-center justify-between">
-            {STEPS.map((step, idx) => (
-              <div key={step.id} className="flex items-center flex-1">
-                <button
-                  onClick={() => setCurrentStep(step.id)}
-                  className={`flex flex-col items-center gap-2 flex-1 p-3 rounded-lg transition-colors ${
-                    currentStep === step.id
-                      ? 'bg-blue-50 border-2 border-blue-600'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    currentStep === step.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {idx + 1}
-                  </div>
-                  <div className="text-center">
-                    <p className={`text-xs font-medium ${
-                      currentStep === step.id ? 'text-blue-600' : 'text-gray-600'
-                    }`}>
-                      {step.label}
-                    </p>
-                    <p className="text-xs text-gray-500">{step.description}</p>
-                  </div>
-                </button>
-                {idx < STEPS.length - 1 && (
-                  <div className="flex-1 h-1 bg-gray-200 mx-2"></div>
-                )}
-              </div>
-            ))}
-          </div>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+          <button
+            onClick={() => navigate('/administration/masters/venues')}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: '0.5rem', borderRadius: 'var(--radius-md)',
+              color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
+            }}
+            title="Back to venues"
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+            Venue Bulk Upload Center
+          </h1>
         </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginLeft: '3rem' }}>
+          Manage venue repository onboarding at scale
+        </p>
+      </div>
+
+      {/* Step Indicator */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {STEPS.map((step, idx) => (
+          <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+            <button
+              onClick={() => setCurrentStep(step.id)}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                flex: 1, padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)',
+                cursor: 'pointer', transition: 'background 0.2s',
+                border: currentStep === step.id ? '2px solid var(--primary)' : '2px solid transparent',
+                background: currentStep === step.id
+                  ? 'color-mix(in srgb, var(--primary) 8%, transparent)'
+                  : 'transparent',
+              }}
+            >
+              <div style={{
+                width: '2rem', height: '2rem', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 'var(--font-sm)', fontWeight: 600,
+                background: currentStep === step.id ? 'var(--primary)' : 'var(--surface-2)',
+                color: currentStep === step.id ? 'white' : 'var(--text-muted)',
+              }}>
+                {idx + 1}
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{
+                  fontSize: 'var(--font-xs)', fontWeight: 600, margin: 0,
+                  color: currentStep === step.id ? 'var(--primary)' : 'var(--text-muted)',
+                }}>
+                  {step.label}
+                </p>
+                <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: '2px 0 0' }}>{step.description}</p>
+              </div>
+            </button>
+            {idx < STEPS.length - 1 && (
+              <div style={{ flex: 1, height: '2px', background: 'var(--border)', margin: '0 0.5rem' }} />
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div>
         {/* Overview Step */}
         {currentStep === 'overview' && (
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-4)' }}>
+              <div className="card" style={{ padding: 'var(--space-5)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Getting Started</p>
-                    <p className="text-2xl font-bold text-gray-900">5 Sheets</p>
+                    <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-1)' }}>Getting Started</p>
+                    <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>5 Sheets</p>
                   </div>
-                  <Upload className="w-12 h-12 text-blue-100" />
+                  <Upload size={48} style={{ color: 'color-mix(in srgb, var(--primary) 20%, transparent)' }} />
                 </div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between">
+              <div className="card" style={{ padding: 'var(--space-5)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Master Workbook</p>
-                    <p className="text-2xl font-bold text-gray-900">All-in-One</p>
+                    <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-1)' }}>Master Workbook</p>
+                    <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>All-in-One</p>
                   </div>
-                  <CheckCircle2 className="w-12 h-12 text-green-100" />
+                  <CheckCircle2 size={48} style={{ color: '#10b98130' }} />
                 </div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between">
+              <div className="card" style={{ padding: 'var(--space-5)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Validation</p>
-                    <p className="text-2xl font-bold text-gray-900">Instant</p>
+                    <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-1)' }}>Validation</p>
+                    <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Instant</p>
                   </div>
-                  <AlertCircle className="w-12 h-12 text-yellow-100" />
+                  <AlertCircle size={48} style={{ color: '#f59e0b30' }} />
                 </div>
               </div>
             </div>
@@ -125,50 +136,55 @@ export function VenueUploadCenter() {
             />
 
             {/* Quick Guide */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Guide</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="card" style={{ padding: 'var(--space-5)' }}>
+              <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: 'var(--space-4)' }}>Quick Guide</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--space-5)' }}>
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-3">Step 1: Prepare Data</h3>
-                  <ol className="space-y-2 text-sm text-gray-600">
-                    <li>1. Download the master template</li>
-                    <li>2. Fill in hotel and hall details</li>
-                    <li>3. Add accommodation inventory</li>
-                    <li>4. Configure occupancy rules</li>
-                    <li>5. (Optional) Add photo references</li>
+                  <h3 style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 'var(--space-3)', fontSize: 'var(--font-sm)' }}>Step 1: Prepare Data</h3>
+                  <ol style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', paddingLeft: '1.25rem', margin: 0 }}>
+                    <li>Download the master template</li>
+                    <li>Fill in hotel and hall details</li>
+                    <li>Add accommodation inventory</li>
+                    <li>Configure occupancy rules</li>
+                    <li>(Optional) Add photo references</li>
                   </ol>
                 </div>
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-3">Step 2: Upload & Validate</h3>
-                  <ol className="space-y-2 text-sm text-gray-600">
-                    <li>1. Upload the completed workbook</li>
-                    <li>2. System validates all data</li>
-                    <li>3. Review validation results</li>
-                    <li>4. Fix any errors if needed</li>
-                    <li>5. Confirm and import</li>
+                  <h3 style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 'var(--space-3)', fontSize: 'var(--font-sm)' }}>Step 2: Upload & Validate</h3>
+                  <ol style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', paddingLeft: '1.25rem', margin: 0 }}>
+                    <li>Upload the completed workbook</li>
+                    <li>System validates all data</li>
+                    <li>Review validation results</li>
+                    <li>Fix any errors if needed</li>
+                    <li>Confirm and import</li>
                   </ol>
                 </div>
               </div>
             </div>
 
             {/* Validation Rules */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <h3 className="font-medium text-blue-900 mb-3">Key Validation Rules</h3>
-              <ul className="space-y-2 text-sm text-blue-800">
-                <li>✓ Hotel name + City combination must be unique</li>
-                <li>✓ City names must exist in the master list</li>
-                <li>✓ All halls must reference an existing hotel</li>
-                <li>✓ Accommodation inventory must reference an existing hotel</li>
-                <li>✓ Occupancy rules must reference an existing hotel</li>
-                <li>✓ Email and phone formats are validated</li>
-                <li>✓ Duplicate entries will be updated, not created</li>
+            <div style={{
+              background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+              borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+            }}>
+              <h3 style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 'var(--space-3)', fontSize: 'var(--font-sm)' }}>Key Validation Rules</h3>
+              <ul style={{ fontSize: 'var(--font-sm)', color: 'var(--primary)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', paddingLeft: '1.25rem', margin: 0 }}>
+                <li>Hotel name + City combination must be unique</li>
+                <li>City names must exist in the master list</li>
+                <li>All halls must reference an existing hotel</li>
+                <li>Accommodation inventory must reference an existing hotel</li>
+                <li>Occupancy rules must reference an existing hotel</li>
+                <li>Email and phone formats are validated</li>
+                <li>Duplicate entries will be updated, not created</li>
               </ul>
             </div>
 
             {/* Call to Action */}
             <button
               onClick={() => setCurrentStep('upload')}
-              className="w-full px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-lg transition-colors"
+              className="btn btn-primary"
+              style={{ width: '100%', padding: '1rem', fontSize: 'var(--font-lg)' }}
             >
               Ready? Start Upload →
             </button>

@@ -32,23 +32,23 @@ export function BulkImportTab({ onRefresh }: BulkImportTabProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Bulk Import</h2>
-        <p className="text-gray-600 text-sm mt-1">Upload venue data from multi-sheet workbook</p>
+        <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Bulk Import</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: 'var(--space-1)' }}>Upload venue data from multi-sheet workbook</p>
       </div>
 
       {/* Upload Area */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <label className="flex flex-col items-center justify-center cursor-pointer">
-          <div className="flex flex-col items-center gap-3">
-            <Upload className="w-12 h-12 text-blue-600" />
-            <div className="text-center">
-              <p className="text-lg font-medium text-gray-900">
+      <div className="card" style={{ padding: 'var(--space-8)' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <Upload size={48} style={{ color: 'var(--primary)' }} />
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: 'var(--font-lg)', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>
                 Drop workbook here or click to upload
               </p>
-              <p className="text-sm text-gray-600 mt-1">
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
                 Excel workbook with 6 sheets (Hotel Master, Hall Master, etc.)
               </p>
             </div>
@@ -58,18 +58,23 @@ export function BulkImportTab({ onRefresh }: BulkImportTabProps) {
             accept=".xlsx,.xls"
             onChange={handleFileUpload}
             disabled={uploading}
-            className="hidden"
+            style={{ display: 'none' }}
           />
         </label>
       </div>
 
       {/* Requirements */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+      <div style={{
+        background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+        borderRadius: 'var(--radius-lg)',
+        padding: 'var(--space-4)',
+      }}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <AlertCircle size={20} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
           <div>
-            <h3 className="font-medium text-blue-900">Required Workbook Structure</h3>
-            <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
+            <h3 style={{ fontWeight: 600, color: 'var(--text-main)', margin: '0 0 var(--space-2) 0', fontSize: 'var(--font-sm)' }}>Required Workbook Structure</h3>
+            <ul style={{ fontSize: 'var(--font-sm)', color: 'var(--primary)', margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
               <li>Sheet 1: Hotel Master (20+ fields)</li>
               <li>Sheet 2: Hall Master (12+ fields)</li>
               <li>Sheet 3: Occupancy Matrix (4 fields)</li>

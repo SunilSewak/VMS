@@ -19,6 +19,20 @@ interface QualityMetrics {
   };
 }
 
+const metricCardStyle = {
+  background: 'var(--surface)',
+  borderRadius: 'var(--radius-lg)',
+  border: '1px solid var(--border)',
+  padding: 'var(--space-5)',
+};
+
+const smallCardStyle = {
+  background: 'var(--surface)',
+  borderRadius: 'var(--radius-lg)',
+  border: '1px solid var(--border)',
+  padding: 'var(--space-4)',
+};
+
 export function DataQualityDashboard() {
   const [metrics, setMetrics] = useState<QualityMetrics | null>(null);
   const [insights, setInsights] = useState<any[]>([]);
@@ -48,9 +62,9 @@ export function DataQualityDashboard() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-center h-48">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="card" style={{ padding: 'var(--space-5)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '12rem' }}>
+          <div style={{ width: '2rem', height: '2rem', border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         </div>
       </div>
     );
@@ -58,13 +72,17 @@ export function DataQualityDashboard() {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+      <div className="card" style={{ padding: 'var(--space-5)' }}>
+        <div style={{
+          background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
+          borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+            <AlertCircle size={20} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '2px' }} />
             <div>
-              <p className="text-sm font-medium text-red-900">Error</p>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--danger)', margin: 0 }}>Error</p>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--danger)', margin: 'var(--space-1) 0 0' }}>{error}</p>
             </div>
           </div>
         </div>
@@ -74,8 +92,8 @@ export function DataQualityDashboard() {
 
   if (!metrics) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <p className="text-center text-gray-500">No data available</p>
+      <div className="card" style={{ padding: 'var(--space-5)' }}>
+        <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No data available</p>
       </div>
     );
   }
@@ -88,192 +106,106 @@ export function DataQualityDashboard() {
     : 0;
   const notReadyPercentage = 100 - readyPercentage - partialPercentage;
 
+  const readinessCards = [
+    { label: 'Venue Ready', value: metrics.readinessDistribution.ready, pct: readyPercentage, color: '#10b981', icon: <CheckCircle2 size={20} /> },
+    { label: 'Partially Ready', value: metrics.readinessDistribution.partial, pct: partialPercentage, color: '#f59e0b', icon: <AlertTriangle size={20} /> },
+    { label: 'Not Ready', value: metrics.readinessDistribution.notReady, pct: notReadyPercentage, color: '#ef4444', icon: <AlertCircle size={20} /> },
+  ];
+
+  const missingCards = [
+    { label: 'Hotels Missing Halls', value: metrics.hotelsMissingHalls, color: '#ef4444' },
+    { label: 'Missing Accommodation', value: metrics.hotelsMissingAccommodation, color: '#ef4444' },
+    { label: 'Missing Occupancy Rules', value: metrics.hotelsMissingOccupancy, color: '#ef4444' },
+    { label: 'Missing Photos', value: metrics.hotelsMissingPhotos, color: '#f59e0b' },
+    { label: 'Not Venue Ready', value: metrics.hotelsNotVenueReady, color: '#ef4444', sub: 'Missing critical components' },
+  ];
+
+  const photoCards = [
+    { label: 'Hotels With Photos', value: metrics.hotelsWithPhotos, color: '#10b981' },
+    { label: 'Total Photos', value: metrics.totalPhotos, color: '#3b82f6', sub: 'Across all hotels' },
+    { label: 'Photo Completion', value: `${metrics.photoCompletionPercentage}%`, color: 'var(--text-main)', sub: 'Hotels with at least one photo' },
+    { label: 'Hotels Missing Photos', value: metrics.hotelsMissingPhotos, color: '#f59e0b' },
+  ];
+
+  const insightDotColor = (type: string) =>
+    type === 'CRITICAL' ? '#ef4444' : type === 'WARNING' ? '#f59e0b' : type === 'INFO' ? '#3b82f6' : '#10b981';
+
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <BarChart3 className="w-6 h-6 text-gray-600" />
-        <h2 className="text-2xl font-bold text-gray-900">Data Quality Dashboard</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <BarChart3 size={24} style={{ color: 'var(--text-muted)' }} />
+        <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Data Quality Dashboard</h2>
       </div>
 
       {/* Overall Readiness */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-gray-600">Venue Ready</span>
-            <CheckCircle2 className="w-5 h-5 text-green-600" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)' }}>
+        {readinessCards.map(card => (
+          <div key={card.label} style={metricCardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-muted)' }}>{card.label}</span>
+              <span style={{ color: card.color }}>{card.icon}</span>
+            </div>
+            <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: card.color, marginBottom: '0.25rem' }}>
+              {card.value}
+            </div>
+            <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0 }}>
+              {card.pct}% of {metrics.totalHotels} hotels
+            </p>
+            <div style={{ marginTop: 'var(--space-3)', width: '100%', background: 'var(--surface-2)', borderRadius: '999px', height: '0.5rem' }}>
+              <div style={{ background: card.color, height: '0.5rem', borderRadius: '999px', width: `${card.pct}%`, transition: 'width 0.5s' }} />
+            </div>
           </div>
-          <div className="text-3xl font-bold text-green-600 mb-1">
-            {metrics.readinessDistribution.ready}
-          </div>
-          <p className="text-sm text-gray-500">
-            {readyPercentage}% of {metrics.totalHotels} hotels
-          </p>
-          <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-green-600 h-2 rounded-full"
-              style={{ width: `${readyPercentage}%` }}
-            ></div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-gray-600">Partially Ready</span>
-            <AlertTriangle className="w-5 h-5 text-yellow-600" />
-          </div>
-          <div className="text-3xl font-bold text-yellow-600 mb-1">
-            {metrics.readinessDistribution.partial}
-          </div>
-          <p className="text-sm text-gray-500">
-            {partialPercentage}% of {metrics.totalHotels} hotels
-          </p>
-          <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-yellow-600 h-2 rounded-full"
-              style={{ width: `${partialPercentage}%` }}
-            ></div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-gray-600">Not Ready</span>
-            <AlertCircle className="w-5 h-5 text-red-600" />
-          </div>
-          <div className="text-3xl font-bold text-red-600 mb-1">
-            {metrics.readinessDistribution.notReady}
-          </div>
-          <p className="text-sm text-gray-500">
-            {notReadyPercentage}% of {metrics.totalHotels} hotels
-          </p>
-          <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-red-600 h-2 rounded-full"
-              style={{ width: `${notReadyPercentage}%` }}
-            ></div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Missing Components */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-600 mb-1">Hotels Missing Halls</p>
-          <p className="text-2xl font-bold text-red-600">
-            {metrics.hotelsMissingHalls}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            {Math.round((metrics.hotelsMissingHalls / metrics.totalHotels) * 100)}% of total
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-600 mb-1">Missing Accommodation</p>
-          <p className="text-2xl font-bold text-red-600">
-            {metrics.hotelsMissingAccommodation}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            {Math.round((metrics.hotelsMissingAccommodation / metrics.totalHotels) * 100)}% of total
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-600 mb-1">Missing Occupancy Rules</p>
-          <p className="text-2xl font-bold text-red-600">
-            {metrics.hotelsMissingOccupancy}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            {Math.round((metrics.hotelsMissingOccupancy / metrics.totalHotels) * 100)}% of total
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-600 mb-1">Missing Photos</p>
-          <p className="text-2xl font-bold text-yellow-600">
-            {metrics.hotelsMissingPhotos}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            {Math.round((metrics.hotelsMissingPhotos / metrics.totalHotels) * 100)}% of total
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-600 mb-1">Not Venue Ready</p>
-          <p className="text-2xl font-bold text-red-600">
-            {metrics.hotelsNotVenueReady}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            Missing critical components
-          </p>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-4)' }}>
+        {missingCards.map(card => (
+          <div key={card.label} style={smallCardStyle}>
+            <p style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--text-muted)', margin: '0 0 var(--space-1)' }}>{card.label}</p>
+            <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: card.color, margin: 0 }}>{card.value}</p>
+            <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 'var(--space-2) 0 0' }}>
+              {card.sub ?? `${metrics.totalHotels > 0 ? Math.round((card.value / metrics.totalHotels) * 100) : 0}% of total`}
+            </p>
+          </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-600 mb-1">Hotels With Photos</p>
-          <p className="text-2xl font-bold text-emerald-600">
-            {metrics.hotelsWithPhotos}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            {Math.round((metrics.hotelsWithPhotos / metrics.totalHotels) * 100)}% of total
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-600 mb-1">Total Photos</p>
-          <p className="text-2xl font-bold text-blue-600">
-            {metrics.totalPhotos}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            Across all hotels
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-600 mb-1">Photo Completion</p>
-          <p className="text-2xl font-bold text-slate-900">
-            {metrics.photoCompletionPercentage}%
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            Hotels with at least one photo
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-600 mb-1">Hotels Missing Photos</p>
-          <p className="text-2xl font-bold text-yellow-600">
-            {metrics.hotelsMissingPhotos}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            {Math.round((metrics.hotelsMissingPhotos / metrics.totalHotels) * 100)}% of total
-          </p>
-        </div>
+      {/* Photo Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-4)' }}>
+        {photoCards.map(card => (
+          <div key={card.label} style={smallCardStyle}>
+            <p style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--text-muted)', margin: '0 0 var(--space-1)' }}>{card.label}</p>
+            <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: card.color, margin: 0 }}>{card.value}</p>
+            <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 'var(--space-2) 0 0' }}>
+              {card.sub ?? `${metrics.totalHotels > 0 ? Math.round((Number(card.value) / metrics.totalHotels) * 100) : 0}% of total`}
+            </p>
+          </div>
+        ))}
       </div>
 
       {/* Insights */}
       {insights.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+            <h3 style={{ fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+              <TrendingUp size={20} style={{ color: 'var(--primary)' }} />
               Readiness Insights
             </h3>
           </div>
-          <div className="divide-y divide-gray-200">
+          <div>
             {insights.map((insight, idx) => (
-              <div key={idx} className="p-4 hover:bg-gray-50">
-                <div className="flex items-start gap-3">
-                  <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-1.5 ${
-                    insight.type === 'CRITICAL' ? 'bg-red-600' :
-                    insight.type === 'WARNING' ? 'bg-yellow-600' :
-                    insight.type === 'INFO' ? 'bg-blue-600' :
-                    'bg-green-600'
-                  }`}></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{insight.message}</p>
+              <div key={idx} style={{ padding: 'var(--space-4)', borderBottom: idx < insights.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+                  <div style={{
+                    flexShrink: 0, width: '0.5rem', height: '0.5rem', borderRadius: '50%',
+                    marginTop: '0.4rem', background: insightDotColor(insight.type),
+                  }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{insight.message}</p>
                     {insight.affectedHotels && (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
                         Affects {insight.affectedHotels} hotel{insight.affectedHotels !== 1 ? 's' : ''}
                       </p>
                     )}
@@ -286,12 +218,16 @@ export function DataQualityDashboard() {
       )}
 
       {/* Summary */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-900">
+      <div style={{
+        background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)',
+      }}>
+        <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-main)', margin: 0 }}>
           <strong>Summary:</strong> Out of {metrics.totalHotels} hotels in the system, 
-          <strong className="text-green-700"> {metrics.readinessDistribution.ready} are venue-ready</strong>,
-          <strong className="text-yellow-700"> {metrics.readinessDistribution.partial} are partially ready</strong>, and
-          <strong className="text-red-700"> {metrics.readinessDistribution.notReady} need configuration</strong>.
+          <strong style={{ color: '#10b981' }}> {metrics.readinessDistribution.ready} are venue-ready</strong>,
+          <strong style={{ color: '#f59e0b' }}> {metrics.readinessDistribution.partial} are partially ready</strong>, and
+          <strong style={{ color: '#ef4444' }}> {metrics.readinessDistribution.notReady} need configuration</strong>.
         </p>
       </div>
     </div>

@@ -13,21 +13,26 @@ export function TemplateDownloadPanel({ onDownload }: TemplateDownloadPanelProps
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Step 1: Download Template</h2>
-        <p className="text-gray-600">
+    <div className="card" style={{ padding: 'var(--space-6)' }}>
+      <div style={{ marginBottom: 'var(--space-6)' }}>
+        <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 600, color: 'var(--text-main)', marginBottom: 'var(--space-2)' }}>Step 1: Download Template</h2>
+        <p style={{ color: 'var(--text-muted)' }}>
           Download the Excel template and fill in your venue data. The template includes all required sheets and helpful instructions.
         </p>
       </div>
 
       {/* Template Info */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex gap-3">
-          <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-900">
-            <p className="font-medium mb-2">Master Workbook Includes:</p>
-            <ul className="list-disc list-inside space-y-1 text-blue-800">
+      <div style={{
+        marginBottom: 'var(--space-6)', padding: 'var(--space-4)',
+        background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+        borderRadius: 'var(--radius-lg)'
+      }}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <Info size={20} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--primary)' }}>
+            <p style={{ fontWeight: 600, marginBottom: 'var(--space-2)' }}>Master Workbook Includes:</p>
+            <ul style={{ listStyleType: 'disc', paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
               {TEMPLATE_INFO.master.sheets.map((sheet, idx) => (
                 <li key={idx}>
                   <strong>{sheet.name}</strong> - {sheet.description}
@@ -41,22 +46,23 @@ export function TemplateDownloadPanel({ onDownload }: TemplateDownloadPanelProps
       {/* Download Button */}
       <button
         onClick={handleDownloadMaster}
-        className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+        className="btn btn-primary"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', padding: '0.75rem 1.5rem', fontSize: 'var(--font-sm)' }}
       >
-        <Download className="w-5 h-5" />
+        <Download size={20} />
         Download Master Workbook
       </button>
 
       {/* Template Details */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div style={{ marginTop: 'var(--space-8)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--space-4)' }}>
         {TEMPLATE_INFO.master.sheets.map((sheet, idx) => (
-          <div key={idx} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-            <div className="flex items-start gap-3">
-              <FileSpreadsheet className="w-5 h-5 text-gray-600 mt-1 flex-shrink-0" />
+          <div key={idx} style={{ padding: 'var(--space-4)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+              <FileSpreadsheet size={20} style={{ color: 'var(--text-muted)', marginTop: '4px', flexShrink: 0 }} />
               <div>
-                <h3 className="font-medium text-gray-900 mb-1">{sheet.name}</h3>
-                <p className="text-sm text-gray-600 mb-2">{sheet.description}</p>
-                <p className="text-xs text-gray-500 bg-white px-2 py-1 rounded inline-block">
+                <h3 style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 'var(--space-1)' }}>{sheet.name}</h3>
+                <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>{sheet.description}</p>
+                <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', background: 'var(--surface)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)', display: 'inline-block', margin: 0 }}>
                   {sheet.rows}
                 </p>
               </div>
@@ -66,39 +72,39 @@ export function TemplateDownloadPanel({ onDownload }: TemplateDownloadPanelProps
       </div>
 
       {/* Guidelines */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h3 className="font-medium text-gray-900 mb-3">Template Guidelines</h3>
-        <ul className="space-y-2 text-sm text-gray-600">
-          <li className="flex gap-2">
-            <span className="text-blue-600 font-bold">•</span>
+      <div style={{ marginTop: 'var(--space-8)', padding: 'var(--space-4)', background: 'var(--surface-2)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+        <h3 style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 'var(--space-3)' }}>Template Guidelines</h3>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
+          <li style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>•</span>
             <span><strong>Hotel Master:</strong> One row per hotel with basic details</span>
           </li>
-          <li className="flex gap-2">
-            <span className="text-blue-600 font-bold">•</span>
+          <li style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>•</span>
             <span><strong>Hall Master:</strong> One row per hall in each hotel</span>
           </li>
-          <li className="flex gap-2">
-            <span className="text-blue-600 font-bold">•</span>
+          <li style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>•</span>
             <span><strong>Accommodation:</strong> One row per hotel with room inventory</span>
           </li>
-          <li className="flex gap-2">
-            <span className="text-blue-600 font-bold">•</span>
+          <li style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>•</span>
             <span><strong>Occupancy Rules:</strong> Designation-to-occupancy mappings</span>
           </li>
-          <li className="flex gap-2">
-            <span className="text-blue-600 font-bold">•</span>
+          <li style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>•</span>
             <span><strong>Photos:</strong> Photo references (optional)</span>
           </li>
-          <li className="flex gap-2">
-            <span className="text-green-600 font-bold">✓</span>
+          <li style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <span style={{ color: '#10b981', fontWeight: 700 }}>✓</span>
             <span>All required fields must be filled (marked with *)</span>
           </li>
-          <li className="flex gap-2">
-            <span className="text-green-600 font-bold">✓</span>
+          <li style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <span style={{ color: '#10b981', fontWeight: 700 }}>✓</span>
             <span>Hotel names + City combinations must be unique</span>
           </li>
-          <li className="flex gap-2">
-            <span className="text-green-600 font-bold">✓</span>
+          <li style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <span style={{ color: '#10b981', fontWeight: 700 }}>✓</span>
             <span>City names must match master city list</span>
           </li>
         </ul>

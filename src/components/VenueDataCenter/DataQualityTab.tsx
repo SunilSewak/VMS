@@ -15,6 +15,13 @@ interface DataQualityTabProps {
   refreshTrigger: number;
 }
 
+const COLOR_MAP: Record<string, { bg: string; border: string; icon: string }> = {
+  green: { bg: '#10b98112', border: '#10b98130', icon: '#10b981' },
+  red: { bg: '#ef444412', border: '#ef444430', icon: '#ef4444' },
+  yellow: { bg: '#f59e0b12', border: '#f59e0b30', icon: '#f59e0b' },
+  blue: { bg: '#3b82f612', border: '#3b82f630', icon: '#3b82f6' },
+};
+
 export function DataQualityTab({ refreshTrigger }: DataQualityTabProps) {
   const [metrics, setMetrics] = useState<QualityMetric[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,31 +36,26 @@ export function DataQualityTab({ refreshTrigger }: DataQualityTabProps) {
       setLoading(true);
       setError(null);
 
-      // Get total hotels
       const { count: hotelCount } = await supabase
         .from('hotels')
         .select('*', { count: 'exact', head: true });
 
-      // Get hotels with all required data
       const { count: completeCount } = await supabase
         .from('hotels')
         .select('*', { count: 'exact', head: true })
         .not('hall_master_id', 'is', null)
         .not('accommodation_inventory_id', 'is', null);
 
-      // Get hotels missing halls
       const { count: missingHallsCount } = await supabase
         .from('hotels')
         .select('*', { count: 'exact', head: true })
         .is('hall_master_id', null);
 
-      // Get hotels missing accommodation
       const { count: missingAccommodationCount } = await supabase
         .from('hotels')
         .select('*', { count: 'exact', head: true })
         .is('accommodation_inventory_id', null);
 
-      // Get hotels with event history
       const { count: historyCount } = await supabase
         .from('hotels')
         .select('*', { count: 'exact', head: true })
@@ -65,44 +67,39 @@ export function DataQualityTab({ refreshTrigger }: DataQualityTabProps) {
       setMetrics([
         {
           label: 'Hotels Ready',
-          value: complete,
-          total,
+          value: complete, total,
           percentage: total > 0 ? Math.round((complete / total) * 100) : 0,
           color: 'green',
-          icon: <CheckCircle2 className="w-8 h-8" />
+          icon: <CheckCircle2 size={32} />,
         },
         {
           label: 'Missing Halls',
-          value: missingHallsCount || 0,
-          total,
+          value: missingHallsCount || 0, total,
           percentage: total > 0 ? Math.round(((missingHallsCount || 0) / total) * 100) : 0,
           color: 'red',
-          icon: <AlertTriangle className="w-8 h-8" />
+          icon: <AlertTriangle size={32} />,
         },
         {
           label: 'Missing Accommodation',
-          value: missingAccommodationCount || 0,
-          total,
+          value: missingAccommodationCount || 0, total,
           percentage: total > 0 ? Math.round(((missingAccommodationCount || 0) / total) * 100) : 0,
           color: 'yellow',
-          icon: <AlertTriangle className="w-8 h-8" />
+          icon: <AlertTriangle size={32} />,
         },
         {
           label: 'Venues with history',
-          value: historyCount || 0,
-          total,
+          value: historyCount || 0, total,
           percentage: total > 0 ? Math.round(((historyCount || 0) / total) * 100) : 0,
           color: 'blue',
-          icon: <Database className="w-8 h-8" />
+          icon: <Database size={32} />,
         },
         {
           label: 'Total Hotels',
-          value: total,
-          total,
+          value: total, total,
           percentage: 100,
           color: 'blue',
-          icon: <TrendingUp className="w-8 h-8" />
-        }
+          icon: <TrendingUp size={32} />,
+        },
       ]);
     } catch (err: any) {
       setError(err.message || 'Failed to load quality metrics');
@@ -113,72 +110,72 @@ export function DataQualityTab({ refreshTrigger }: DataQualityTabProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '24rem' }}>
+        <div style={{ width: '2rem', height: '2rem', border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       </div>
     );
   }
 
-  const colorMap = {
-    green: 'bg-green-50 border-green-200',
-    red: 'bg-red-50 border-red-200',
-    yellow: 'bg-yellow-50 border-yellow-200',
-    blue: 'bg-blue-50 border-blue-200'
-  };
-
-  const iconColorMap = {
-    green: 'text-green-600',
-    red: 'text-red-600',
-    yellow: 'text-yellow-600',
-    blue: 'text-blue-600'
-  };
-
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Data Quality</h2>
-        <p className="text-gray-600 text-sm mt-1">Monitor venue repository completeness and quality</p>
+        <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Data Quality</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: 'var(--space-1)' }}>Monitor venue repository completeness and quality</p>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">{error}</p>
+        <div style={{
+          background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
+          borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+            <AlertCircle size={20} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '2px' }} />
+            <p style={{ fontSize: 'var(--font-sm)', color: 'var(--danger)', margin: 0 }}>{error}</p>
           </div>
         </div>
       )}
 
       {/* Quality Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map(metric => (
-          <div
-            key={metric.label}
-            className={`rounded-lg border p-6 ${colorMap[metric.color]}`}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className={`${iconColorMap[metric.color]}`}>
-                {metric.icon}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-4)' }}>
+        {metrics.map(metric => {
+          const colors = COLOR_MAP[metric.color];
+          return (
+            <div
+              key={metric.label}
+              style={{
+                borderRadius: 'var(--radius-lg)',
+                border: `1px solid ${colors.border}`,
+                padding: 'var(--space-5)',
+                background: colors.bg,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
+                <div style={{ color: colors.icon }}>{metric.icon}</div>
+                <span style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--text-main)' }}>{metric.percentage}%</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">{metric.percentage}%</span>
+              <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-main)', margin: '0 0 var(--space-1) 0' }}>{metric.label}</p>
+              <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', margin: 0 }}>
+                {metric.value} of {metric.total}
+              </p>
             </div>
-            <p className="text-sm font-medium text-gray-900 mb-1">{metric.label}</p>
-            <p className="text-xs text-gray-600">
-              {metric.value} of {metric.total}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-700">
-            <p className="font-medium">Venue Readiness Score</p>
-            <p className="mt-1">A venue is considered "ready" when it has complete halls, accommodation inventory, occupancy rules, and photos configured.</p>
+      <div style={{
+        background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)',
+      }}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <AlertCircle size={20} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--primary)' }}>
+            <p style={{ fontWeight: 600, margin: 0 }}>Venue Readiness Score</p>
+            <p style={{ marginTop: 'var(--space-1)', margin: 'var(--space-1) 0 0 0' }}>A venue is considered "ready" when it has complete halls, accommodation inventory, occupancy rules, and photos configured.</p>
           </div>
         </div>
       </div>

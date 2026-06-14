@@ -17,6 +17,18 @@ interface ImportHistoryTabProps {
   refreshTrigger: number;
 }
 
+const statusBadgeStyle = (status: string) => {
+  const color = status === 'COMPLETED' ? '#10b981' : status === 'FAILED' ? '#ef4444' : '#f59e0b';
+  return {
+    padding: '0.25rem 0.75rem',
+    borderRadius: '999px',
+    fontSize: 'var(--font-xs)',
+    fontWeight: 600 as const,
+    background: `${color}18`,
+    color,
+  };
+};
+
 export function ImportHistoryTab({ refreshTrigger }: ImportHistoryTabProps) {
   const [imports, setImports] = useState<ImportRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,72 +60,84 @@ export function ImportHistoryTab({ refreshTrigger }: ImportHistoryTabProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '24rem' }}>
+        <div style={{ width: '2rem', height: '2rem', border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       </div>
     );
   }
 
+  const thStyle = {
+    padding: '0.75rem 1.25rem',
+    textAlign: 'left' as const,
+    fontSize: 'var(--font-xs)',
+    fontWeight: 700 as const,
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--surface-2)',
+  };
+
+  const tdStyle = {
+    padding: '0.85rem 1.25rem',
+    fontSize: 'var(--font-sm)',
+    borderBottom: '1px solid var(--border)',
+  };
+
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Import History</h2>
-        <p className="text-gray-600 text-sm mt-1">Track all venue data imports</p>
+        <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Import History</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: 'var(--space-1)' }}>Track all venue data imports</p>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">{error}</p>
+        <div style={{
+          background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
+          borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+            <AlertCircle size={20} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '2px' }} />
+            <p style={{ fontSize: 'var(--font-sm)', color: 'var(--danger)', margin: 0 }}>{error}</p>
           </div>
         </div>
       )}
 
       {/* History Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Date</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">User</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-600">Status</th>
-              <th className="px-6 py-3 text-center text-sm font-medium text-gray-600">Processed</th>
-              <th className="px-6 py-3 text-center text-sm font-medium text-gray-600">Failed</th>
-              <th className="px-6 py-3 text-center text-sm font-medium text-gray-600">Duration</th>
+              <th style={thStyle}>Date</th>
+              <th style={thStyle}>User</th>
+              <th style={thStyle}>Status</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>Processed</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>Failed</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>Duration</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody>
             {imports.map(record => (
-              <tr key={record.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 text-sm text-gray-600">
+              <tr key={record.id}>
+                <td style={{ ...tdStyle, color: 'var(--text-muted)' }}>
                   {new Date(record.import_date).toLocaleString()}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-900">{record.user_email}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    record.status === 'COMPLETED'
-                      ? 'bg-green-100 text-green-700'
-                      : record.status === 'FAILED'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {record.status}
-                  </span>
+                <td style={{ ...tdStyle, color: 'var(--text-main)', fontWeight: 500 }}>{record.user_email}</td>
+                <td style={tdStyle}>
+                  <span style={statusBadgeStyle(record.status)}>{record.status}</span>
                 </td>
-                <td className="px-6 py-4 text-center text-sm font-medium text-gray-900">
+                <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600, color: 'var(--text-main)' }}>
                   {record.records_processed}
                 </td>
-                <td className="px-6 py-4 text-center text-sm font-medium text-gray-900">
+                <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600, color: 'var(--text-main)' }}>
                   {record.records_failed}
                 </td>
-                <td className="px-6 py-4 text-center text-sm text-gray-600">
-                  <div className="flex items-center justify-center gap-1">
-                    <Clock className="w-4 h-4" />
+                <td style={{ ...tdStyle, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <Clock size={14} />
                     {record.duration_seconds}s
-                  </div>
+                  </span>
                 </td>
               </tr>
             ))}
@@ -121,8 +145,8 @@ export function ImportHistoryTab({ refreshTrigger }: ImportHistoryTabProps) {
         </table>
 
         {imports.length === 0 && (
-          <div className="p-12 text-center">
-            <p className="text-gray-500">No import history available</p>
+          <div style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-muted)' }}>No import history available</p>
           </div>
         )}
       </div>
