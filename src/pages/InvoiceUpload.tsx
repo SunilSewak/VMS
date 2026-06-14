@@ -57,6 +57,11 @@ export function InvoiceUpload() {
   const [extracting, setExtracting] = useState(false);
   const [extractionNote, setExtractionNote] = useState<{ message: string, type: 'info' | 'success' | 'warning', source?: string } | null>(null);
   const [ocrProgress, setOcrProgress] = useState<{ status: string, progress: number, page?: number, totalPages?: number } | null>(null);
+  const [rawOcrText, setRawOcrText] = useState<string | null>(null);
+  const [ocrPages, setOcrPages] = useState<any[] | null>(null);
+  const [extractedDebugFields, setExtractedDebugFields] = useState<any>(null);
+  const [suggestedFields, setSuggestedFields] = useState<string[]>([]);
+  const [financialSourceMode, setFinancialSourceMode] = useState<'Cover Letter' | 'Tax Invoice' | null>(null);
 
   useEffect(() => {
     return () => {
@@ -72,6 +77,11 @@ export function InvoiceUpload() {
     setInvoiceFile(file);
     setExtractionNote(null);
     setOcrProgress(null);
+    setRawOcrText(null);
+    setOcrPages(null);
+    setExtractedDebugFields(null);
+    setSuggestedFields([]);
+    setFinancialSourceMode(null);
 
     if (!file) return;
 
@@ -93,22 +103,43 @@ export function InvoiceUpload() {
       const f = result.fields;
       if (f.invoiceNumber) setInvoiceNumber(f.invoiceNumber);
       if (f.invoiceDate) setInvoiceDate(f.invoiceDate);
-      if (f.roomCharges != null) setRoomCharges(String(f.roomCharges));
-      if (f.foodCharges != null) setFoodCharges(String(f.foodCharges));
-      if (f.hallCharges != null) setHallCharges(String(f.hallCharges));
-      if (f.otherCharges != null) setOtherCharges(String(f.otherCharges));
-      if (f.cgstAmount != null) setCgstAmount(String(f.cgstAmount));
-      if (f.sgstAmount != null) setSgstAmount(String(f.sgstAmount));
-      if (f.igstAmount != null) setIgstAmount(String(f.igstAmount));
+      if (f.roomCharges != null) setRoomCharges(f.roomCharges.toFixed(2));
+      if (f.foodCharges != null) setFoodCharges(f.foodCharges.toFixed(2));
+      if (f.hallCharges != null) setHallCharges(f.hallCharges.toFixed(2));
+      if (f.otherCharges != null) setOtherCharges(f.otherCharges.toFixed(2));
+      
+      if (result.financialSourceMode === 'Cover Letter') {
+        setCgstAmount('');
+        setSgstAmount('');
+        setIgstAmount('');
+      } else {
+        if (f.cgstAmount != null) setCgstAmount(f.cgstAmount.toFixed(2));
+        if (f.sgstAmount != null) setSgstAmount(f.sgstAmount.toFixed(2));
+        if (f.igstAmount != null) setIgstAmount(f.igstAmount.toFixed(2));
+      }
+
+      setRawOcrText(result.rawText);
+      setExtractedDebugFields(f);
+      if (result.ocrPages) setOcrPages(result.ocrPages);
+      if (result.suggestedFields) setSuggestedFields(result.suggestedFields);
+      if (result.financialSourceMode) setFinancialSourceMode(result.financialSourceMode);
 
       const sourceStr = result.metrics.source === 'digital-pdf' ? 'Text PDF' : result.metrics.source === 'scanned-pdf' ? 'Scanned PDF (OCR)' : 'Image (OCR)';
 
       if (result.extractedCount > 0) {
-        setExtractionNote({
-          type: 'success',
-          source: sourceStr,
-          message: `Auto-extracted ${result.extractedCount} field(s) via ${sourceStr}. Please review and correct the values.`
-        });
+        if (result.validationMismatch) {
+          setExtractionNote({
+            type: 'warning',
+            source: sourceStr,
+            message: `Auto-extracted ${result.extractedCount} field(s) with validation mismatch: ${result.validationMessage} Please review and correct the values.`
+          });
+        } else {
+          setExtractionNote({
+            type: 'success',
+            source: sourceStr,
+            message: `Auto-extracted ${result.extractedCount} field(s) via ${sourceStr}. Validation passed. Please review the values.`
+          });
+        }
       } else {
         setExtractionNote({
           type: 'warning',
@@ -309,6 +340,61 @@ export function InvoiceUpload() {
           {/* Right Column: Form (or Sidebar if no file) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', height: previewUrl ? '100%' : 'auto', overflowY: previewUrl ? 'auto' : 'visible', paddingRight: previewUrl ? '0.5rem' : '0' }}>
             
+            {/* Debug Panel */}
+            {previewUrl && rawOcrText && (
+              <div style={{ background: '#1e1e1e', color: '#00ff00', padding: '1rem', borderRadius: 'var(--radius-lg)', fontFamily: 'monospace', fontSize: '12px', overflow: 'auto', maxHeight: '400px' }}>
+                <h3 style={{ borderBottom: '1px solid #333', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#fff' }}>OCR EXTRACTION DEBUG</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                    <strong style={{ color: '#fff' }}>Detected Pages & Rows:</strong>
+                    <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '350px' }}>
+                      {ocrPages && ocrPages.length > 0 ? (
+                        ocrPages.map((page, pIdx) => (
+                          <div key={pIdx} style={{ marginBottom: '8px' }}>
+                            <div style={{ fontWeight: 700, color: '#0ea5e9', marginBottom: '4px', textTransform: 'uppercase' }}>
+                              Page {page.pageNumber}: {page.pageType}
+                            </div>
+                            {page.rows.map((row: any, i: number) => (
+                              <div key={i} style={{ borderBottom: '1px solid #333', paddingBottom: '4px', whiteSpace: 'nowrap', overflowX: 'auto', opacity: 0.8 }}>
+                                {row.text}
+                              </div>
+                            ))}
+                          </div>
+                        ))
+                      ) : (
+                        <pre style={{ whiteSpace: 'pre-wrap', opacity: 0.8 }}>{rawOcrText}</pre>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <strong style={{ color: '#fff' }}>Field Extraction Debug</strong>
+                    <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div>
+                        Room Charges:<br/>
+                        <span style={{ color: extractedDebugFields?.roomCharges ? '#00ff00' : '#ff4444' }}>{extractedDebugFields?.roomCharges ? `FOUND: ${extractedDebugFields.roomCharges}` : 'NOT FOUND'}</span>
+                      </div>
+                      <div>
+                        Food Charges:<br/>
+                        <span style={{ color: extractedDebugFields?.foodCharges ? '#00ff00' : '#ff4444' }}>{extractedDebugFields?.foodCharges ? `FOUND: ${extractedDebugFields.foodCharges}` : 'NOT FOUND'}</span>
+                      </div>
+                      <div>
+                        Hall Charges:<br/>
+                        <span style={{ color: extractedDebugFields?.hallCharges ? '#00ff00' : '#ff4444' }}>{extractedDebugFields?.hallCharges ? `FOUND: ${extractedDebugFields.hallCharges}` : 'NOT FOUND'}</span>
+                      </div>
+                      <div>
+                        Grand Total:<br/>
+                        <span style={{ color: extractedDebugFields?.invoiceAmount ? '#00ff00' : '#ff4444' }}>{extractedDebugFields?.invoiceAmount ? `FOUND: ${extractedDebugFields.invoiceAmount}` : 'NOT FOUND'}</span>
+                      </div>
+                      <div>
+                        GST Number:<br/>
+                        <span style={{ color: extractedDebugFields?.gstNumber ? '#00ff00' : '#ff4444' }}>{extractedDebugFields?.gstNumber ? `FOUND: ${extractedDebugFields.gstNumber}` : 'NOT FOUND'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Show extraction status banner if we have a file */}
             {previewUrl && extractionNote && (
               <div style={{
@@ -392,22 +478,34 @@ export function InvoiceUpload() {
                   <h3 style={{ fontSize: 'var(--font-sm)', fontWeight: 700, marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Charge Breakdown</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Room Charges</label>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        Room Charges
+                        {suggestedFields.includes('roomCharges') && <span style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '10px', display: 'flex', alignItems: 'center' }}><AlertTriangle size={10} style={{ marginRight: '1px' }} /> Suggested</span>}
+                      </label>
                       <input type="number" min="0" step="100" value={roomCharges} onChange={(e) => setRoomCharges(e.target.value)} placeholder="0"
                         style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
                     </div>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Hall Charges</label>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        Hall Charges
+                        {suggestedFields.includes('hallCharges') && <span style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '10px', display: 'flex', alignItems: 'center' }}><AlertTriangle size={10} style={{ marginRight: '1px' }} /> Suggested</span>}
+                      </label>
                       <input type="number" min="0" step="100" value={hallCharges} onChange={(e) => setHallCharges(e.target.value)} placeholder="0"
                         style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
                     </div>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Food Charges</label>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        Food Charges
+                        {suggestedFields.includes('foodCharges') && <span style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '10px', display: 'flex', alignItems: 'center' }}><AlertTriangle size={10} style={{ marginRight: '1px' }} /> Suggested</span>}
+                      </label>
                       <input type="number" min="0" step="100" value={foodCharges} onChange={(e) => setFoodCharges(e.target.value)} placeholder="0"
                         style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
                     </div>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Other Charges</label>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        Other Charges
+                        {suggestedFields.includes('otherCharges') && <span style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '10px', display: 'flex', alignItems: 'center' }}><AlertTriangle size={10} style={{ marginRight: '1px' }} /> Suggested</span>}
+                      </label>
                       <input type="number" min="0" step="1" value={otherCharges} onChange={(e) => setOtherCharges(e.target.value)} placeholder="0"
                         style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
                     </div>
@@ -415,19 +513,47 @@ export function InvoiceUpload() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>CGST</label>
-                      <input type="number" min="0" step="0.01" value={cgstAmount} onChange={(e) => setCgstAmount(e.target.value)} placeholder="0"
-                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        CGST
+                        {financialSourceMode === 'Cover Letter' && <span style={{ marginLeft: '6px', color: '#10b981', fontSize: '10px' }}>(Tax-Inclusive Summary)</span>}
+                        {financialSourceMode !== 'Cover Letter' && suggestedFields.includes('cgstAmount') && <span style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '10px', display: 'flex', alignItems: 'center' }}><AlertTriangle size={10} style={{ marginRight: '1px' }} /> Suggested</span>}
+                      </label>
+                      <input 
+                        type={financialSourceMode === 'Cover Letter' ? "text" : "number"} 
+                        min="0" step="0.01" 
+                        value={financialSourceMode === 'Cover Letter' ? "Tax Source Not Used" : cgstAmount} 
+                        onChange={(e) => setCgstAmount(e.target.value)} 
+                        placeholder="0"
+                        disabled={financialSourceMode === 'Cover Letter'}
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: financialSourceMode === 'Cover Letter' ? 'var(--bg-surface)' : undefined, color: financialSourceMode === 'Cover Letter' ? 'var(--text-muted)' : undefined }} />
                     </div>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>SGST</label>
-                      <input type="number" min="0" step="0.01" value={sgstAmount} onChange={(e) => setSgstAmount(e.target.value)} placeholder="0"
-                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        SGST
+                        {financialSourceMode !== 'Cover Letter' && suggestedFields.includes('sgstAmount') && <span style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '10px', display: 'flex', alignItems: 'center' }}><AlertTriangle size={10} style={{ marginRight: '1px' }} /> Suggested</span>}
+                      </label>
+                      <input 
+                        type={financialSourceMode === 'Cover Letter' ? "text" : "number"} 
+                        min="0" step="0.01" 
+                        value={financialSourceMode === 'Cover Letter' ? "Tax Source Not Used" : sgstAmount} 
+                        onChange={(e) => setSgstAmount(e.target.value)} 
+                        placeholder="0"
+                        disabled={financialSourceMode === 'Cover Letter'}
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: financialSourceMode === 'Cover Letter' ? 'var(--bg-surface)' : undefined, color: financialSourceMode === 'Cover Letter' ? 'var(--text-muted)' : undefined }} />
                     </div>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>IGST</label>
-                      <input type="number" min="0" step="0.01" value={igstAmount} onChange={(e) => setIgstAmount(e.target.value)} placeholder="0"
-                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        IGST
+                        {financialSourceMode !== 'Cover Letter' && suggestedFields.includes('igstAmount') && <span style={{ marginLeft: '6px', color: '#f59e0b', fontSize: '10px', display: 'flex', alignItems: 'center' }}><AlertTriangle size={10} style={{ marginRight: '1px' }} /> Suggested</span>}
+                      </label>
+                      <input 
+                        type={financialSourceMode === 'Cover Letter' ? "text" : "number"} 
+                        min="0" step="0.01" 
+                        value={financialSourceMode === 'Cover Letter' ? "Tax Source Not Used" : igstAmount} 
+                        onChange={(e) => setIgstAmount(e.target.value)} 
+                        placeholder="0"
+                        disabled={financialSourceMode === 'Cover Letter'}
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', backgroundColor: financialSourceMode === 'Cover Letter' ? 'var(--bg-surface)' : undefined, color: financialSourceMode === 'Cover Letter' ? 'var(--text-muted)' : undefined }} />
                     </div>
                   </div>
                 </div>
