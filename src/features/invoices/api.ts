@@ -7,7 +7,16 @@ export async function getInvoices(user: UserProfile): Promise<Invoice[]> {
   let query = (supabase as any)
     .from('invoices')
     .select(`*,
-      bookings ( booking_reference, check_in_date, check_out_date, rooms_booked, halls_booked, expected_pax )
+      bookings!inner (
+        booking_reference,
+        check_in_date,
+        check_out_date,
+        rooms_booked,
+        halls_booked,
+        expected_pax,
+        hotels!inner ( hotel_name ),
+        meeting_requests!inner ( meeting_name, start_date, end_date )
+      )
     `)
     .eq('is_deleted', false)
     .order('created_at', { ascending: false });
@@ -15,12 +24,17 @@ export async function getInvoices(user: UserProfile): Promise<Invoice[]> {
   if (user.role === ROLES.SALES_HEAD || user.role === ROLES.VIEWER) {
     query = query.eq('created_by', user.id);
   } else if (user.role === ROLES.FINANCE) {
-    query = query.in('status', ['VERIFIED', 'APPROVED']);
+    query = query.in('invoice_status', ['VERIFIED', 'APPROVED']);
   }
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []) as Invoice[];
+  
+  // Map invoice_status to status to match TypeScript interface
+  return (data ?? []).map((invoice: any) => ({
+    ...invoice,
+    status: invoice.invoice_status,
+  })) as Invoice[];
 }
 
 export async function getInvoiceById(id: string): Promise<Invoice> {
@@ -35,23 +49,36 @@ export async function getInvoiceById(id: string): Promise<Invoice> {
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Invoice not found');
-  return data as Invoice;
+  
+  // Map invoice_status to status to match TypeScript interface
+  return {
+    ...data,
+    status: data.invoice_status,
+  } as Invoice;
 }
 
 export async function startVerification(id: string, user: UserProfile): Promise<Invoice> {
   const { data, error } = await (supabase as any)
     .from('invoices')
     .update({
-      status: 'UNDER_VERIFICATION',
+      invoice_status: 'UNDER_VERIFICATION',
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
     .eq('is_deleted', false)
+    .select(`*,
+      bookings ( booking_reference, check_in_date, check_out_date, rooms_booked, halls_booked, expected_pax )
+    `)
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Invoice;
+  
+  // Map invoice_status to status to match TypeScript interface
+  return {
+    ...data,
+    status: data.invoice_status,
+  } as Invoice;
 }
 
 export async function getInvoiceDocuments(invoiceId: string): Promise<InvoiceDocument[]> {
@@ -135,10 +162,23 @@ export async function downloadInvoiceDocument(document: InvoiceDocument): Promis
   return data.signedUrl;
 }
 
+export async function checkInvoiceExists(invoiceNumber: string, bookingId: string): Promise<boolean> {
+  const { data, error } = await (supabase as any)
+    .from('invoices')
+    .select('id')
+    .eq('invoice_number', invoiceNumber)
+    .eq('booking_id', bookingId)
+    .eq('is_deleted', false)
+    .limit(1);
+
+  if (error) throw new Error(error.message);
+  return data && data.length > 0;
+}
+
 export async function createInvoice(input: InvoiceCreateInput, user: UserProfile): Promise<Invoice> {
   const payload = {
     ...input,
-    status: 'RECEIVED',
+    invoice_status: 'RECEIVED',
     created_by: user.id,
     created_at: new Date().toISOString(),
     is_deleted: false,
@@ -147,10 +187,21 @@ export async function createInvoice(input: InvoiceCreateInput, user: UserProfile
   const { data, error } = await (supabase as any)
     .from('invoices')
     .insert([payload])
+    .select(`*,
+      bookings ( booking_reference, check_in_date, check_out_date, rooms_booked, halls_booked, expected_pax )
+    `)
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Invoice;
+  
+  // Failsafe: if data is an array for some reason, use the first element
+  const finalData = Array.isArray(data) ? data[0] : data;
+  
+  // Map invoice_status to status to match TypeScript interface
+  return {
+    ...finalData,
+    status: finalData.invoice_status,
+  } as Invoice;
 }
 
 export async function updateInvoice(id: string, input: InvoiceUpdateInput, user: UserProfile): Promise<Invoice> {
@@ -159,17 +210,25 @@ export async function updateInvoice(id: string, input: InvoiceUpdateInput, user:
     .update({ ...input, updated_at: new Date().toISOString(), updated_by: user.id })
     .eq('id', id)
     .eq('is_deleted', false)
+    .select(`*,
+      bookings ( booking_reference, check_in_date, check_out_date, rooms_booked, halls_booked, expected_pax )
+    `)
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Invoice;
+  
+  // Map invoice_status to status to match TypeScript interface
+  return {
+    ...data,
+    status: data.invoice_status,
+  } as Invoice;
 }
 
 export async function verifyInvoice(id: string, user: UserProfile): Promise<Invoice> {
   const { data, error } = await (supabase as any)
     .from('invoices')
     .update({
-      status: 'VERIFIED',
+      invoice_status: 'VERIFIED',
       verified_by: user.id,
       verified_at: new Date().toISOString(),
       updated_by: user.id,
@@ -177,17 +236,25 @@ export async function verifyInvoice(id: string, user: UserProfile): Promise<Invo
     })
     .eq('id', id)
     .eq('is_deleted', false)
+    .select(`*,
+      bookings ( booking_reference, check_in_date, check_out_date, rooms_booked, halls_booked, expected_pax )
+    `)
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Invoice;
+  
+  // Map invoice_status to status to match TypeScript interface
+  return {
+    ...data,
+    status: data.invoice_status,
+  } as Invoice;
 }
 
 export async function approveInvoice(id: string, user: UserProfile): Promise<Invoice> {
   const { data, error } = await (supabase as any)
     .from('invoices')
     .update({
-      status: 'APPROVED',
+      invoice_status: 'APPROVED',
       approved_by: user.id,
       approved_at: new Date().toISOString(),
       updated_by: user.id,
@@ -195,27 +262,43 @@ export async function approveInvoice(id: string, user: UserProfile): Promise<Inv
     })
     .eq('id', id)
     .eq('is_deleted', false)
+    .select(`*,
+      bookings ( booking_reference, check_in_date, check_out_date, rooms_booked, halls_booked, expected_pax )
+    `)
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Invoice;
+  
+  // Map invoice_status to status to match TypeScript interface
+  return {
+    ...data,
+    status: data.invoice_status,
+  } as Invoice;
 }
 
 export async function rejectInvoice(id: string, reason: string, user: UserProfile): Promise<Invoice> {
   const { data, error } = await (supabase as any)
     .from('invoices')
     .update({
-      status: 'REJECTED',
+      invoice_status: 'REJECTED',
       rejection_reason: reason,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
     .eq('is_deleted', false)
+    .select(`*,
+      bookings ( booking_reference, check_in_date, check_out_date, rooms_booked, halls_booked, expected_pax )
+    `)
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Invoice;
+  
+  // Map invoice_status to status to match TypeScript interface
+  return {
+    ...data,
+    status: data.invoice_status,
+  } as Invoice;
 }
 
 // ── Invoice Variances (approved schema table: `invoice_variances`) ──────────

@@ -25,6 +25,7 @@ function applyFilters(invoices: Invoice[], filters?: InvoiceQueryFilters): Invoi
   }
 
   return invoices.filter((invoice) => {
+    // Note: invoice.status is now correctly mapped from invoice_status in the database
     if (filters.status && invoice.status !== filters.status) return false;
     if (filters.bookingId && invoice.booking_id !== filters.bookingId) return false;
     if (filters.dateFrom && invoice.invoice_date < filters.dateFrom) return false;
@@ -50,6 +51,10 @@ export const getInvoices = async (user: UserProfile, filters?: InvoiceQueryFilte
 
 export const getInvoiceById = async (id: string): Promise<Invoice> => {
   return supabaseApi.getInvoiceById(id);
+};
+
+export const checkInvoiceExists = async (invoiceNumber: string, bookingId: string): Promise<boolean> => {
+  return supabaseApi.checkInvoiceExists(invoiceNumber, bookingId);
 };
 
 export const createInvoice = async (input: InvoiceCreateInput, user: UserProfile): Promise<Invoice> => {

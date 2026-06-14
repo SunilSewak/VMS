@@ -98,7 +98,7 @@ export function InvoiceDetails() {
   const canDeleteDocuments = user?.role === ROLES.SUPER_ADMIN;
 
   useEffect(() => {
-    if (!id) {
+    if (!id || id === 'undefined') {
       setError('Invoice ID is missing.');
       setLoading(false);
       return;

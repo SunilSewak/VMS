@@ -1,4 +1,8 @@
-export type InvoiceStatus = 'RECEIVED' | 'UNDER_VERIFICATION' | 'VERIFIED' | 'APPROVED' | 'REJECTED';
+export type InvoiceStatus = 'RECEIVED' | 'UNDER_VERIFICATION' | 'VERIFIED' | 'APPROVED' | 'REJECTED' | 'PAYMENT_PENDING' | 'PAID';
+
+export type AuditStatus = 'NOT_AUDITED' | 'PASSED' | 'FAILED' | 'REVIEW_REQUIRED';
+
+export type VarianceSeverity = 'NONE' | 'INFO' | 'WARNING' | 'CRITICAL';
 
 export type InvoiceDocumentType =
   | 'PRIMARY_INVOICE'
@@ -117,7 +121,19 @@ export interface Invoice {
     rooms_booked: number;
     halls_booked: number;
     expected_pax: number;
+    hotels?: {
+      hotel_name: string;
+    } | null;
+    meeting_requests?: {
+      meeting_name: string;
+      start_date: string;
+      end_date: string;
+    } | null;
   } | null;
+
+  // Audit and variance fields (computed from validation checks)
+  audit_status?: AuditStatus;
+  variance_severity?: VarianceSeverity;
 }
 
 export interface InvoiceCreateInput {

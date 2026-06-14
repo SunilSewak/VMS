@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, FileText, Upload, FileSignature, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getBookings } from '../features/bookings/bookingService';
-import { createInvoice } from '../features/invoices/invoiceService';
+import { createInvoice, checkInvoiceExists } from '../features/invoices/invoiceService';
 import { uploadInvoiceDocument } from '../features/invoices/invoiceDocumentService';
 import type { InvoiceCreateInput } from '../features/invoices/types';
 import type { Booking } from '../features/bookings/types';
@@ -231,7 +231,16 @@ export function InvoiceUpload() {
     };
 
     setSaving(true);
+    setSubmitError(null);
+
     try {
+      const exists = await checkInvoiceExists(payload.invoice_number, payload.booking_id);
+      if (exists) {
+        setSubmitError('Invoice already exists.');
+        setSaving(false);
+        return;
+      }
+
       const invoice = await createInvoice(payload, user);
 
       try {
@@ -616,7 +625,7 @@ export function InvoiceUpload() {
                       opacity: (saving || extracting) ? 0.6 : 1,
                     }}
                   >
-                    {saving ? 'Uploading...' : 'Submit Invoice'}
+                    {saving ? 'Creating Invoice...' : 'Submit Invoice'}
                   </button>
                 </div>
               </div>

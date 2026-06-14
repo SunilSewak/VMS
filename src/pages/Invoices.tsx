@@ -1,82 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DollarSign, Search, SlidersHorizontal, Plus } from 'lucide-react';
+import { Search, SlidersHorizontal, Plus, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getInvoices } from '../features/invoices/invoiceService';
 import type { Invoice, InvoiceStatus } from '../features/invoices/types';
 import { ROUTES } from '../routes/routeRegistry';
 import { ROLES } from '../auth/permissions';
 import { EmptyState } from '../components/EmptyState';
-import { ResponsiveDataTable, type ColumnDefinition } from '../components/ResponsiveDataTable';
+import { InvoiceCard } from '../components/InvoiceCard';
 
-const STATUS_OPTIONS: Array<InvoiceStatus | ''> = ['', 'RECEIVED', 'VERIFIED', 'APPROVED', 'REJECTED'];
-
-const statusBadge = (status: InvoiceStatus) => {
-  const color =
-    status === 'APPROVED'
-      ? 'var(--success)'
-      : status === 'REJECTED'
-      ? 'var(--danger)'
-      : status === 'VERIFIED'
-      ? 'var(--warning)'
-      : 'var(--primary)';
-
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        padding: '0.25rem 0.75rem',
-        borderRadius: '999px',
-        backgroundColor: 'rgba(0,0,0,0.04)',
-        color,
-        fontWeight: 600,
-        fontSize: '0.8rem',
-      }}
-    >
-      {status}
-    </span>
-  );
-};
-
-const columns: ColumnDefinition<Invoice>[] = [
-  {
-    header: 'Invoice number',
-    accessor: (invoice) => (
-      <Link to={ROUTES.invoiceDetails.replace(':id', invoice.id)} style={{ color: 'var(--primary)', fontWeight: 600 }}>
-        {invoice.invoice_number}
-      </Link>
-    ),
-    priority: 'always',
-  },
-  {
-    header: 'Invoice date',
-    accessor: (invoice) => new Date(invoice.invoice_date).toLocaleDateString('en-IN'),
-    priority: 'tablet-desktop',
-    mobileLabel: 'Date',
-  },
-  {
-    header: 'Amount',
-    accessor: (invoice) => `₹${(invoice.invoice_amount ?? ((invoice.room_charges ?? 0) + (invoice.hall_charges ?? 0) + (invoice.food_charges ?? 0) + (invoice.tax_amount ?? 0))).toLocaleString('en-IN')}`,
-    priority: 'tablet-desktop',
-    mobileLabel: 'Amount',
-  },
-  {
-    header: 'Status',
-    accessor: (invoice) => statusBadge(invoice.status),
-    priority: 'tablet-desktop',
-    mobileLabel: 'Status',
-  },
-  {
-    header: 'Actions',
-    accessor: (invoice) => (
-      <Link to={ROUTES.invoiceDetails.replace(':id', invoice.id)} style={{ color: 'var(--primary)' }}>
-        View
-      </Link>
-    ),
-    priority: 'desktop',
-    mobileLabel: 'Actions',
-  },
-];
+const STATUS_OPTIONS: Array<InvoiceStatus | ''> = ['', 'RECEIVED', 'UNDER_VERIFICATION', 'VERIFIED', 'APPROVED', 'REJECTED', 'PAYMENT_PENDING', 'PAID'];
 
 export function Invoices() {
   const { user } = useAuth();
@@ -118,17 +51,36 @@ export function Invoices() {
 
   const filteredInvoices = useMemo(() => {
     const query = searchText.trim().toLowerCase();
-    if (!query) return invoices;
+    if (!query) {
+      // Prioritize pending work: RECEIVED and UNDER_VERIFICATION first
+      return [...invoices].sort((a, b) => {
+        const aPending = ['RECEIVED', 'UNDER_VERIFICATION'].includes(a.status);
+        const bPending = ['RECEIVED', 'UNDER_VERIFICATION'].includes(b.status);
+        if (aPending && !bPending) return -1;
+        if (!aPending && bPending) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    }
 
-    return invoices.filter((invoice) => {
-      return [
-        invoice.invoice_number,
-        invoice.booking_id,
-        invoice.status,
-      ]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(query));
-    });
+    return invoices
+      .filter((invoice) => {
+        return [
+          invoice.invoice_number,
+          invoice.booking_id,
+          invoice.status,
+          invoice.bookings?.hotels?.hotel_name,
+          invoice.bookings?.meeting_requests?.meeting_name,
+        ]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(query));
+      })
+      .sort((a, b) => {
+        const aPending = ['RECEIVED', 'UNDER_VERIFICATION'].includes(a.status);
+        const bPending = ['RECEIVED', 'UNDER_VERIFICATION'].includes(b.status);
+        if (aPending && !bPending) return -1;
+        if (!aPending && bPending) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
   }, [invoices, searchText]);
 
   if (!user) {
@@ -226,15 +178,20 @@ export function Invoices() {
               ? 'No invoices uploaded yet. Upload a vendor invoice to begin verification.'
               : 'Try clearing the search or selecting a different status filter.'
           }
-          icon={<DollarSign size={48} style={{ color: 'var(--primary)' }} />}
+          icon={<FileText size={48} style={{ color: 'var(--primary)' }} />}
         />
       ) : (
-        <ResponsiveDataTable
-          columns={columns}
-          data={filteredInvoices}
-          keyExtractor={(invoice) => invoice.id}
-          emptyState={null}
-        />
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+            gap: 'var(--space-4)',
+          }}
+        >
+          {filteredInvoices.map((invoice) => (
+            <InvoiceCard key={invoice.id} invoice={invoice} />
+          ))}
+        </div>
       )}
     </div>
   );
