@@ -134,11 +134,31 @@ export function BookingDetails() {
 
   if (error || !booking) {
     return (
-      <EmptyState
-        title={error ? 'Unable to load booking' : 'Booking not found'}
-        description={error ?? 'Please go back to the bookings list and try again.'}
-        icon={<ClipboardList size={48} style={{ color: 'var(--danger)' }} />}
-      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: 'var(--space-6) 0' }}>
+        <EmptyState
+          title={error ? 'Unable to load booking' : 'Booking not found'}
+          description={error ?? `No booking found for ID "${id}". It may have been deleted or the link is incorrect.`}
+          icon={<ClipboardList size={48} style={{ color: 'var(--danger)' }} />}
+        />
+        <div style={{ textAlign: 'center' }}>
+          <Link
+            to={ROUTES.bookings}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.8rem 1.5rem',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--primary)',
+              color: 'white',
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}
+          >
+            <ArrowLeft size={16} /> Back to bookings
+          </Link>
+        </div>
+      </div>
     );
   }
 

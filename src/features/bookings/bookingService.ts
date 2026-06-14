@@ -112,11 +112,21 @@ export const getBookings = async (user: UserProfile, filters?: BookingQueryFilte
 
 export const getBookingById = async (id: string): Promise<Booking> => {
   if (isDemoModeActive()) {
-    const booking = await demoRepo.getBookingById(id);
-    return convertDemoToBooking(booking);
+    try {
+      const booking = await demoRepo.getBookingById(id);
+      return convertDemoToBooking(booking);
+    } catch (err) {
+      console.warn(`[BookingService] Demo getBookingById failed for id="${id}":`, err);
+      throw new Error(`Booking with ID "${id}" not found in demo data.`);
+    }
   }
 
-  return supabaseRepo.getBookingById(id);
+  try {
+    return await supabaseRepo.getBookingById(id);
+  } catch (err) {
+    console.warn(`[BookingService] Supabase getBookingById failed for id="${id}":`, err);
+    throw err;
+  }
 };
 
 export const createBooking = async (input: BookingCreateInput, user: UserProfile): Promise<Booking> => {

@@ -31,6 +31,10 @@ import { ROUTES } from '../routes/routeRegistry';
 
 function getStatusColor(status: string): string {
   switch (status) {
+    case 'REQUESTED':
+      return '#8b5cf6';
+    case 'UNDER_REVIEW':
+      return '#3b82f6';
     case 'CONFIRMED':
       return '#6366f1';
     case 'ACTIVE':
@@ -156,7 +160,7 @@ export function BookingCard({ booking }: BookingCardProps) {
           '0 1px 8px rgba(0,0,0,0.06), 0 0 0 1px var(--border)';
         (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
       }}
-      onClick={() => navigate(ROUTES.bookingWorkspace.replace(':id', booking.id))}
+      onClick={() => navigate(ROUTES.bookingDetails.replace(':id', booking.id))}
     >
       {/* ── Header ────────────────────────────────────────────────── */}
       <div style={{ padding: '1.1rem 1.2rem', borderBottom: '1px solid var(--border)' }}>
@@ -360,7 +364,7 @@ export function BookingCard({ booking }: BookingCardProps) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(ROUTES.bookingWorkspace.replace(':id', booking.id) + '?tab=invoice');
+              navigate(ROUTES.bookingDetails.replace(':id', booking.id));
             }}
             style={{
               display: 'flex',
@@ -391,7 +395,7 @@ export function BookingCard({ booking }: BookingCardProps) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(ROUTES.bookingWorkspace.replace(':id', booking.id) + '?tab=payment');
+              navigate(ROUTES.bookingDetails.replace(':id', booking.id));
             }}
             style={{
               display: 'flex',
@@ -421,7 +425,7 @@ export function BookingCard({ booking }: BookingCardProps) {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            navigate(ROUTES.bookingWorkspace.replace(':id', booking.id));
+            navigate(ROUTES.bookingDetails.replace(':id', booking.id));
           }}
           style={{
             display: 'flex',

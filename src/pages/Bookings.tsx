@@ -37,7 +37,11 @@ const OPERATIONAL_FILTER_OPTIONS = [
 
 const statusBadge = (status: BookingStatus) => {
   const color =
-    status === 'CONFIRMED'
+    status === 'REQUESTED'
+      ? '#8b5cf6'
+      : status === 'UNDER_REVIEW'
+      ? '#3b82f6'
+      : status === 'CONFIRMED'
       ? '#6366f1'
       : status === 'ACTIVE'
       ? '#10b981'

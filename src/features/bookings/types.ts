@@ -1,4 +1,4 @@
-export type BookingStatus = 'CONFIRMED' | 'ACTIVE' | 'INVOICE_PENDING' | 'PAYMENT_PENDING' | 'COMPLETED' | 'CANCELLED';
+export type BookingStatus = 'REQUESTED' | 'UNDER_REVIEW' | 'CONFIRMED' | 'ACTIVE' | 'INVOICE_PENDING' | 'PAYMENT_PENDING' | 'COMPLETED' | 'CANCELLED';
 
 export type RoomingStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
 export type InvoiceStatusType = 'PENDING' | 'RECEIVED' | 'UNDER_VERIFICATION' | 'VERIFIED' | 'APPROVED' | 'REJECTED';
