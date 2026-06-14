@@ -52,6 +52,46 @@ export function InvoiceUpload() {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractionNote, setExtractionNote] = useState<string | null>(null);
+
+  async function handleFileSelected(file: File | null) {
+    setInvoiceFile(file);
+    setExtractionNote(null);
+    if (!file || file.type !== 'application/pdf') return;
+
+    setExtracting(true);
+    try {
+      // Lazy-load the extractor (and pdfjs-dist) only when a PDF is chosen,
+      // so neither is in the initial app bundle.
+      const { extractInvoiceFromPdf } = await import('../features/invoices/pdfExtractionService');
+      const result = await extractInvoiceFromPdf(file);
+      if (result.isLikelyScanned) {
+        setExtractionNote('This looks like a scanned PDF (no text layer). Automatic extraction is unavailable — please enter the fields manually. OCR support is planned.');
+        return;
+      }
+      const f = result.fields;
+      if (f.invoiceNumber) setInvoiceNumber(f.invoiceNumber);
+      if (f.invoiceDate) setInvoiceDate(f.invoiceDate);
+      if (f.roomCharges != null) setRoomCharges(String(f.roomCharges));
+      if (f.foodCharges != null) setFoodCharges(String(f.foodCharges));
+      if (f.hallCharges != null) setHallCharges(String(f.hallCharges));
+      if (f.otherCharges != null) setOtherCharges(String(f.otherCharges));
+      if (f.cgstAmount != null) setCgstAmount(String(f.cgstAmount));
+      if (f.sgstAmount != null) setSgstAmount(String(f.sgstAmount));
+      if (f.igstAmount != null) setIgstAmount(String(f.igstAmount));
+      setExtractionNote(
+        result.extractedCount > 0
+          ? `Auto-extracted ${result.extractedCount} field(s) from the PDF. Please review and correct before saving.`
+          : 'No fields could be auto-extracted from this PDF. Please enter the details manually.'
+      );
+    } catch (err: any) {
+      console.error('PDF extraction failed:', err);
+      setExtractionNote('Could not read this PDF automatically. Please enter the details manually.');
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   useEffect(() => {
     if (bookingIdParam) {
@@ -190,7 +230,7 @@ export function InvoiceUpload() {
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(event) => setInvoiceFile(event.target.files?.[0] ?? null)}
+                    onChange={(event) => handleFileSelected(event.target.files?.[0] ?? null)}
                     style={{
                       width: '100%',
                       padding: '0.9rem 1rem',
@@ -199,6 +239,21 @@ export function InvoiceUpload() {
                       background: 'var(--background)',
                     }}
                   />
+                  {extracting ? (
+                    <div style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Reading PDF and extracting fields…</div>
+                  ) : null}
+                  {extractionNote ? (
+                    <div style={{
+                      fontSize: 'var(--font-xs)',
+                      padding: '0.6rem 0.8rem',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+                      color: 'var(--text-main)',
+                    }}>
+                      {extractionNote}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
