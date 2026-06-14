@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, FileText, Upload } from 'lucide-react';
+import { ArrowLeft, FileText, Upload, FileSignature, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getBookings } from '../features/bookings/bookingService';
 import { createInvoice } from '../features/invoices/invoiceService';
@@ -50,26 +50,46 @@ export function InvoiceUpload() {
   const [paxBilled, setPaxBilled] = useState('0');
   const [remarks, setRemarks] = useState('');
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
-  const [extractionNote, setExtractionNote] = useState<string | null>(null);
+  const [extractionNote, setExtractionNote] = useState<{ message: string, type: 'info' | 'success' | 'warning', source?: string } | null>(null);
+  const [ocrProgress, setOcrProgress] = useState<{ status: string, progress: number, page?: number, totalPages?: number } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   async function handleFileSelected(file: File | null) {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
     setInvoiceFile(file);
     setExtractionNote(null);
-    if (!file || file.type !== 'application/pdf') return;
+    setOcrProgress(null);
+
+    if (!file) return;
+
+    // Show preview immediately for supported formats
+    if (file.type === 'application/pdf' || file.type.startsWith('image/')) {
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+
+    if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) return;
 
     setExtracting(true);
     try {
-      // Lazy-load the extractor (and pdfjs-dist) only when a PDF is chosen,
-      // so neither is in the initial app bundle.
       const { extractInvoiceFromPdf } = await import('../features/invoices/pdfExtractionService');
-      const result = await extractInvoiceFromPdf(file);
-      if (result.isLikelyScanned) {
-        setExtractionNote('This looks like a scanned PDF (no text layer). Automatic extraction is unavailable — please enter the fields manually. OCR support is planned.');
-        return;
-      }
+      
+      const result = await extractInvoiceFromPdf(file, {
+        onProgress: (p) => setOcrProgress(p)
+      });
+
       const f = result.fields;
       if (f.invoiceNumber) setInvoiceNumber(f.invoiceNumber);
       if (f.invoiceDate) setInvoiceDate(f.invoiceDate);
@@ -80,16 +100,31 @@ export function InvoiceUpload() {
       if (f.cgstAmount != null) setCgstAmount(String(f.cgstAmount));
       if (f.sgstAmount != null) setSgstAmount(String(f.sgstAmount));
       if (f.igstAmount != null) setIgstAmount(String(f.igstAmount));
-      setExtractionNote(
-        result.extractedCount > 0
-          ? `Auto-extracted ${result.extractedCount} field(s) from the PDF. Please review and correct before saving.`
-          : 'No fields could be auto-extracted from this PDF. Please enter the details manually.'
-      );
+
+      const sourceStr = result.metrics.source === 'digital-pdf' ? 'Text PDF' : result.metrics.source === 'scanned-pdf' ? 'Scanned PDF (OCR)' : 'Image (OCR)';
+
+      if (result.extractedCount > 0) {
+        setExtractionNote({
+          type: 'success',
+          source: sourceStr,
+          message: `Auto-extracted ${result.extractedCount} field(s) via ${sourceStr}. Please review and correct the values.`
+        });
+      } else {
+        setExtractionNote({
+          type: 'warning',
+          source: sourceStr,
+          message: `No fields could be automatically extracted. Please enter the details manually.`
+        });
+      }
     } catch (err: any) {
       console.error('PDF extraction failed:', err);
-      setExtractionNote('Could not read this PDF automatically. Please enter the details manually.');
+      setExtractionNote({
+        type: 'warning',
+        message: 'Could not read this document automatically. Please enter the details manually.'
+      });
     } finally {
       setExtracting(false);
+      setOcrProgress(null);
     }
   }
 
@@ -166,10 +201,8 @@ export function InvoiceUpload() {
 
     setSaving(true);
     try {
-      // 1. Create the invoice metadata record
       const invoice = await createInvoice(payload, user);
 
-      // 2. Upload the primary invoice file
       try {
         await uploadInvoiceDocument(invoice.id, 'PRIMARY_INVOICE', invoiceFile, user);
       } catch (uploadErr: any) {
@@ -189,11 +222,9 @@ export function InvoiceUpload() {
     return null;
   }
 
-  const loading = bookingsLoading;
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'fadeIn 0.3s ease' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'fadeIn 0.3s ease', height: previewUrl ? 'calc(100vh - 120px)' : 'auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-3)', flexShrink: 0 }}>
         <div>
           <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, margin: 0 }}>Upload Invoice</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: '0.5rem' }}>
@@ -211,57 +242,113 @@ export function InvoiceUpload() {
         </div>
       </div>
 
-      {loading ? (
+      {bookingsLoading ? (
         <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>
           Loading bookings...
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: '1fr 320px' }}>
-          <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
-            <div style={{ display: 'grid', gap: '1.25rem' }}>
-              {/* Section A: Upload Invoice File */}
-              <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Upload size={18} /> Vendor Invoice File
-                </h2>
+        <div style={{ 
+          display: 'grid', 
+          gap: 'var(--space-4)', 
+          gridTemplateColumns: previewUrl ? 'minmax(400px, 1fr) 500px' : '1fr 320px',
+          alignItems: 'start',
+          flex: 1,
+          minHeight: 0
+        }}>
+          {/* Left Column: Preview or Default Main Content */}
+          {previewUrl ? (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FileSignature size={16} /> Invoice Preview
+                </span>
+                {extracting && ocrProgress && (
+                  <span style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: 600 }}>
+                    {ocrProgress.status} {ocrProgress.progress > 0 && `${Math.round(ocrProgress.progress * 100)}%`}
+                  </span>
+                )}
+              </div>
+              <div style={{ flex: 1, background: '#f0f0f0', position: 'relative' }}>
+                <object
+                  data={previewUrl}
+                  type={invoiceFile?.type}
+                  style={{ width: '100%', height: '100%', display: 'block' }}
+                >
+                  <div style={{ padding: '2rem', textAlign: 'center' }}>Preview not available for this file type.</div>
+                </object>
+              </div>
+            </div>
+          ) : (
+            <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+              <div style={{ display: 'grid', gap: '1.25rem' }}>
+                <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                  <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Upload size={18} /> Vendor Invoice File
+                  </h2>
+                  <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Upload File (PDF/Image) *</label>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(event) => handleFileSelected(event.target.files?.[0] ?? null)}
+                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--background)' }}
+                    />
+                  </div>
+                </div>
                 
-                <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Upload File (PDF/Image) *</label>
+                {/* When no file is selected, the form just prompts for file primarily.
+                    If they want to fill it manually without file, they can. */}
+                <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
+                  <FileText size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
+                  <p>Upload an invoice document to begin data entry and auto-extraction.</p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Right Column: Form (or Sidebar if no file) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', height: previewUrl ? '100%' : 'auto', overflowY: previewUrl ? 'auto' : 'visible', paddingRight: previewUrl ? '0.5rem' : '0' }}>
+            
+            {/* Show extraction status banner if we have a file */}
+            {previewUrl && extractionNote && (
+              <div style={{
+                padding: '1rem', borderRadius: 'var(--radius-lg)',
+                background: extractionNote.type === 'success' ? '#10b98115' : '#f59e0b15',
+                border: `1px solid ${extractionNote.type === 'success' ? '#10b98140' : '#f59e0b40'}`,
+                display: 'flex', gap: '0.75rem', alignItems: 'flex-start'
+              }}>
+                {extractionNote.type === 'success' ? (
+                  <CheckCircle2 size={20} style={{ color: '#10b981', flexShrink: 0, marginTop: '2px' }} />
+                ) : (
+                  <AlertTriangle size={20} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+                )}
+                <div>
+                  <div style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
+                    Extraction Result {extractionNote.source && <span style={{ opacity: 0.7, fontWeight: 400 }}>({extractionNote.source})</span>}
+                  </div>
+                  <div style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    {extractionNote.message}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* If we have a file, the form is here. If we don't have a file, the form is empty, just the sidebar shows. */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', display: previewUrl ? 'block' : 'none' }}>
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                
+                {/* File Upload re-selector (mini version) */}
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Change File</label>
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(event) => handleFileSelected(event.target.files?.[0] ?? null)}
-                    style={{
-                      width: '100%',
-                      padding: '0.9rem 1rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border)',
-                      background: 'var(--background)',
-                    }}
+                    style={{ width: '100%', padding: '0.6rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
                   />
-                  {extracting ? (
-                    <div style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Reading PDF and extracting fields…</div>
-                  ) : null}
-                  {extractionNote ? (
-                    <div style={{
-                      fontSize: 'var(--font-xs)',
-                      padding: '0.6rem 0.8rem',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
-                      border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
-                      color: 'var(--text-main)',
-                    }}>
-                      {extractionNote}
-                    </div>
-                  ) : null}
                 </div>
-              </div>
 
-              {/* Section B: Invoice Details */}
-              <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem' }}>Invoice Details</h2>
-                
-                <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
                   <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Booking *</label>
                   <select
                     value={bookingId}
@@ -290,7 +377,6 @@ export function InvoiceUpload() {
                       style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
                     />
                   </div>
-
                   <div style={{ display: 'grid', gap: '0.75rem' }}>
                     <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Invoice Date *</label>
                     <input
@@ -301,80 +387,47 @@ export function InvoiceUpload() {
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Section C: Charge Breakdown */}
-              <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem' }}>Charge Breakdown</h2>
-
-                <div style={{ display: 'grid', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ display: 'grid', gap: '0.75rem' }}>
-                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Room Charges</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="100"
-                      value={roomCharges}
-                      onChange={(e) => setRoomCharges(e.target.value)}
-                      placeholder="0"
-                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-                    />
+                <div>
+                  <h3 style={{ fontSize: 'var(--font-sm)', fontWeight: 700, marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Charge Breakdown</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Room Charges</label>
+                      <input type="number" min="0" step="100" value={roomCharges} onChange={(e) => setRoomCharges(e.target.value)} placeholder="0"
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                    </div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Hall Charges</label>
+                      <input type="number" min="0" step="100" value={hallCharges} onChange={(e) => setHallCharges(e.target.value)} placeholder="0"
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                    </div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Food Charges</label>
+                      <input type="number" min="0" step="100" value={foodCharges} onChange={(e) => setFoodCharges(e.target.value)} placeholder="0"
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                    </div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Other Charges</label>
+                      <input type="number" min="0" step="1" value={otherCharges} onChange={(e) => setOtherCharges(e.target.value)} placeholder="0"
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                    </div>
                   </div>
 
-                  <div style={{ display: 'grid', gap: '0.75rem' }}>
-                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Hall Charges</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="100"
-                      value={hallCharges}
-                      onChange={(e) => setHallCharges(e.target.value)}
-                      placeholder="0"
-                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gap: '0.75rem' }}>
-                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Food Charges</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="100"
-                      value={foodCharges}
-                      onChange={(e) => setFoodCharges(e.target.value)}
-                      placeholder="0"
-                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gap: '0.75rem' }}>
-                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Other Charges</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={otherCharges}
-                      onChange={(e) => setOtherCharges(e.target.value)}
-                      placeholder="0"
-                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
                       <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>CGST</label>
                       <input type="number" min="0" step="0.01" value={cgstAmount} onChange={(e) => setCgstAmount(e.target.value)} placeholder="0"
-                        style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
                     </div>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
                       <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>SGST</label>
                       <input type="number" min="0" step="0.01" value={sgstAmount} onChange={(e) => setSgstAmount(e.target.value)} placeholder="0"
-                        style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
                     </div>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
                       <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>IGST</label>
                       <input type="number" min="0" step="0.01" value={igstAmount} onChange={(e) => setIgstAmount(e.target.value)} placeholder="0"
-                        style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
                     </div>
                   </div>
                 </div>
@@ -393,114 +446,78 @@ export function InvoiceUpload() {
                     <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>₹{invoiceAmount.toLocaleString('en-IN')}</div>
                   </div>
                 </div>
-              </div>
 
-              {/* Section D: Operational Data */}
-              <div style={{ paddingBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem' }}>Operational Data</h2>
-
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div style={{ display: 'grid', gap: '0.75rem' }}>
-                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Pax Billed *</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={paxBilled}
-                      onChange={(e) => setPaxBilled(e.target.value)}
-                      placeholder="0"
-                      style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gap: '0.75rem' }}>
-                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Remarks</label>
-                    <textarea
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="Any additional remarks or notes..."
-                      style={{
-                        width: '100%',
-                        minHeight: '100px',
-                        padding: '0.9rem 1rem',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--border)',
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                      }}
-                    />
+                <div>
+                  <h3 style={{ fontSize: 'var(--font-sm)', fontWeight: 700, marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Operational Data</h3>
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Pax Billed *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={paxBilled}
+                        onChange={(e) => setPaxBilled(e.target.value)}
+                        placeholder="0"
+                        style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Remarks</label>
+                      <textarea
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                        placeholder="Any additional remarks or notes..."
+                        style={{ width: '100%', minHeight: '60px', padding: '0.7rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontFamily: 'inherit', resize: 'vertical' }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Error */}
-              {submitError ? (
-                <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 500 }}>
-                  {submitError}
+                {submitError && (
+                  <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 500, fontSize: 'var(--font-sm)' }}>
+                    {submitError}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                  <button
+                    onClick={handleUpload}
+                    disabled={saving || extracting}
+                    style={{
+                      flex: 1, padding: '1rem', borderRadius: 'var(--radius-lg)', border: 'none',
+                      background: 'var(--primary)', color: '#fff', fontWeight: 700,
+                      cursor: (saving || extracting) ? 'not-allowed' : 'pointer',
+                      opacity: (saving || extracting) ? 0.6 : 1,
+                    }}
+                  >
+                    {saving ? 'Uploading...' : 'Submit Invoice'}
+                  </button>
                 </div>
-              ) : null}
-
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
-                <button
-                  onClick={handleUpload}
-                  disabled={saving}
-                  style={{
-                    flex: 1,
-                    padding: '1rem',
-                    borderRadius: 'var(--radius-lg)',
-                    border: 'none',
-                    background: 'var(--primary)',
-                    color: '#fff',
-                    fontWeight: 700,
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    opacity: saving ? 0.6 : 1,
-                  }}
-                >
-                  {saving ? 'Uploading...' : 'Upload Invoice'}
-                </button>
-                <Link
-                  to={ROUTES.invoices}
-                  style={{
-                    flex: 1,
-                    padding: '1rem',
-                    borderRadius: 'var(--radius-lg)',
-                    border: '1px solid var(--border)',
-                    background: 'var(--surface)',
-                    color: 'var(--primary)',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textDecoration: 'none',
-                  }}
-                >
-                  Cancel
-                </Link>
               </div>
             </div>
-          </section>
 
-          {/* Sidebar */}
-          <div>
+            {/* Sidebar Booking Details (Shows underneath form if preview active, or beside empty upload prompt) */}
             {selectedBooking ? (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', position: 'sticky', top: 'var(--space-4)' }}>
-                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>SELECTED BOOKING</h3>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)' }}>
+                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>SELECTED BOOKING DETAILS</h3>
                 <div style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.75rem' }}>
                   {selectedBooking.booking_reference}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'grid', gap: '0.5rem' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'grid', gap: '0.5rem', gridTemplateColumns: '1fr 1fr' }}>
                   <div>Check-in: {new Date(selectedBooking.check_in_date).toLocaleDateString('en-IN')}</div>
                   <div>Check-out: {new Date(selectedBooking.check_out_date).toLocaleDateString('en-IN')}</div>
                   <div>Expected pax: {selectedBooking.expected_pax}</div>
                   <div>Rooms: {selectedBooking.rooms_booked}</div>
-                  <div>Halls: {selectedBooking.halls_booked}</div>
+                  <div style={{ gridColumn: '1 / -1' }}>Halls: {selectedBooking.halls_booked}</div>
                 </div>
               </div>
             ) : (
-              <div style={{ background: 'var(--background)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <FileText size={32} style={{ margin: '0 auto var(--space-2)', opacity: 0.5 }} />
-                <div style={{ fontSize: '0.9rem' }}>Select a booking to view details</div>
-              </div>
+              !previewUrl && (
+                <div style={{ background: 'var(--background)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <FileText size={32} style={{ margin: '0 auto var(--space-2)', opacity: 0.5 }} />
+                  <div style={{ fontSize: '0.9rem' }}>Select a booking to view details</div>
+                </div>
+              )
             )}
           </div>
         </div>
