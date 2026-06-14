@@ -260,3 +260,113 @@ export function toInvoiceVarianceInput(invoiceId: string, v: AuditVariance): Inv
 function round2(value: number): number {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
+
+// ── Phase 1: Audit Evidence (explainability) ─────────────────────────────────
+
+export interface AuditEvidence {
+  varianceType: string;
+  title: string;
+  calculationFormula: string;
+  calculationSteps: string[];
+  expectedAmount: number;
+}
+
+function inr(n: number): string {
+  return `₹${round2(n).toLocaleString('en-IN')}`;
+}
+
+const ROOM_TYPE_RATE_KEY: Record<string, keyof RoomRates> = {
+  SINGLE: 'roomRateSingle',
+  DOUBLE: 'roomRateDouble',
+  TRIPLE: 'roomRateTriple',
+  QUAD: 'roomRateQuad',
+};
+
+export interface EvidenceInputs {
+  commercial: ApprovedCommercial;
+  roomInventory: RoomTypeCount[];
+  nights: number;
+  foodPax: number;
+  foodDays: number;
+  nrcPax: number;
+  nrcDays: number;
+  hallCount: number;
+  hallDays: number;
+  expected: { room: number; food: number; nrc: number; hall: number; total: number };
+}
+
+/**
+ * Generates step-by-step evidence explaining how each expected amount was
+ * derived from approved_commercials + booking_room_inventory + invoice context.
+ * Pure / dynamic — nothing persisted (Phase 3).
+ */
+export function buildAuditEvidence(varianceType: string, inputs: EvidenceInputs): AuditEvidence {
+  const { commercial, roomInventory, nights, foodPax, foodDays, nrcPax, nrcDays, hallCount, hallDays, expected } = inputs;
+
+  switch (varianceType) {
+    case 'ROOM_VARIANCE': {
+      const steps = roomInventory.map((item) => {
+        const rate = ROOM_TYPE_RATE_KEY[item.roomType] ? commercial[ROOM_TYPE_RATE_KEY[item.roomType]] : 0;
+        const occ = Number(item.occupancyCount) || 0;
+        const line = round2(occ * rate * nights);
+        return `${occ} Occupant${occ === 1 ? '' : 's'} (${item.roomType}) × ${inr(rate)} × ${nights} Nights = ${inr(line)}`;
+      });
+      return {
+        varianceType,
+        title: 'Expected Room Charges',
+        calculationFormula: 'Σ (Occupancy × Per-Occupant Rate × Nights)',
+        calculationSteps: steps.length ? steps : ['No room inventory recorded for this booking.'],
+        expectedAmount: round2(expected.room),
+      };
+    }
+    case 'FOOD_VARIANCE':
+      return {
+        varianceType,
+        title: 'Expected Food Charges',
+        calculationFormula: 'Food Rate per Pax × Pax × Days',
+        calculationSteps: [`${inr(commercial.foodRatePerPax)} × ${foodPax} Pax × ${foodDays} Days = ${inr(expected.food)}`],
+        expectedAmount: round2(expected.food),
+      };
+    case 'NRC_VARIANCE':
+      return {
+        varianceType,
+        title: 'Expected NRC Food Charges',
+        calculationFormula: 'NRC Food Rate per Pax × NRC Pax × NRC Days',
+        calculationSteps: [
+          `${inr(commercial.nrcFoodRatePerPax)} × ${nrcPax} NRC Pax × ${nrcDays} Days = ${inr(expected.nrc)}`,
+          nrcPax === 0 ? 'No NRC quantities are stored separately; baseline is ₹0. Review NRC food lines on the invoice.' : '',
+        ].filter(Boolean),
+        expectedAmount: round2(expected.nrc),
+      };
+    case 'HALL_VARIANCE':
+      return {
+        varianceType,
+        title: 'Expected Hall Charges',
+        calculationFormula: 'Hall Rate × Halls × Days',
+        calculationSteps: [`${inr(commercial.hallRate)} × ${hallCount} Hall(s) × ${hallDays} Days = ${inr(expected.hall)}`],
+        expectedAmount: round2(expected.hall),
+      };
+    case 'TOTAL_VARIANCE':
+      return {
+        varianceType,
+        title: 'Expected Total',
+        calculationFormula: 'Room + Food + NRC + Hall',
+        calculationSteps: [
+          `Room = ${inr(expected.room)}`,
+          `Food = ${inr(expected.food)}`,
+          `NRC = ${inr(expected.nrc)}`,
+          `Hall = ${inr(expected.hall)}`,
+          `Expected Total = ${inr(expected.total)}`,
+        ],
+        expectedAmount: round2(expected.total),
+      };
+    default:
+      return {
+        varianceType,
+        title: 'Expected Amount',
+        calculationFormula: '—',
+        calculationSteps: [],
+        expectedAmount: 0,
+      };
+  }
+}

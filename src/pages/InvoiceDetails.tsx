@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, AlertCircle, DollarSign, Users, Zap, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,8 +10,8 @@ import {
   downloadInvoiceDocument,
 } from '../features/invoices/invoiceDocumentService';
 import { validateInvoicePackage, getValidationSummary } from '../features/invoices/invoiceValidationService';
-import { runCommercialAudit, getPersistedVariances } from '../services/commercialAuditService';
-import { classifyVarianceSeverity, rollUpAuditStatus, type VarianceSeverity } from '../services/invoiceAuditCalculationService';
+import { runCommercialAudit, getPersistedVariances, getAuditEvidence } from '../services/commercialAuditService';
+import { classifyVarianceSeverity, rollUpAuditStatus, type VarianceSeverity, type AuditEvidence } from '../services/invoiceAuditCalculationService';
 import { getBookingById } from '../features/bookings/bookingService';
 import type { Invoice, InvoiceValidationCheck, InvoiceDocument, InvoiceDocumentType, InvoiceVarianceRecord } from '../features/invoices/types';
 import type { Booking } from '../features/bookings/types';
@@ -78,6 +78,8 @@ export function InvoiceDetails() {
   const [validationChecks, setValidationChecks] = useState<InvoiceValidationCheck[]>([]);
   const [validationSummary, setValidationSummary] = useState<any>(null);
   const [commercialVariances, setCommercialVariances] = useState<InvoiceVarianceRecord[]>([]);
+  const [auditEvidence, setAuditEvidence] = useState<Record<string, AuditEvidence>>({});
+  const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null);
   const [runningAudit, setRunningAudit] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [documents, setDocuments] = useState<InvoiceDocument[]>([]);
@@ -127,6 +129,14 @@ export function InvoiceDetails() {
           try {
             const variances = await getPersistedVariances(invoiceData.id);
             setCommercialVariances(variances);
+            if (variances.length > 0) {
+              try {
+                const ev = await getAuditEvidence(invoiceData.id);
+                setAuditEvidence(ev);
+              } catch (evErr) {
+                console.error('Failed to generate audit evidence:', evErr);
+              }
+            }
           } catch (vErr) {
             console.error('Failed to load persisted variances:', vErr);
           }
@@ -343,6 +353,8 @@ export function InvoiceDetails() {
       await runCommercialAudit(invoice.id);
       const variances = await getPersistedVariances(invoice.id);
       setCommercialVariances(variances);
+      const ev = await getAuditEvidence(invoice.id);
+      setAuditEvidence(ev);
     } catch (err: any) {
       setAuditError(err?.message ?? 'Unable to run commercial audit.');
     } finally {
@@ -816,6 +828,9 @@ export function InvoiceDetails() {
                   const criticalCount = categories.filter((v) => v.severity === 'CRITICAL').length;
                   const warningCount = categories.filter((v) => v.severity === 'WARNING').length;
                   const reviewCount = categories.filter((v) => v.severity === 'REVIEW_REQUIRED').length;
+                  const expectedByType: Record<string, number> = Object.fromEntries(
+                    withSeverity.map((v) => [v.variance_type, v.expected_amount ?? 0])
+                  );
 
                   return (
                     <>
@@ -851,6 +866,18 @@ export function InvoiceDetails() {
                         </div>
                       </div>
 
+                      {/* Expected Total Breakdown (Phase 5) */}
+                      <div style={{ background: 'var(--background)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.6rem' }}>Expected Total Breakdown</div>
+                        <div style={{ display: 'grid', gap: '0.4rem', fontSize: 'var(--font-sm)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Room</span><span style={{ fontWeight: 600 }}>{formatCurrency(expectedByType['ROOM_VARIANCE'] ?? 0)}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Food</span><span style={{ fontWeight: 600 }}>{formatCurrency(expectedByType['FOOD_VARIANCE'] ?? 0)}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>NRC</span><span style={{ fontWeight: 600 }}>{formatCurrency(expectedByType['NRC_VARIANCE'] ?? 0)}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Hall</span><span style={{ fontWeight: 600 }}>{formatCurrency(expectedByType['HALL_VARIANCE'] ?? 0)}</span></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '0.4rem' }}><span style={{ fontWeight: 700 }}>Expected Total</span><span style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatCurrency(expectedByType['TOTAL_VARIANCE'] ?? totalExpected)}</span></div>
+                        </div>
+                      </div>
+
                       <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-sm)' }}>
                           <thead>
@@ -861,13 +888,17 @@ export function InvoiceDetails() {
                               <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Variance</th>
                               <th style={{ textAlign: 'center', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Severity</th>
                               <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Interpretation</th>
+                              <th style={{ textAlign: 'center', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-muted)' }}>Evidence</th>
                             </tr>
                           </thead>
                           <tbody>
                             {withSeverity.map((v) => {
                               const variance = v.variance_amount ?? 0;
+                              const evidence = auditEvidence[v.variance_type];
+                              const isExpanded = expandedEvidence === v.variance_type;
                               return (
-                                <tr key={v.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                <Fragment key={v.id}>
+                                <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.85rem 0', fontWeight: 600 }}>{v.variance_type}</td>
                                   <td style={{ textAlign: 'right', padding: '0.85rem 1rem' }}>{formatCurrency(v.expected_amount)}</td>
                                   <td style={{ textAlign: 'right', padding: '0.85rem 1rem', fontWeight: 600 }}>{formatCurrency(v.actual_amount)}</td>
@@ -882,7 +913,36 @@ export function InvoiceDetails() {
                                     </span>
                                   </td>
                                   <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '320px' }}>{v.remarks ?? '—'}</td>
+                                  <td style={{ textAlign: 'center', padding: '0.85rem 1rem' }}>
+                                    {evidence ? (
+                                      <button
+                                        onClick={() => setExpandedEvidence(isExpanded ? null : v.variance_type)}
+                                        style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.3rem 0.7rem', color: 'var(--primary)', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                      >
+                                        {isExpanded ? 'Hide' : 'View Calculation'}
+                                      </button>
+                                    ) : '—'}
+                                  </td>
                                 </tr>
+                                {isExpanded && evidence ? (
+                                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <td colSpan={7} style={{ padding: '0 1rem 1rem' }}>
+                                      <div style={{ background: 'var(--background)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)' }}>
+                                        <div style={{ fontWeight: 700, marginBottom: '0.35rem' }}>{evidence.title}</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>Formula: {evidence.calculationFormula}</div>
+                                        <div style={{ display: 'grid', gap: '0.3rem', fontSize: 'var(--font-sm)', fontFamily: 'monospace' }}>
+                                          {evidence.calculationSteps.map((step, i) => (
+                                            <div key={i}>{step}</div>
+                                          ))}
+                                        </div>
+                                        <div style={{ marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)', fontWeight: 700 }}>
+                                          Expected Total = {formatCurrency(evidence.expectedAmount)}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ) : null}
+                                </Fragment>
                               );
                             })}
                           </tbody>
