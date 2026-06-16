@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { Modal } from '../Modal';
 
 interface Zone {
   id: string;
@@ -274,12 +275,7 @@ export function ZoneMasterTab({ onRefresh }: ZoneMasterTabProps) {
 
       {/* Form Modal */}
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 50,
-        }}>
+        <Modal isOpen={true} onClose={handleCloseForm}>
           <div className="card" style={{ padding: 'var(--space-6)', maxWidth: '28rem', width: '100%', margin: 'var(--space-4)' }}>
             <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: 'var(--space-4)' }}>
               {editingZone ? 'Edit Zone' : 'Add New Zone'}
@@ -326,7 +322,7 @@ export function ZoneMasterTab({ onRefresh }: ZoneMasterTabProps) {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

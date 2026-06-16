@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import type { Hall, HotelWithRelations, HallCreateInput, HallUpdateInput } from '../features/venues/types';
 import { createHall, updateHall } from '../features/venues/venueService';
+import { Modal } from './Modal';
 
 interface HallFormModalProps {
   hotel: HotelWithRelations;
@@ -95,12 +96,7 @@ export function HallFormModal({ hotel, hall, onClose, onComplete }: HallFormModa
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 50,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 'var(--space-4)',
-    }}>
+    <Modal isOpen={true} onClose={onClose}>
       <div style={{
         background: 'var(--surface)',
         borderRadius: 'var(--radius-xl)',
@@ -242,6 +238,6 @@ export function HallFormModal({ hotel, hall, onClose, onComplete }: HallFormModa
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, ChevronRight, Calendar, User, CheckCircle, AlertCircle } from 'lucide-react';
 import { getImportHistory, getImportDetails } from '../features/venues/importService';
 import type { VenueImportHistory } from '../features/venues/types';
+import { Modal } from './Modal';
 
 interface ImportHistoryModalProps {
   isOpen: boolean;
@@ -51,8 +52,8 @@ export function ImportHistoryModal({ isOpen, onClose }: ImportHistoryModalProps)
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+    <Modal isOpen={true} onClose={onClose}>
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col" style={{ width: '896px' }}>
         {/* Header */}
         <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 p-6 flex items-center justify-between text-white">
           <div>
@@ -271,6 +272,6 @@ export function ImportHistoryModal({ isOpen, onClose }: ImportHistoryModalProps)
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

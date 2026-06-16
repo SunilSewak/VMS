@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { Zone, ZoneCreateInput, ZoneUpdateInput } from '../features/zones/types';
+import { Modal } from './Modal';
 
 interface ZoneFormModalProps {
   zone: Zone | null;
@@ -61,21 +62,7 @@ export function ZoneFormModal({ zone, isOpen, onClose, onSave, isLoading = false
   const isEditing = !!zone;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-      }}
-      onClick={onClose}
-    >
+    <Modal isOpen={true} onClose={onClose}>
       <div
         style={{
           backgroundColor: 'var(--surface)',
@@ -206,6 +193,6 @@ export function ZoneFormModal({ zone, isOpen, onClose, onSave, isLoading = false
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

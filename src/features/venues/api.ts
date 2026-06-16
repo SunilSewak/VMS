@@ -140,7 +140,9 @@ export async function getVenueById(id: string): Promise<HotelWithRelations> {
       remarks,
       city:city_id ( id, city_name ),
       halls ( id, hotel_id, hall_name, floor, classroom_capacity, u_shape_capacity, cluster_capacity, indoor_outdoor, status ),
-      venue_photos ( id, photo_url, display_order )
+      venue_photos ( id, photo_url, display_order ),
+      occupancy_rules:hotel_occupancy_rules ( id, designation_type, occupancy_type ),
+      accommodation_inventory:hotel_accommodation_inventory ( id, total_rooms, single_rooms, double_rooms, triple_rooms, quad_rooms )
     `)
     .eq('id', id)
     .single();

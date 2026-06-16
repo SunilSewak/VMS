@@ -4,6 +4,7 @@ import { ROLES } from '../auth/permissions';
 import type { AppUserCreateInput } from '../features/users/types';
 import { getDivisions } from '../features/meetings/meetingService';
 import type { Division } from '../features/meetings/types';
+import { Modal } from './Modal';
 
 interface UserRegisterModalProps {
   isOpen: boolean;
@@ -93,21 +94,7 @@ export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-      }}
-      onClick={onClose}
-    >
+    <Modal isOpen={true} onClose={onClose}>
       <div
         style={{
           backgroundColor: 'var(--surface)',
@@ -247,6 +234,6 @@ export function UserRegisterModal({ isOpen, onClose, onSave, isLoading = false }
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

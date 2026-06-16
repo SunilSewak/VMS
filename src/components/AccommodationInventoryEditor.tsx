@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, AlertCircle, CheckCircle } from 'lucide-react';
 import type { Hotel, AccommodationInventory } from '../features/venues/types';
 import { createAccommodation, updateAccommodation } from '../features/venues/venueService';
+import { Modal } from './Modal';
 
 interface AccommodationInventoryEditorProps {
   hotel: Hotel;
@@ -147,12 +148,7 @@ export function AccommodationInventoryEditor({
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 50,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 'var(--space-4)',
-    }}>
+    <Modal isOpen={true} onClose={onClose}>
       <div style={{
         background: 'var(--surface)',
         borderRadius: 'var(--radius-xl)',
@@ -388,6 +384,6 @@ export function AccommodationInventoryEditor({
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

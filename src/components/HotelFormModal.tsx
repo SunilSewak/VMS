@@ -4,6 +4,7 @@ import type { Hotel, HotelCreateInput, HotelUpdateInput, City } from '../feature
 import { HOTEL_CATEGORY_OPTIONS } from '../features/venues/types';
 import { createHotel, updateHotel } from '../features/venues/venueService';
 import { fetchCities } from '../features/venues/api';
+import { Modal } from './Modal';
 
 interface HotelFormModalProps {
   hotel?: Hotel | null;
@@ -260,12 +261,7 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 50,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 'var(--space-4)',
-    }}>
+    <Modal isOpen={true} onClose={onClose}>
       <div style={{
         background: 'var(--surface)',
         borderRadius: 'var(--radius-xl)',
@@ -713,6 +709,6 @@ export function HotelFormModal({ hotel, onClose, onComplete }: HotelFormModalPro
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }
