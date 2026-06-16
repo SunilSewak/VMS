@@ -55,6 +55,8 @@ export interface Booking {
   } | null;
   hotels?: { hotel_name: string; city_id?: string; city_name?: string } | null;
   halls?: { hall_name: string } | null;
+  invoices?: { id: string }[] | null;
+  payments?: { id: string }[] | null;
 }
 
 export interface BookingCreateInput {

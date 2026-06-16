@@ -391,3 +391,95 @@ export async function deleteInvoice(id: string, user: UserProfile): Promise<void
 
   if (error) throw new Error(error.message);
 }
+
+// ── Phase 2: Comments, History, Variance Acceptances ──────────
+
+import type { InvoiceReviewComment, InvoiceHistoryEvent, InvoiceVarianceAcceptance } from './types';
+
+export async function getInvoiceComments(invoiceId: string): Promise<InvoiceReviewComment[]> {
+  const { data, error } = await (supabase as any)
+    .from('invoice_comments')
+    .select('*, user:created_by ( full_name )')
+    .eq('invoice_id', invoiceId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as InvoiceReviewComment[];
+}
+
+export async function addInvoiceComment(invoiceId: string, comment: string, user: UserProfile): Promise<InvoiceReviewComment> {
+  const { data, error } = await (supabase as any)
+    .from('invoice_comments')
+    .insert([{
+      invoice_id: invoiceId,
+      comment,
+      created_by: user.id
+    }])
+    .select('*, user:created_by ( full_name )')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as InvoiceReviewComment;
+}
+
+export async function resolveInvoiceComment(commentId: string, user: UserProfile): Promise<void> {
+  const { error } = await (supabase as any)
+    .from('invoice_comments')
+    .update({ resolved: true })
+    .eq('id', commentId);
+
+  if (error) throw new Error(error.message);
+}
+
+export async function getInvoiceHistory(invoiceId: string): Promise<InvoiceHistoryEvent[]> {
+  const { data, error } = await (supabase as any)
+    .from('invoice_history')
+    .select('*, user:user_id ( full_name )')
+    .eq('invoice_id', invoiceId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as InvoiceHistoryEvent[];
+}
+
+export async function addInvoiceHistory(invoiceId: string, action: string, remarks: string | null, user: UserProfile): Promise<InvoiceHistoryEvent> {
+  const { data, error } = await (supabase as any)
+    .from('invoice_history')
+    .insert([{
+      invoice_id: invoiceId,
+      action,
+      remarks,
+      user_id: user.id
+    }])
+    .select('*, user:user_id ( full_name )')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as InvoiceHistoryEvent;
+}
+
+export async function getVarianceAcceptances(invoiceId: string): Promise<InvoiceVarianceAcceptance[]> {
+  const { data, error } = await (supabase as any)
+    .from('invoice_variance_acceptances')
+    .select('*, user:accepted_by ( full_name )')
+    .eq('invoice_id', invoiceId);
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as InvoiceVarianceAcceptance[];
+}
+
+export async function acceptVariance(invoiceId: string, varianceId: string, remarks: string, user: UserProfile): Promise<InvoiceVarianceAcceptance> {
+  const { data, error } = await (supabase as any)
+    .from('invoice_variance_acceptances')
+    .insert([{
+      invoice_id: invoiceId,
+      variance_id: varianceId,
+      remarks,
+      accepted_by: user.id
+    }])
+    .select('*, user:accepted_by ( full_name )')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as InvoiceVarianceAcceptance;
+}

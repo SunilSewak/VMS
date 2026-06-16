@@ -18,7 +18,7 @@ export type InvoiceDocumentType =
 export type ValidationCheckType =
   | 'DATE_VARIANCE'
   | 'NIGHT_VARIANCE'
-  | 'HOTEL_MISMATCH'
+  | 'HOTEL_VERIFICATION'
   | 'HALL_MISMATCH'
   | 'PAX_VARIANCE'
   | 'ROOM_VARIANCE'
@@ -54,7 +54,7 @@ export interface InvoiceValidationCheck {
   variance_value: number | string;
   variance_percentage?: number;
   severity: 'INFO' | 'WARNING' | 'CRITICAL';
-  status: 'PASS' | 'FAIL';
+  status: 'PASS' | 'WARNING' | 'FAIL';
   description: string;
   remarks?: string | null;
   created_at: string;
@@ -178,5 +178,51 @@ export interface InvoicePackage extends Invoice {
   // Invoice package = Invoice + all supporting documents + all validation checks
   documents?: InvoiceDocument[];
   validation_checks?: InvoiceValidationCheck[];
+}
+
+export interface ValidationResultSummaryDTO {
+  totalChecks: number;
+  passedChecks: number;
+  warningChecks: number;
+  failedChecks: number;
+  healthScore: number;
+  recommendation: string;
+}
+
+export interface InvoiceReviewComment {
+  id: string;
+  invoice_id: string;
+  comment: string;
+  created_by: string;
+  created_at: string;
+  resolved: boolean;
+  user?: {
+    full_name: string;
+  };
+}
+
+export interface InvoiceHistoryEvent {
+  id: string;
+  invoice_id: string;
+  action: string;
+  user_id: string;
+  remarks?: string | null;
+  created_at: string;
+  user?: {
+    full_name: string;
+  };
+}
+
+export interface InvoiceVarianceAcceptance {
+  id: string;
+  invoice_id: string;
+  variance_id: string;
+  accepted_by: string;
+  accepted_at: string;
+  remarks?: string | null;
+  status: string;
+  user?: {
+    full_name: string;
+  };
 }
 

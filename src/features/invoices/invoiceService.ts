@@ -125,3 +125,34 @@ export const deleteInvoiceDocument = async (documentId: string): Promise<void> =
 export const getInvoiceVariances = async (invoiceId: string): Promise<InvoiceValidationCheck[]> => {
   return supabaseApi.getInvoiceVariances(invoiceId);
 };
+
+// ── Phase 2: Comments, History, Variance Acceptances ──────────
+import type { InvoiceReviewComment, InvoiceHistoryEvent, InvoiceVarianceAcceptance } from './types';
+
+export const getInvoiceComments = async (invoiceId: string): Promise<InvoiceReviewComment[]> => {
+  return supabaseApi.getInvoiceComments(invoiceId);
+};
+
+export const addInvoiceComment = async (invoiceId: string, comment: string, user: UserProfile): Promise<InvoiceReviewComment> => {
+  return supabaseApi.addInvoiceComment(invoiceId, comment, user);
+};
+
+export const resolveInvoiceComment = async (commentId: string, user: UserProfile): Promise<void> => {
+  return supabaseApi.resolveInvoiceComment(commentId, user);
+};
+
+export const getInvoiceHistory = async (invoiceId: string): Promise<InvoiceHistoryEvent[]> => {
+  return supabaseApi.getInvoiceHistory(invoiceId);
+};
+
+export const addInvoiceHistory = async (invoiceId: string, action: string, remarks: string | null, user: UserProfile): Promise<InvoiceHistoryEvent> => {
+  return supabaseApi.addInvoiceHistory(invoiceId, action, remarks, user);
+};
+
+export const getVarianceAcceptances = async (invoiceId: string): Promise<InvoiceVarianceAcceptance[]> => {
+  return supabaseApi.getVarianceAcceptances(invoiceId);
+};
+
+export const acceptVariance = async (invoiceId: string, varianceId: string, remarks: string, user: UserProfile): Promise<InvoiceVarianceAcceptance> => {
+  return supabaseApi.acceptVariance(invoiceId, varianceId, remarks, user);
+};

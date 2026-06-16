@@ -7,30 +7,52 @@
  */
 
 import { getBookingById } from '../bookings/bookingService';
-import type { Invoice, InvoiceValidationCheck, InvoiceValidationResult } from './types';
+import type { Invoice, InvoiceValidationCheck, InvoiceValidationResult, ValidationResultSummaryDTO } from './types';
 import type { Booking } from '../bookings/types';
 
 /**
  * Rule Group 1: Date Validation
  * Validates invoice dates against booking check-in/check-out.
  */
-function validateDates(invoice: Invoice, booking: Booking): InvoiceValidationCheck[] {
+function validateDates(invoice: Invoice, booking: Booking, gracePeriodDays: number = 30): InvoiceValidationCheck[] {
   const checks: InvoiceValidationCheck[] = [];
   const checkInDate = new Date(booking.check_in_date).toISOString().split('T')[0];
   const checkOutDate = new Date(booking.check_out_date).toISOString().split('T')[0];
 
   const nights = Math.max(0, Math.floor((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24)));
 
+  const invoiceDate = new Date(invoice.invoice_date);
+  const inDate = new Date(checkInDate);
+  const outDate = new Date(checkOutDate);
+
+  const graceDate = new Date(outDate);
+  graceDate.setDate(graceDate.getDate() + gracePeriodDays);
+  const graceDateStr = graceDate.toISOString().split('T')[0];
+
+  let severity: 'INFO' | 'WARNING' | 'CRITICAL' = 'INFO';
+  let status: 'PASS' | 'WARNING' | 'FAIL' = 'PASS';
+  let desc = `Invoice date: ${invoice.invoice_date} vs Booking: ${checkInDate} to ${checkOutDate}`;
+
+  if (invoiceDate < inDate) {
+    severity = 'CRITICAL';
+    status = 'FAIL';
+    desc = `Invoice date (${invoice.invoice_date}) is before Check-In Date (${checkInDate})`;
+  } else if (invoiceDate > graceDate) {
+    severity = 'WARNING';
+    status = 'WARNING';
+    desc = `Invoice date (${invoice.invoice_date}) is after Check-Out Date + ${gracePeriodDays} days grace period (${graceDateStr})`;
+  }
+
   checks.push({
     id: 'chk-date-' + Math.random().toString(36).slice(2),
     invoice_id: invoice.id,
     check_type: 'DATE_VARIANCE',
-    expected_value: checkInDate,
+    expected_value: `${checkInDate} to ${graceDateStr}`,
     actual_value: invoice.invoice_date,
-    variance_value: invoice.invoice_date !== checkInDate ? 'Date mismatch' : 'Match',
-    severity: invoice.invoice_date !== checkInDate ? 'WARNING' : 'INFO',
-    status: invoice.invoice_date === checkInDate ? 'PASS' : 'FAIL',
-    description: `Invoice date vs Booking check-in: expected ${checkInDate}, got ${invoice.invoice_date}`,
+    variance_value: status === 'PASS' ? 'Match' : 'Variance',
+    severity: severity,
+    status: status,
+    description: desc,
     created_at: new Date().toISOString(),
   });
 
@@ -51,17 +73,17 @@ function validateDates(invoice: Invoice, booking: Booking): InvoiceValidationChe
   return checks;
 }
 
-function validateHotelMatch(invoice: Invoice, booking: Booking): InvoiceValidationCheck[] {
+function validateHotelVerification(invoice: Invoice, booking: Booking): InvoiceValidationCheck[] {
   const check: InvoiceValidationCheck = {
     id: 'chk-hotel-' + Math.random().toString(36).slice(2),
     invoice_id: invoice.id,
-    check_type: 'HOTEL_MISMATCH',
-    expected_value: booking.hotel_id || 'Unknown Hotel',
-    actual_value: invoice.bookings?.booking_reference ?? 'Invoice booking reference unavailable',
-    variance_value: 'Review supporting documents for hotel match',
+    check_type: 'HOTEL_VERIFICATION',
+    expected_value: booking.hotels?.hotel_name || booking.hotel_id || 'Unknown Hotel',
+    actual_value: 'Requires manual verification',
+    variance_value: 'Verify from supporting documents',
     severity: 'INFO',
     status: 'PASS',
-    description: `Hotel mismatch check uses booking hotel reference. Confirm with invoice supporting documents if hotel metadata exists.`,
+    description: `Manual hotel verification required. Booking hotel: ${booking.hotels?.hotel_name || booking.hotel_id || 'Unknown'}. Confirm with invoice supporting documents.`,
     remarks: 'Hotel information is not stored directly in invoice metadata. Validate hotel name/ID from uploaded documents.',
     created_at: new Date().toISOString(),
   };
@@ -83,11 +105,8 @@ function validatePax(invoice: Invoice, booking: Booking): InvoiceValidationCheck
     actual_value: paxBilled,
     variance_value: variance,
     variance_percentage: variancePercent,
-    severity:
-      Math.abs(variance) > expectedPax * 0.1
-        ? 'WARNING'
-        : 'INFO',
-    status: Math.abs(variance) <= expectedPax * 0.15 ? 'PASS' : 'FAIL',
+    severity: Math.abs(variance) > expectedPax * 0.15 ? 'CRITICAL' : Math.abs(variance) > expectedPax * 0.1 ? 'WARNING' : 'INFO',
+    status: Math.abs(variance) > expectedPax * 0.15 ? 'FAIL' : Math.abs(variance) > expectedPax * 0.1 ? 'WARNING' : 'PASS',
     description: `Pax verification: expected ${expectedPax}, billed ${paxBilled} (variance: ${variance > 0 ? '+' : ''}${variance})`,
     created_at: new Date().toISOString(),
   };
@@ -252,7 +271,7 @@ function validateTotal(invoice: Invoice): InvoiceValidationCheck[] {
     variance_value: variance,
     variance_percentage: expectedTotal > 0 ? (variance / expectedTotal) * 100 : 0,
     severity: Math.abs(variance) > 100 ? 'CRITICAL' : Math.abs(variance) > 0 ? 'WARNING' : 'INFO',
-    status: Math.abs(variance) <= 100 ? 'PASS' : 'FAIL',
+    status: Math.abs(variance) > 100 ? 'FAIL' : Math.abs(variance) > 0 ? 'WARNING' : 'PASS',
     description: `Total verification: ₹${expectedTotal.toLocaleString('en-IN')} expected, ₹${actualTotal.toLocaleString('en-IN')} invoiced (variance: ${variance > 0 ? '+' : ''}₹${variance.toLocaleString('en-IN')})`,
     created_at: new Date().toISOString(),
   };
@@ -344,8 +363,8 @@ export async function validateInvoicePackage(invoice: Invoice): Promise<InvoiceV
     const booking = await getBookingById(invoice.booking_id);
 
     // Run all validation rule groups
-    allChecks.push(...validateDates(invoice, booking));
-    allChecks.push(...validateHotelMatch(invoice, booking));
+    allChecks.push(...validateDates(invoice, booking, 30)); // 30-day configurable grace period
+    allChecks.push(...validateHotelVerification(invoice, booking));
     allChecks.push(...validateHallMatch(invoice, booking));
     allChecks.push(...validatePax(invoice, booking));
     allChecks.push(...validateRooms(invoice, booking));
@@ -379,19 +398,18 @@ export async function validateInvoicePackage(invoice: Invoice): Promise<InvoiceV
 /**
  * Validation summary for quick review.
  */
-export function getValidationSummary(result: InvoiceValidationResult) {
-  const penalty = result.criticalCount * 25 + result.warningCount * 10;
-  const healthScore = Math.max(0, Math.min(100, 100 - penalty));
-  const auditOutcome = result.criticalCount > 0 ? 'Fail' : result.warningCount > 0 ? 'Review Required' : 'Pass';
+export function getValidationSummary(result: InvoiceValidationResult): ValidationResultSummaryDTO {
+  const totalChecks = result.checks.length;
+  const healthScoreRaw = totalChecks > 0 ? ((result.passCount + (result.warningCount * 0.5)) / totalChecks) * 100 : 0;
+  const healthScore = Math.max(0, Math.min(100, Math.round(healthScoreRaw)));
+  const recommendation = result.criticalCount > 0 ? 'Fail' : result.warningCount > 0 ? 'Review Required' : 'Pass';
 
   return {
-    totalChecks: result.checks.length,
-    passed: result.passCount,
-    warnings: result.warningCount,
-    critical: result.criticalCount,
+    totalChecks,
+    passedChecks: result.passCount,
+    warningChecks: result.warningCount,
+    failedChecks: result.criticalCount,
     healthScore,
-    auditOutcome,
-    readyForApproval: result.criticalCount === 0,
-    requiresReview: result.warningCount > 0,
+    recommendation,
   };
 }

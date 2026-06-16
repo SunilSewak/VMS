@@ -15,7 +15,8 @@ export async function getBookings(user: UserProfile): Promise<Booking[]> {
     .select(`*,
       meeting_requests ( request_number, meeting_name, status ),
       hotels ( hotel_name, city_id ),
-      halls ( hall_name )
+      halls ( hall_name ),
+      invoices ( id )
     `)
     .order('created_at', { ascending: false });
 
@@ -53,7 +54,8 @@ export async function getBookingById(id: string): Promise<Booking> {
         cities ( city_name )
       ),
       hotels ( hotel_name, city_id, cities ( city_name ) ),
-      halls ( hall_name )
+      halls ( hall_name ),
+      invoices ( id )
     `)
     .eq('id', id)
     .single();
