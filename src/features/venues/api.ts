@@ -139,8 +139,8 @@ export async function getVenueById(id: string): Promise<HotelWithRelations> {
       sales_contact_name, sales_contact_mobile, sales_contact_email,
       remarks,
       city:city_id ( id, city_name ),
-      halls ( id, hotel_id, hall_name, floor, classroom_capacity, u_shape_capacity, cluster_capacity, indoor_outdoor, status ),
-      venue_photos ( id, photo_url, display_order ),
+      halls ( id, hotel_id, hall_name, floor_name, classroom_capacity, u_shape_capacity, cluster_capacity, indoor_outdoor, status ),
+      venue_photos ( id, storage_path, file_name, uploaded_at, uploaded_by, is_primary, display_order ),
       occupancy_rules:hotel_occupancy_rules ( id, designation_type, occupancy_type ),
       accommodation_inventory:hotel_accommodation_inventory ( id, total_rooms, single_rooms, double_rooms, triple_rooms, quad_rooms )
     `)

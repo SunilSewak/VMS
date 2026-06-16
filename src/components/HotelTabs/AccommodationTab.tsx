@@ -122,15 +122,11 @@ export function AccommodationTab({ hotel, onRefresh }: AccommodationTabProps) {
           {/* Status Badge */}
           <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200 flex items-center justify-between">
             <h4 className="font-semibold text-gray-900">Inventory Configuration</h4>
-            <span
-              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold gap-2 ${
-                inventory.status === 'ACTIVE'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
+              <span
+              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold gap-2 bg-green-100 text-green-800`}
             >
-              {inventory.status === 'ACTIVE' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-              {inventory.status}
+              <CheckCircle size={16} />
+              Configured
             </span>
           </div>
 

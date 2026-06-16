@@ -133,13 +133,11 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
     const allocated = (a.single_rooms || 0) + (a.double_rooms || 0) + (a.triple_rooms || 0) + (a.quad_rooms || 0);
     return allocated === a.total_rooms;
   }).length || 0;
-  const inventoryActive = hotel.accommodation_inventory?.filter((a) => a.status === 'ACTIVE').length || 0;
-
   const inventoryChecks = [
     {
       name: 'Accommodation Inventory Configured',
       isComplete: inventoryCount >= 1,
-      weight: 8,
+      weight: 15,
       actual: inventoryCount,
       required: 1,
     },
@@ -148,13 +146,6 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
       isComplete: inventoryWithAllocation === inventoryCount && inventoryCount > 0,
       weight: 10,
       actual: inventoryWithAllocation,
-      required: inventoryCount,
-    },
-    {
-      name: 'Active Status',
-      isComplete: inventoryActive === inventoryCount && inventoryCount > 0,
-      weight: 7,
-      actual: inventoryActive,
       required: inventoryCount,
     },
   ];
@@ -177,9 +168,6 @@ export function calculateVenueReadinessScore(hotel: HotelWithRelations): Readine
   } else {
     if (inventoryWithAllocation !== inventoryCount) {
       recommendations.push(`Complete room allocation for ${inventoryCount - inventoryWithAllocation} inventory record(s)`);
-    }
-    if (inventoryActive !== inventoryCount) {
-      recommendations.push(`Activate ${inventoryCount - inventoryActive} inventory record(s)`);
     }
   }
 

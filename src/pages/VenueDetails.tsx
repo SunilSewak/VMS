@@ -420,8 +420,8 @@ function HallCard({ hall }: { hall: Hall }) {
       <div>
         <div style={{ fontWeight: '700', fontSize: 'var(--font-size-md)', marginBottom: '4px' }}>{hall.hall_name}</div>
         <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-          {hall.floor && (
-            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>📍 {hall.floor}</span>
+          {hall.floor_name && (
+            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>📍 {hall.floor_name}</span>
           )}
           {hall.indoor_outdoor && (
             <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>🏛️ {hall.indoor_outdoor}</span>

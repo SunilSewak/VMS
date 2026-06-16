@@ -48,8 +48,8 @@ const HALL_SELECT = `
   hall_name,
   hall_type,
   capacity,
-  floor,
-  area_sqft,
+  floor_name,
+  area,
   theatre_capacity,
   classroom_capacity,
   u_shape_capacity,
@@ -220,7 +220,7 @@ export async function getHotelById(id: string): Promise<HotelWithRelations> {
       console.log('Fetching accommodation for hotel:', id);
       const res = await supabase
         .from('hotel_accommodation_inventory')
-        .select('id, hotel_id, total_rooms, single_rooms, double_rooms, triple_rooms, quad_rooms, status, created_at, updated_at')
+        .select('id, hotel_id, total_rooms, single_rooms, double_rooms, triple_rooms, quad_rooms, created_at, updated_at')
         .eq('hotel_id', id);
       if (res.error) {
         console.warn('Accommodation fetch warning:', res.error.message);
@@ -260,7 +260,7 @@ export async function getHotelById(id: string): Promise<HotelWithRelations> {
       console.log('Fetching photos for hotel:', id);
       const res = await supabase
         .from('venue_photos')
-        .select('id, hotel_id, hall_id, photo_url, caption, photo_name, display_order, storage_path, created_at')
+        .select('id, hotel_id, hall_id, storage_path, file_name, display_order, is_primary, uploaded_at, uploaded_by')
         .eq('hotel_id', id)
         .order('display_order', { ascending: true });
 
@@ -343,15 +343,8 @@ export async function uploadVenuePhoto(
       throw new Error(uploadError.message);
     }
 
-    const { data: publicUrlData, error: urlError } = await supabase.storage
-      .from(bucketName)
-      .getPublicUrl(filePath);
-
-    if (urlError) {
-      console.warn('Unable to generate public URL for uploaded venue photo:', urlError.message);
-    }
-
-    const photoUrl = publicUrlData?.publicUrl || filePath;
+    const { data: { session } } = await supabase.auth.getSession();
+    const uploadedBy = session?.user?.id;
 
     const { data, error } = await supabase
       .from('venue_photos')
@@ -359,14 +352,13 @@ export async function uploadVenuePhoto(
         {
           hotel_id: hotelId,
           hall_id: hallId,
-          photo_url: photoUrl,
-          caption,
           file_name: file.name,
-          photo_type: 'OTHER',
+          photo_type: hallId ? 'HALL' : 'HOTEL',
           storage_path: filePath,
+          uploaded_by: uploadedBy,
         },
       ])
-      .select('id, hotel_id, hall_id, photo_url, caption, photo_name, display_order, storage_path, created_at')
+      .select('id, hotel_id, hall_id, storage_path, file_name, display_order, is_primary, uploaded_at, uploaded_by')
       .single();
 
     if (error) throw new Error(error.message);
@@ -542,7 +534,7 @@ export async function createHall(input: HallCreateInput): Promise<Hall> {
       .insert({
         hotel_id: input.hotel_id,
         hall_name: input.hall_name.trim(),
-        floor: input.floor || null,
+        floor_name: input.floor_name || null,
         classroom_capacity: input.classroom_capacity || null,
         u_shape_capacity: input.u_shape_capacity || null,
         cluster_capacity: input.cluster_capacity || null,
@@ -564,7 +556,7 @@ export async function updateHall(id: string, input: HallUpdateInput): Promise<Ha
   try {
     const updateData: any = {};
     if (input.hall_name) updateData.hall_name = input.hall_name.trim();
-    if (input.floor !== undefined) updateData.floor = input.floor;
+    if (input.floor_name !== undefined) updateData.floor_name = input.floor_name;
     if (input.classroom_capacity !== undefined) updateData.classroom_capacity = input.classroom_capacity;
     if (input.u_shape_capacity !== undefined) updateData.u_shape_capacity = input.u_shape_capacity;
     if (input.cluster_capacity !== undefined) updateData.cluster_capacity = input.cluster_capacity;

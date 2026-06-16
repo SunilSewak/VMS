@@ -123,10 +123,10 @@ export function HallsTab({ hotel, onRefresh }: HallsTabProps) {
 
                 {/* Card Body */}
                 <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                  {hall.floor && (
+                  {hall.floor_name && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--font-sm)' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Floor:</span>
-                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{hall.floor}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Floor Name:</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{hall.floor_name}</span>
                     </div>
                   )}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-2)' }}>

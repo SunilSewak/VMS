@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { UploadCloud, Image as ImageIcon, Trash2, ImagePlus } from 'lucide-react';
 import type { HotelWithRelations, VenuePhoto } from '../../features/venues/types';
 import { uploadVenuePhoto, deleteVenuePhoto } from '../../features/venues/venueService';
+import { supabase } from '../../lib/supabase';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -47,7 +48,7 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
     const orderA = a.display_order ?? 99;
     const orderB = b.display_order ?? 99;
     if (orderA !== orderB) return orderA - orderB;
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime();
   });
 
   const photoCount = photoList.length;
@@ -163,11 +164,18 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
                 <p style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--text-main)' }}>Upload new venue photo</p>
                 <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>JPG, JPEG, PNG, WEBP. Max 10 MB.</p>
               </div>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
-                borderRadius: 'var(--radius-full)', background: 'var(--surface-2)',
-                padding: '4px 12px', fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-muted)',
-              }}>
+              <span 
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
+                  borderRadius: 'var(--radius-full)', background: 'var(--surface-2)',
+                  padding: '4px 12px', fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--border)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'var(--surface-2)'}
+              >
                 <UploadCloud size={16} /> Upload
               </span>
             </div>
@@ -261,29 +269,40 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
           </div>
 
           {photoList.length === 0 ? (
-            <div style={{
-              marginTop: 'var(--space-6)',
-              borderRadius: 'var(--radius-lg)',
-              border: '2px dashed var(--border)',
-              background: 'var(--surface-2)',
-              padding: 'var(--space-10)',
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-            }}>
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                marginTop: 'var(--space-6)',
+                borderRadius: 'var(--radius-lg)',
+                border: '2px dashed var(--border)',
+                background: 'var(--surface-2)',
+                padding: 'var(--space-10)',
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'border-color 0.2s',
+              }}
+              onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+              onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+            >
               <ImageIcon size={32} style={{ margin: '0 auto' }} />
               <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-sm)', fontWeight: 600 }}>No images uploaded yet.</p>
-              <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-sm)' }}>Use the upload panel to add photos for the hotel or halls.</p>
+              <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-sm)' }}>Click here or use the upload panel to add photos.</p>
             </div>
           ) : (
             <div style={{ marginTop: 'var(--space-5)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-4)' }}>
               {photoList.map((photo) => {
-                const imageSrc = photo.photo_url || FALLBACK_IMG;
+                let imageSrc = FALLBACK_IMG;
+                if (photo.storage_path) {
+                  const { data } = supabase.storage.from('venue-photos').getPublicUrl(photo.storage_path);
+                  imageSrc = data.publicUrl;
+                }
                 return (
                   <div key={photo.id} style={{ overflow: 'hidden', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
                     <div style={{ height: '180px', overflow: 'hidden', background: 'var(--surface-2)' }}>
                       <img
                         src={imageSrc}
-                        alt={photo.caption || 'Venue photo'}
+                        alt={photo.file_name || 'Venue photo'}
                         style={{ height: '100%', width: '100%', objectFit: 'cover' }}
                         onError={(event) => { (event.currentTarget as HTMLImageElement).src = FALLBACK_IMG; }}
                       />
@@ -293,7 +312,7 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
                         <div style={{ minWidth: 0 }}>
                           <p style={{ fontSize: 'var(--font-xs)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{getHallLabel(photo)}</p>
                           <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {photo.caption || 'No caption provided'}
+                            {photo.file_name || 'No caption provided'}
                           </p>
                         </div>
                         <button
@@ -306,7 +325,7 @@ export function PhotosTab({ hotel, onRefresh }: PhotosTabProps) {
                         </button>
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', fontSize: 'var(--font-xs)', color: 'var(--text-light)' }}>
-                        <span>{formatDate(photo.created_at)}</span>
+                        <span>{formatDate(photo.uploaded_at)}</span>
                         {(photo as any).storage_path ? <span>• {String((photo as any).storage_path).split('/').pop()}</span> : null}
                       </div>
                     </div>

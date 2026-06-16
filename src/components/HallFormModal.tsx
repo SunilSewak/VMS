@@ -35,7 +35,7 @@ export function HallFormModal({ hotel, hall, onClose, onComplete }: HallFormModa
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     hall_name: hall?.hall_name || '',
-    floor: (hall?.floor as string) || '',
+    floor_name: (hall?.floor_name as string) || '',
     indoor_outdoor: (hall?.indoor_outdoor as string) || 'INDOOR',
     classroom_capacity: (hall?.classroom_capacity as number) || 0,
     u_shape_capacity: (hall?.u_shape_capacity as number) || 0,
@@ -74,7 +74,7 @@ export function HallFormModal({ hotel, hall, onClose, onComplete }: HallFormModa
       const input = {
         hotel_id: hotel.id,
         hall_name: formData.hall_name.trim(),
-        floor: formData.floor || undefined,
+        floor_name: formData.floor_name || undefined,
         indoor_outdoor: formData.indoor_outdoor as any,
         classroom_capacity: (formData.classroom_capacity || 0) || undefined,
         u_shape_capacity: (formData.u_shape_capacity || 0) || undefined,
@@ -135,13 +135,13 @@ export function HallFormModal({ hotel, hall, onClose, onComplete }: HallFormModa
               {errors.hall_name && <p style={errStyle}>{errors.hall_name}</p>}
             </div>
             <div>
-              <label style={labelStyle}>Floor</label>
+              <label style={labelStyle}>Floor Name</label>
               <input
                 type="text"
                 className="input"
                 style={{ width: '100%' }}
-                value={formData.floor}
-                onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
+                value={formData.floor_name}
+                onChange={(e) => setFormData({ ...formData, floor_name: e.target.value })}
                 placeholder="e.g., Ground, 1st, 2nd"
               />
             </div>

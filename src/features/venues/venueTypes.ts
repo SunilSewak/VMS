@@ -186,8 +186,8 @@ export interface Hall {
   id: string;
   hotel_id: string;
   hall_name: string;
-  floor?: string;
-  area_sqft?: number;
+  floor_name?: string;
+  area?: number;
   indoor_outdoor?: IndoorOutdoor;
   status: HallStatus;
   
@@ -236,8 +236,8 @@ export interface VenuePhoto {
   hotel_id?: string;
   hall_id?: string;
   photo_type: PhotoType;
-  photo_url: string;
-  caption?: string;
+  file_name: string;
+  storage_path: string;
   display_order: number;
   is_primary: boolean;
   uploaded_at: string;
@@ -287,8 +287,8 @@ export interface HotelMasterRow {
 export interface HallMasterRow {
   hotel_name: string;
   hall_name: string;
-  floor?: string;
-  area_sqft?: number;
+  floor_name?: string;
+  area?: number;
   indoor_outdoor?: string;
   theatre_capacity: number;
   classroom_capacity: number;

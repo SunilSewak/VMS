@@ -132,7 +132,7 @@ export interface Hall {
   id: string;
   hotel_id: string;
   hall_name: string;
-  floor?: string | null;
+  floor_name?: string | null;
   // PHASE 5 SIMPLIFIED: Only 3 seating capacities for corporate meetings
   classroom_capacity?: number | null;   // Classroom-style with tables
   u_shape_capacity?: number | null;     // U-shape configuration
@@ -153,7 +153,6 @@ export interface AccommodationInventory {
   double_rooms?: number | null;
   triple_rooms?: number | null;
   quad_rooms?: number | null;
-  status: VenueStatus;
   created_at: string;
   updated_at?: string | null;
   hotel?: Hotel | null;
@@ -184,15 +183,13 @@ export interface VenuePhoto {
   id: string;
   hotel_id?: string | null;
   hall_id?: string | null;
-  photo_url: string;
-  caption?: string | null;
-  photo_name?: string | null;
-  display_order?: number | null;
   photo_type?: string;
-  file_name?: string;
-  storage_path?: string;
-  created_at: string;
-  updated_at?: string | null;
+  file_name: string;
+  storage_path: string;
+  display_order?: number | null;
+  uploaded_at: string;
+  uploaded_by?: string;
+  is_primary?: boolean;
 }
 
 // Form Inputs
@@ -241,7 +238,7 @@ export interface HotelUpdateInput {
 export interface HallCreateInput {
   hotel_id: string;
   hall_name: string;
-  floor?: string;
+  floor_name?: string;
   // PHASE 5 SIMPLIFIED: Only 3 seating capacities
   classroom_capacity?: number;
   u_shape_capacity?: number;
@@ -252,7 +249,7 @@ export interface HallCreateInput {
 
 export interface HallUpdateInput {
   hall_name?: string;
-  floor?: string | null;
+  floor_name?: string | null;
   // PHASE 5 SIMPLIFIED: Only 3 seating capacities
   classroom_capacity?: number | null;
   u_shape_capacity?: number | null;
