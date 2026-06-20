@@ -1,1 +1,0 @@
-CREATE POLICY "Users can select invoices they created" ON invoices FOR SELECT USING (created_by = auth.uid());
