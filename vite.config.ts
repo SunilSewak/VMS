@@ -10,11 +10,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      'react-router-dom': path.resolve(__dirname, './src/lib/shims/react-router-dom.tsx'),
-      '@tanstack/react-query': path.resolve(__dirname, './src/lib/shims/react-query.tsx'),
-      'react-hook-form': path.resolve(__dirname, './src/lib/shims/react-hook-form.tsx'),
-      'zod': path.resolve(__dirname, './src/lib/shims/zod.ts')
+      '@': path.resolve(__dirname, './src')
     }
   }
 });
