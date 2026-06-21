@@ -1,8 +1,40 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  
+  /* VMS Premium Hospitality Palette */
+  --color-vms-primary-dark: #3A2368;
+  --color-vms-primary: #4B2E83; /* Aubergine */
+  --color-vms-secondary: #6C4AB6; /* Plum */
+  --color-vms-secondary-light: #8A6AD4;
+  --color-vms-primary-light: #EFEBFA;
+  
+  --color-vms-accent-dark: #B59325;
+  --color-vms-accent: #D4AF37; /* Champagne Gold */
+  --color-vms-accent-light: #FBF7E9;
+
+  --color-vms-gray-900: #1a1a1a;
+  --color-vms-gray-800: #333333;
+  --color-vms-gray-600: #6b6b6b;
+  --color-vms-gray-100: #f5f5f5;
+  --color-vms-gray-50:  #f8f9fa;
+  
+  /* Semantic */
+  --color-vms-success: #008009;
+  --color-vms-success-bg: #e6f7e8;
+  --color-vms-warning: #d97706;
+  --color-vms-warning-bg: #fef3c7;
+  --color-vms-danger: #c00;
+  --color-vms-danger-bg: #ffe6e6;
+}
 
 html, body, #root {
   height: 100%;
   margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-vms-gray-50);
+  color: var(--color-vms-gray-900);
 }

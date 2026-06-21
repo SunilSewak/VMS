@@ -34,16 +34,15 @@ export interface VmsEvent {
   food_requirements?: string;
   transfer_requirements?: string;
   lifecycle_status: EventLifecycleStatus;
-  event_owner_user_id?: string;
-  created_by?: string;
+  event_owner?: string;
   created_at?: string;
   updated_at?: string;
   
   // Relations
-  division?: { name: string };
-  meeting_type?: { name: string };
-  city?: { name: string };
-  event_owner?: { employee_name: string };
+  division?: { division_name: string };
+  meeting_type?: { meeting_type_name: string };
+  city?: { city_name: string };
+  event_owner_details?: { employee_name: string };
 }
 
 export interface EventActivityLog {

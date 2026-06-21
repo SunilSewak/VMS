@@ -31,7 +31,33 @@ export interface Hall {
   sq_ft?: number;
   dimensions?: string;
   floor?: string;
-  boardroom_flag: boolean;
-  terrace_flag: boolean;
+  boardroom_flag?: boolean;
+  terrace_flag?: boolean;
   pillar_information?: string;
+  created_at?: string;
+}
+
+export interface DefaultOccupancyRule {
+  id: string;
+  hierarchy_level: string; // e.g., 'SO', 'DM'
+  occupancy_type: 'Single' | 'Double' | 'Triple' | 'Suite';
+  created_at?: string;
+}
+
+export interface HotelOccupancyRule {
+  id: string;
+  hotel_id: string;
+  hierarchy_level: string;
+  occupancy_type: 'Single' | 'Double' | 'Triple' | 'Suite';
+  created_at?: string;
+}
+
+export interface HotelAccommodationInventory {
+  id: string;
+  hotel_id: string;
+  single_rooms: number;
+  double_rooms: number;
+  triple_rooms: number;
+  suites: number;
+  created_at?: string;
 }

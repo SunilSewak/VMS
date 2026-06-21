@@ -10,7 +10,7 @@ export interface UserProfile {
   role_id: string;
   active_flag: boolean;
   role?: {
-    name: string;
+    role_name: string;
   };
 }
 

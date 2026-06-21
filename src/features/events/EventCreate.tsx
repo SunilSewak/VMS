@@ -8,6 +8,8 @@ export function EventCreate() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [eventName, setEventName] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [expectedPax, setExpectedPax] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,12 +21,16 @@ export function EventCreate() {
     setLoading(true);
     setError(null);
     
+    const generatedEventCode = `EVT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    
     // Create the event in DRAFT status
     const { data, error: insertError } = await supabase.from('events').insert({
+      event_code: generatedEventCode,
       event_name: eventName,
+      start_date: startDate,
+      end_date: endDate,
       expected_pax: parseInt(expectedPax) || 0,
-      lifecycle_status: 'DRAFT',
-      created_by: user.id
+      lifecycle_status: 'DRAFT'
     }).select().single();
 
     if (insertError) {
@@ -55,6 +61,30 @@ export function EventCreate() {
             placeholder="e.g. Q3 Sales Kickoff"
           />
         </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Start Date</label>
+            <input 
+              type="date" 
+              className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500" 
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)} 
+              required 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">End Date</label>
+            <input 
+              type="date" 
+              className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500" 
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)} 
+              required 
+            />
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium mb-1">Expected Pax (Attendees)</label>
           <input 

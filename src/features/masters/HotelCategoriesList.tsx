@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 
 export function HotelCategoriesList() {
   const { user } = useAuthStore();
-  const canManageMasters = user?.role?.name === 'SUPER_ADMIN' || user?.role?.name === 'VMS_ADMIN';
+  const canManageMasters = user?.role?.role_name === 'SUPER_ADMIN' || user?.role?.role_name === 'VMS_ADMIN';
   const [categories, setCategories] = useState<HotelCategory[]>([]);
   const [loading, setLoading] = useState(true);
 

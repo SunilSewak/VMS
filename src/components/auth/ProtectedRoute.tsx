@@ -32,8 +32,8 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from("users")
-      .select("*, role:roles(name)")
-      .eq("id", userId)
+      .select("*, role:roles(role_name)")
+      .eq("auth_user_id", userId)
       .single();
     
     if (data) setUser(data);
@@ -48,7 +48,7 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && user?.role?.name && !allowedRoles.includes(user.role.name)) {
+  if (allowedRoles && user?.role?.role_name && !allowedRoles.includes(user.role.role_name)) {
     return <Navigate to="/unauthorized" replace />;
   }
 

@@ -22,12 +22,13 @@ import { SAPClosureTab } from "./features/workspace/tabs/SAPClosureTab";
 import { TimelineTab } from "./features/workspace/tabs/TimelineTab";
 import { DocumentsTab } from "./features/workspace/tabs/DocumentsTab";
 
-// Placeholder pages for routes
-function Dashboard() { return <h1 className="text-2xl font-bold">Dashboard</h1>; }
-function Planning() { return <h1 className="text-2xl font-bold">Planning</h1>; }
-function Finance() { return <h1 className="text-2xl font-bold">Finance</h1>; }
-function Analytics() { return <h1 className="text-2xl font-bold">Analytics</h1>; }
-function Admin() { return <h1 className="text-2xl font-bold">Admin</h1>; }
+import { ComingSoon } from "./components/ui/ComingSoon";
+import { Dashboard } from "./features/dashboard/Dashboard";
+
+function Planning() { return <ComingSoon moduleName="Planning & Budgeting" />; }
+function Finance() { return <ComingSoon moduleName="Finance & SAP Hub" />; }
+function Analytics() { return <ComingSoon moduleName="Analytics & Reports" />; }
+function Admin() { return <ComingSoon moduleName="System Administration" />; }
 
 export default function App() {
   return (
