@@ -11,7 +11,7 @@ import { isEventClosed } from "@/lib/eventLocking";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { ShieldCheck, AlertTriangle, PlayCircle, BarChart3, Lock, CheckCircle, XCircle } from "lucide-react";
+import { ShieldCheck, AlertTriangle, PlayCircle, BarChart3, Lock, CheckCircle, XCircle, FileText } from "lucide-react";
 
 export function AuditTab() {
   const { event } = useOutletContext<{ event: VmsEvent }>();
@@ -209,7 +209,7 @@ export function AuditTab() {
             <div className="flex items-center mb-4 md:mb-0">
               {auditRun.audit_status === 'Pass' && <CheckCircle className="w-10 h-10 text-vms-success mr-4" />}
               {auditRun.audit_status === 'Warning' && <AlertTriangle className="w-10 h-10 text-vms-warning mr-4" />}
-              {auditRun.audit_status === 'Fail' && <XCircle className="w-10 h-10 text-vms-danger mr-4" />}
+              {(auditRun.audit_status === 'Critical' || auditRun.audit_status === 'Review Required') && <XCircle className="w-10 h-10 text-vms-danger mr-4" />}
               <div>
                 <span className="block text-sm font-black uppercase tracking-widest text-vms-gray-600 mb-1">Audit Result</span>
                 <span className={`text-3xl font-black ${
