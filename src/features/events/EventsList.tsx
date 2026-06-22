@@ -49,7 +49,7 @@ export function EventsList() {
         .from('events')
         .select(`
           *, 
-          division:divisions(division_name), 
+          division:divisions(division_name, cluster_id, cluster:clusters(cluster_name)), 
           meeting_type:meeting_types(meeting_type_name), 
           city:cities(city_name),
           venue:venues(venue_name),
@@ -173,13 +173,22 @@ export function EventsList() {
                   <div className="lg:w-[40%] bg-white p-5 flex flex-col justify-between border-r border-vms-gray-100 relative">
                     <div className="mb-4">
                       <h3 className="text-xl font-black text-vms-primary-dark leading-tight mb-1">{evt.event_name}</h3>
-                      <span className="text-xs font-bold text-vms-accent tracking-widest uppercase">{evt.event_code || '-'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-vms-accent tracking-widest uppercase">{evt.event_code || '-'}</span>
+                        {evt.monthly_plan_id && (
+                          <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-[9px] uppercase">
+                            Generated from Monthly Plan
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 mb-2">
                       <div>
                         <span className="block text-[10px] text-vms-gray-400 uppercase tracking-wider mb-1">Division</span>
-                        <span className="text-sm font-bold text-vms-gray-800">{evt.division?.division_name || '-'}</span>
+                        <span className="text-sm font-bold text-vms-gray-800">
+                          {evt.division?.cluster?.cluster_name ? `${evt.division.cluster.cluster_name} - ` : ''}{evt.division?.division_name || '-'}
+                        </span>
                       </div>
                       <div>
                         <span className="block text-[10px] text-vms-gray-400 uppercase tracking-wider mb-1">City</span>

@@ -22,10 +22,15 @@ import { SAPClosureTab } from "./features/workspace/tabs/SAPClosureTab";
 import { TimelineTab } from "./features/workspace/tabs/TimelineTab";
 import { DocumentsTab } from "./features/workspace/tabs/DocumentsTab";
 
+import { PlanningLayout } from "./features/planning/PlanningLayout";
+import { PlanningDashboard } from "./features/planning/PlanningDashboard";
+import { AnnualCalendarView } from "./features/planning/AnnualCalendar";
+import { MonthlyPlansView } from "./features/planning/MonthlyPlans";
+import { SalesHeadReviewsView } from "./features/planning/SalesHeadReviews";
+
 import { ComingSoon } from "./components/ui/ComingSoon";
 import { Dashboard } from "./features/dashboard/Dashboard";
 
-function Planning() { return <ComingSoon moduleName="Planning & Budgeting" />; }
 function Finance() { return <ComingSoon moduleName="Finance & SAP Hub" />; }
 function Analytics() { return <ComingSoon moduleName="Analytics & Reports" />; }
 function Admin() { return <ComingSoon moduleName="System Administration" />; }
@@ -40,7 +45,13 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<AppLayout />}>
             <Route index element={<Dashboard />} />
-            <Route path="planning" element={<Planning />} />
+            
+            <Route path="planning" element={<PlanningLayout />}>
+              <Route index element={<PlanningDashboard />} />
+              <Route path="annual" element={<AnnualCalendarView />} />
+              <Route path="monthly" element={<MonthlyPlansView />} />
+              <Route path="reviews" element={<SalesHeadReviewsView />} />
+            </Route>
             
             <Route path="events" element={<EventsLayout />}>
               <Route path="registry" element={<EventsList />} />

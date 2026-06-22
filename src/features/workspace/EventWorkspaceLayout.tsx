@@ -38,7 +38,7 @@ export function EventWorkspaceLayout() {
       if (!eventId) return;
       const { data } = await supabase
         .from('events')
-        .select('*, division:divisions(name), meeting_type:meeting_types(name), city:cities(name)')
+        .select('*, division:divisions(division_name, cluster_id, cluster:clusters(cluster_name)), meeting_type:meeting_types(meeting_type_name), city:cities(city_name)')
         .eq('id', eventId)
         .single();
       
@@ -94,7 +94,7 @@ export function EventWorkspaceLayout() {
               </div>
               <h1 className="text-4xl lg:text-5xl font-black mb-2 tracking-tight">{event.event_name}</h1>
               <p className="text-vms-primary-light font-medium flex items-center text-lg">
-                <FileText className="w-5 h-5 mr-2" /> {event.meeting_type?.name || 'Meeting Type TBD'} | {event.division?.name || 'Division TBD'}
+                <FileText className="w-5 h-5 mr-2" /> {event.meeting_type?.meeting_type_name || 'Meeting Type TBD'} | {event.division?.cluster?.cluster_name ? `${event.division.cluster.cluster_name} - ` : ''}{event.division?.division_name || 'Division TBD'}
               </p>
             </div>
           </div>

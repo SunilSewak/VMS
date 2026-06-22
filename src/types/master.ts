@@ -1,3 +1,19 @@
+export interface Cluster {
+  id: string;
+  cluster_name: string;
+  created_at?: string;
+}
+
+export interface Division {
+  id: string;
+  division_name: string;
+  division_code: string;
+  cluster_id?: string;
+  status: string;
+
+  cluster?: Cluster;
+}
+
 export interface City {
   id: string;
   name: string;
