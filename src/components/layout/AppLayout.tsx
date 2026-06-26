@@ -1,16 +1,46 @@
 import { Outlet, Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
-import { LogOut } from "lucide-react";
+import { LogOut, LayoutDashboard, Calendar, CalendarDays, Building2, DollarSign, BarChart3, Settings, Users, MapPin, FileText, Briefcase } from "lucide-react";
+import { ROLE_MENU_ITEMS } from "@/types/auth";
+
+interface MenuItem {
+  path: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
+const MENU_ITEMS: Record<string, MenuItem> = {
+  dashboard: { path: "/", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+  planning: { path: "/planning", label: "Planning", icon: <Calendar className="w-4 h-4" /> },
+  events: { path: "/events/registry", label: "Events & Registry", icon: <CalendarDays className="w-4 h-4" /> },
+  my_events: { path: "/events/registry", label: "My Events", icon: <CalendarDays className="w-4 h-4" /> },
+  master_data: { path: "/masters/cities", label: "Master Data", icon: <Building2 className="w-4 h-4" /> },
+  finance: { path: "/finance", label: "Finance Hub", icon: <DollarSign className="w-4 h-4" /> },
+  analytics: { path: "/analytics", label: "Analytics", icon: <BarChart3 className="w-4 h-4" /> },
+  administration: { path: "/admin", label: "Administration", icon: <Settings className="w-4 h-4" /> },
+  venue_explorer: { path: "/", label: "Venue Explorer", icon: <MapPin className="w-4 h-4" /> },
+  bookings: { path: "/", label: "Bookings", icon: <FileText className="w-4 h-4" /> },
+  reports: { path: "/analytics", label: "Reports", icon: <BarChart3 className="w-4 h-4" /> },
+};
 
 export function AppLayout() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, logout, canAccessMenuItem } = useAuthStore();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    logout();
     navigate("/login");
   };
+
+  const getMenuItems = () => {
+    if (!user) return [];
+    const allowedItems = ROLE_MENU_ITEMS[user.role] || [];
+    return allowedItems
+      .filter((item) => MENU_ITEMS[item])
+      .map((item) => MENU_ITEMS[item]);
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <div className="flex h-screen bg-[#F8F7FB] font-sans">
@@ -21,18 +51,21 @@ export function AppLayout() {
         </div>
         
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto mt-2 text-white">
-          <Link to="/" className="block px-3 py-2 hover:bg-white/10 rounded-md transition-colors text-sm font-medium tracking-wide">Dashboard</Link>
-          <Link to="/planning" className="block px-3 py-2 hover:bg-white/10 rounded-md transition-colors text-sm font-medium tracking-wide">Planning</Link>
-          <Link to="/events" className="block px-3 py-2 hover:bg-white/10 rounded-md transition-colors text-sm font-medium tracking-wide">Events & Registry</Link>
-          <Link to="/masters" className="block px-3 py-2 hover:bg-white/10 rounded-md transition-colors text-sm font-medium tracking-wide">Master Data</Link>
-          <Link to="/finance" className="block px-3 py-2 hover:bg-white/10 rounded-md transition-colors text-sm font-medium tracking-wide">Finance Hub</Link>
-          <Link to="/analytics" className="block px-3 py-2 hover:bg-white/10 rounded-md transition-colors text-sm font-medium tracking-wide">Analytics</Link>
-          <Link to="/admin" className="block px-3 py-2 hover:bg-white/10 rounded-md transition-colors text-sm font-medium tracking-wide">Administration</Link>
+          {menuItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className="flex items-center px-3 py-2 hover:bg-white/10 rounded-md transition-colors text-sm font-medium tracking-wide"
+            >
+              <span className="mr-3">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
         </nav>
         
         <div className="p-4 border-t border-white/10 flex flex-col bg-black/10">
           <div className="text-xs font-bold text-white mb-0.5">{user?.employee_name || "Operations User"}</div>
-          <div className="text-[10px] text-vms-accent tracking-wide uppercase mb-3">{user?.role?.role_name}</div>
+          <div className="text-[10px] text-vms-accent tracking-wide uppercase mb-3">{user?.role?.replace('_', ' ')}</div>
           <button 
             onClick={handleLogout}
             className="flex items-center text-white/60 hover:text-white transition-colors text-xs font-semibold"
