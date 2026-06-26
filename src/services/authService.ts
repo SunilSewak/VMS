@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 import { supabase } from '@/lib/supabase';
 import {
   User,
@@ -15,9 +15,13 @@ import {
   UserRole,
   UserStatus,
   PasswordResetStatus,
+  ROLE_PERMISSIONS,
+  ROLE_MENU_ITEMS,
 } from '@/types/auth';
 
-const JWT_SECRET = import.meta.env.VITE_JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = new TextEncoder().encode(
+  import.meta.env.VITE_JWT_SECRET || 'your-secret-key-change-in-production-min-32-chars'
+);
 const JWT_EXPIRY = '24h';
 const SALT_ROUNDS = 12;
 
@@ -33,22 +37,24 @@ export class AuthService {
   }
 
   // Generate JWT token
-  static generateToken(user: User): string {
-    return jwt.sign(
-      {
-        userId: user.id,
-        employeeId: user.employee_id,
-        role: user.role,
-      },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRY }
-    );
+  static async generateToken(user: User): Promise<string> {
+    const token = await new SignJWT({
+      userId: user.id,
+      employeeId: user.employee_id,
+      role: user.role,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(JWT_EXPIRY)
+      .sign(JWT_SECRET);
+    return token;
   }
 
   // Verify JWT token
-  static verifyToken(token: string): any {
+  static async verifyToken(token: string): Promise<any> {
     try {
-      return jwt.verify(token, JWT_SECRET);
+      const { payload } = await jwtVerify(token, JWT_SECRET);
+      return payload;
     } catch (error) {
       return null;
     }
@@ -57,6 +63,8 @@ export class AuthService {
   // Login with Employee ID and Password
   static async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
+      console.log('[AUTH] Searching for employee:', credentials.employee_id);
+      
       // Fetch user by employee_id
       const { data: user, error } = await supabase
         .from('users')
@@ -64,17 +72,29 @@ export class AuthService {
         .eq('employee_id', credentials.employee_id)
         .single();
 
-      if (error || !user) {
+      if (error) {
+        console.log('[AUTH] Database error:', error);
         return { success: false, error: 'Invalid Employee ID or Password' };
       }
 
+      if (!user) {
+        console.log('[AUTH] User not found in database');
+        return { success: false, error: 'Invalid Employee ID or Password' };
+      }
+
+      console.log('[AUTH] User found:', user.employee_id, 'Status:', user.status);
+
       // Check if user is active
       if (user.status !== 'ACTIVE') {
+        console.log('[AUTH] Account disabled, status:', user.status);
         return { success: false, error: 'Account is disabled. Please contact administrator.' };
       }
 
       // Verify password
+      console.log('[AUTH] Verifying password...');
       const isValidPassword = await this.verifyPassword(credentials.password, user.password_hash);
+      console.log('[AUTH] Password verification result:', isValidPassword ? 'SUCCESS' : 'FAILED');
+      
       if (!isValidPassword) {
         return { success: false, error: 'Invalid Employee ID or Password' };
       }
@@ -86,7 +106,7 @@ export class AuthService {
         .eq('id', user.id);
 
       // Generate token
-      const token = this.generateToken(user);
+      const token = await this.generateToken(user);
 
       // Remove password hash from response
       const { password_hash, ...userWithoutPassword } = user;
@@ -125,14 +145,24 @@ export class AuthService {
   // Get user by Employee ID
   static async getUserByEmployeeId(employeeId: string): Promise<User | null> {
     try {
+      console.log('[AUTH] getUserByEmployeeId searching for:', employeeId);
       const { data: user, error } = await supabase
         .from('users')
         .select('*')
         .eq('employee_id', employeeId)
         .single();
 
-      if (error || !user) return null;
+      if (error) {
+        console.log('[AUTH] getUserByEmployeeId database error:', error);
+        return null;
+      }
 
+      if (!user) {
+        console.log('[AUTH] getUserByEmployeeId: User not found');
+        return null;
+      }
+
+      console.log('[AUTH] getUserByEmployeeId: User found:', user.employee_id, 'Status:', user.status);
       const { password_hash, ...userWithoutPassword } = user;
       return userWithoutPassword;
     } catch (error) {
@@ -437,7 +467,6 @@ export class AuthService {
 
   // Check if user has permission
   static hasPermission(user: User, resource: string, action: string): boolean {
-    const { ROLE_PERMISSIONS } = await import('@/types/auth');
     const permissions = ROLE_PERMISSIONS[user.role] || [];
     return permissions.some(
       (p) => p.resource === resource && (p.action === action || p.action === 'manage')
@@ -446,7 +475,6 @@ export class AuthService {
 
   // Check if user can access menu item
   static canAccessMenuItem(user: User, menuItem: string): boolean {
-    const { ROLE_MENU_ITEMS } = await import('@/types/auth');
     const menuItems = ROLE_MENU_ITEMS[user.role] || [];
     return menuItems.includes(menuItem);
   }
