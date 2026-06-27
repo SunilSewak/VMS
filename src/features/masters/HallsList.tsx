@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 
 export function HallsList() {
   const { user } = useAuthStore();
-  const canManageMasters = user?.role?.role_name === 'SUPER_ADMIN' || user?.role?.role_name === 'VMS_ADMIN';
+  const canManageMasters = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
   const [halls, setHalls] = useState<Hall[]>([]);
   const [loading, setLoading] = useState(true);
 

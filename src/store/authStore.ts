@@ -58,15 +58,19 @@ export const useAuthStore = create<AuthState>()(
       },
       
       refreshUser: async () => {
-        const { token, user } = get();
-        if (!token || !user) return;
-        
-        const decoded = AuthService.verifyToken(token);
-        if (decoded && decoded.userId) {
-          const refreshedUser = await AuthService.getUserById(decoded.userId);
-          if (refreshedUser) {
-            set({ user: refreshedUser });
+        try {
+          const { token, user } = get();
+          if (!token || !user) return;
+          
+          const decoded = await AuthService.verifyToken(token);
+          if (decoded && decoded.userId) {
+            const refreshedUser = await AuthService.getUserById(decoded.userId);
+            if (refreshedUser) {
+              set({ user: refreshedUser });
+            }
           }
+        } finally {
+          set({ loading: false });
         }
       },
       

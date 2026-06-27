@@ -32,10 +32,10 @@ export function AccommodationTab() {
   });
 
   const closed = isEventClosed(event.lifecycle_status);
-  const canManage = (user?.role?.role_name === 'VMS_ADMIN' || user?.role?.role_name === 'VMS_EXECUTIVE' || user?.role?.role_name === 'SUPER_ADMIN') && !closed;
+  const canManage = (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && !closed;
 
   const totalPax = Object.values(counts).reduce((a, b) => a + b, 0);
-  const isAdmin = user?.role?.role_name === 'SUPER_ADMIN' || user?.role?.role_name === 'VMS_ADMIN';
+  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
 
   useEffect(() => {
     async function fetchData() {

@@ -10,7 +10,7 @@ export function PlanningLayout() {
   const location = useLocation();
   const { user } = useAuthStore();
   
-  const isSalesHead = user?.role?.role_name === 'SALES_HEAD';
+  const isSalesHead = user?.role === 'SALES_HEAD';
 
   const tabs = isSalesHead ? [
     { id: '', label: 'Dashboard', icon: LayoutDashboard },

@@ -21,7 +21,7 @@ export function InvoicesTab() {
   });
 
   const closed = isEventClosed(event.lifecycle_status);
-  const canManage = (user?.role?.role_name === 'FINANCE' || user?.role?.role_name === 'VMS_ADMIN') && !closed;
+  const canManage = (user?.role === 'ADMIN') && !closed;
 
   useEffect(() => {
     async function load() {

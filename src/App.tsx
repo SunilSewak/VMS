@@ -28,6 +28,7 @@ import { PlanningLayout } from "./features/planning/PlanningLayout";
 import { PlanningDashboard } from "./features/planning/PlanningDashboard";
 import { AnnualCalendarView } from "./features/planning/AnnualCalendar";
 import { MonthlyPlansView } from "./features/planning/MonthlyPlans";
+import { MonthlyPlanReview } from "./features/planning/MonthlyPlanReview";
 import { SalesHeadReviewsView } from "./features/planning/SalesHeadReviews";
 
 import { UserManagement } from "./features/admin/UserManagement";
@@ -59,12 +60,15 @@ export default function App() {
               <Route index element={<PlanningDashboard />} />
               <Route path="annual" element={<AnnualCalendarView />} />
               <Route path="monthly" element={<MonthlyPlansView />} />
+              <Route path="review/:id" element={<MonthlyPlanReview />} />
               <Route path="reviews" element={<SalesHeadReviewsView />} />
             </Route>
             
             <Route path="events" element={<EventsLayout />}>
               <Route path="registry" element={<EventsList />} />
-              <Route path="create" element={<EventCreate />} />
+              <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']} />}>
+                <Route path="create" element={<EventCreate />} />
+              </Route>
             </Route>
 
             {/* Event Workspace */}

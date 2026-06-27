@@ -37,7 +37,7 @@ const getActiveStageIndex = (status: string) => {
 export function EventsList() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const isSalesHead = user?.role?.role_name === 'SALES_HEAD';
+  const isSalesHead = user?.role === 'SALES_HEAD';
 
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

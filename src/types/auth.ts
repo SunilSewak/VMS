@@ -130,9 +130,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   SALES_HEAD: [
     { resource: 'dashboard', action: 'view' },
     { resource: 'planning', action: 'view' },
+    { resource: 'planning', action: 'approve' },
     { resource: 'events', action: 'view' },
-    { resource: 'events', action: 'manage_own' },
-    { resource: 'finance', action: 'view' },
+    { resource: 'reports', action: 'view' },
   ],
 };
 
@@ -157,9 +157,7 @@ export const ROLE_MENU_ITEMS: Record<UserRole, string[]> = {
   SALES_HEAD: [
     'dashboard',
     'planning',
-    'my_events',
-    'venue_explorer',
-    'bookings',
+    'events',
     'reports',
   ],
 };

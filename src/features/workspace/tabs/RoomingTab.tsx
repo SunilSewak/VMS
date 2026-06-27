@@ -29,7 +29,7 @@ export function RoomingTab() {
   });
 
   const closed = isEventClosed(event.lifecycle_status);
-  const canManage = (user?.role?.role_name === 'SUPER_ADMIN' || user?.role?.role_name === 'VMS_ADMIN' || user?.role?.role_name === 'VMS_EXECUTIVE') && !closed;
+  const canManage = (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && !closed;
 
   const fetchData = async () => {
     setLoading(true);

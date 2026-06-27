@@ -24,7 +24,7 @@ export function SAPClosureTab() {
     sap_reference: '', upload_date: new Date().toISOString().split('T')[0]
   });
 
-  const canManage = user?.role?.role_name === 'FINANCE' || user?.role?.role_name === 'VMS_ADMIN';
+  const canManage = user?.role === 'ADMIN';
   const closed = isEventClosed(event.lifecycle_status);
 
   useEffect(() => {

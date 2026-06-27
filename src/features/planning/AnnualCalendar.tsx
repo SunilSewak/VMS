@@ -10,6 +10,7 @@ import { MultiSelect } from '@/components/ui/MultiSelect';
 
 export function AnnualCalendarView() {
   const { user } = useAuthStore();
+  const isSalesHead = user?.role === 'SALES_HEAD';
   const [calendars, setCalendars] = useState<AnnualCalendar[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -209,20 +210,22 @@ export function AnnualCalendarView() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-vms-primary-dark">Annual Calendar (2026-27)</h2>
-        <Button onClick={() => {
-          setFormData({
-            cluster_ids: [],
-            division_ids: [],
-            meeting_type_ids: [],
-            preferred_city_ids: [],
-            months: [],
-            expected_pax: 50,
-            meeting_name: '',
-            fiscal_year: '2026-27'
-          });
-          setEditingId(null);
-          setIsCreating(true);
-        }}><Plus className="w-4 h-4 mr-2" /> Add Plan</Button>
+        {!isSalesHead && (
+          <Button onClick={() => {
+            setFormData({
+              cluster_ids: [],
+              division_ids: [],
+              meeting_type_ids: [],
+              preferred_city_ids: [],
+              months: [],
+              expected_pax: 50,
+              meeting_name: '',
+              fiscal_year: '2026-27'
+            });
+            setEditingId(null);
+            setIsCreating(true);
+          }}><Plus className="w-4 h-4 mr-2" /> Add Plan</Button>
+        )}
       </div>
 
       {isCreating && (
@@ -302,7 +305,9 @@ export function AnnualCalendarView() {
               <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">Month</th>
               <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">PAX</th>
               <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">Status</th>
-              <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500 text-right">Actions</th>
+              {!isSalesHead && (
+                <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500 text-right">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -345,23 +350,25 @@ export function AnnualCalendarView() {
                     : <Badge className="bg-gray-100 text-gray-800 border-gray-200 shadow-none">Draft</Badge>
                   }
                 </td>
-                <td className="py-3 px-4 text-right">
-                  {group.status === 'DRAFT' && (
-                    <>
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(group)} className="text-xs py-1 h-7 mr-2 text-vms-gray-600 hover:text-vms-primary">
-                        <Edit2 className="w-3 h-3 mr-1" /> Edit
+                {!isSalesHead && (
+                  <td className="py-3 px-4 text-right">
+                    {group.status === 'DRAFT' && (
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(group)} className="text-xs py-1 h-7 mr-2 text-vms-gray-600 hover:text-vms-primary">
+                          <Edit2 className="w-3 h-3 mr-1" /> Edit
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handlePublish(group.meeting_name)} className="text-xs py-1 h-7">
+                          <Send className="w-3 h-3 mr-1" /> Publish
+                        </Button>
+                      </>
+                    )}
+                    {group.status === 'PUBLISHED' && (
+                      <Button variant="secondary" size="sm" onClick={() => handleGenerateMonthly(group.meeting_name)} className="text-xs py-1 h-7 bg-vms-primary text-white ml-2">
+                        <PlusCircle className="w-3 h-3 mr-1" /> Create Monthly
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => handlePublish(group.meeting_name)} className="text-xs py-1 h-7">
-                        <Send className="w-3 h-3 mr-1" /> Publish
-                      </Button>
-                    </>
-                  )}
-                  {group.status === 'PUBLISHED' && (
-                    <Button variant="secondary" size="sm" onClick={() => handleGenerateMonthly(group.meeting_name)} className="text-xs py-1 h-7 bg-vms-primary text-white ml-2">
-                      <PlusCircle className="w-3 h-3 mr-1" /> Create Monthly
-                    </Button>
-                  )}
-                </td>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

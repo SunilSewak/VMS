@@ -20,8 +20,8 @@ export function VenueTab() {
   const [showModal, setShowModal] = useState(false);
 
   const closed = isEventClosed(event.lifecycle_status);
-  const isSalesHead = user?.role?.role_name === 'SALES_HEAD' && !closed;
-  const isAdmin = (user?.role?.role_name === 'SUPER_ADMIN' || user?.role?.role_name === 'VMS_ADMIN') && !closed;
+  const isSalesHead = user?.role === 'SALES_HEAD' && !closed;
+  const isAdmin = (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') && !closed;
 
   const fetchAllocations = async () => {
     setLoading(true);

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
-import { CalendarDays, AlertCircle, CheckCircle, Clock, ChevronRight, Plus, ArrowRight, FileText, Bell, MapPin, Users, CheckSquare } from "lucide-react";
+import { CalendarDays, AlertCircle, CheckCircle, Clock, ChevronRight, Plus, ArrowRight, FileText, Bell, MapPin, Users, CheckSquare, FileCheck } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/Button";
 export function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const isSalesHead = user?.role?.role_name === 'SALES_HEAD';
+  const isSalesHead = user?.role === 'SALES_HEAD';
 
   const [stats, setStats] = useState({ total: 0, drafts: 0, active: 0, completed: 0 });
-  const [salesStats, setSalesStats] = useState({ myEvents: 0, venuePending: 0, roomingPending: 0, finalizationPending: 0 });
+  const [salesStats, setSalesStats] = useState({ pendingApproval: 0, approvedPlans: 0, upcomingMeetings: 0, activeEvents: 0, completedEvents: 0 });
   const [adminStats, setAdminStats] = useState({ venueReviews: 0, roomingDue: 0, invoiceAudit: 0, sapPending: 0 });
   
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
@@ -23,13 +23,16 @@ export function Dashboard() {
 
   useEffect(() => {
     async function loadDashboard() {
-      // Note: In a real app we'd filter by user_id for My Events if isSalesHead, but for now we'll use all events
       const { data: allEvents } = await supabase
         .from('events')
         .select('id, lifecycle_status, event_name, start_date, created_at')
         .order('created_at', { ascending: false });
+        
+      const { data: allPlans } = await supabase
+        .from('monthly_plans')
+        .select('id, meeting_name, status, proposed_start_date');
 
-      if (allEvents) {
+      if (allEvents && allPlans) {
         // VMS Admin Stats
         const total = allEvents.length;
         const drafts = allEvents.filter(e => e.lifecycle_status === 'DRAFT' || e.lifecycle_status === 'PLANNED').length;
@@ -45,20 +48,34 @@ export function Dashboard() {
         setAdminStats({ venueReviews, roomingDue, invoiceAudit, sapPending });
 
         // Sales Head Stats
-        const myEvents = allEvents.length;
-        const venuePending = allEvents.filter(e => e.lifecycle_status === 'VENUE_PROPOSED').length;
-        const roomingPending = allEvents.filter(e => e.lifecycle_status === 'ROOMING_PENDING').length;
-        const finalizationPending = allEvents.filter(e => e.lifecycle_status === 'ROOMING_FINALIZED').length;
-        setSalesStats({ myEvents, venuePending, roomingPending, finalizationPending });
+        const pendingApproval = allPlans.filter(p => p.status === 'SHARED' || p.status === 'SUBMITTED' || p.status === 'UNDER_REVIEW').length;
+        const approvedPlans = allPlans.filter(p => p.status === 'APPROVED' || p.status === 'ACCEPTED').length;
+        const upcomingMeetings = allEvents.filter(e => e.start_date && new Date(e.start_date) >= new Date()).length;
+        const activeEvents = active;
+        const completedEvents = completed;
+        
+        setSalesStats({ pendingApproval, approvedPlans, upcomingMeetings, activeEvents, completedEvents });
 
         setRecentEvents(allEvents.slice(0, 5));
         
-        const pendingFilter = isSalesHead 
-          ? ['VENUE_PROPOSED', 'ROOMING_PENDING', 'ROOMING_FINALIZED'] 
-          : ['INVOICE_PENDING', 'ROOMING_PENDING', 'PAYMENT_PENDING', 'INVOICE_AUDIT'];
-        
-        const pending = allEvents.filter(e => pendingFilter.includes(e.lifecycle_status));
-        setPendingActions(pending.slice(0, 4));
+        if (isSalesHead) {
+          const pending = allPlans.filter(p => p.status === 'SHARED' || p.status === 'SUBMITTED' || p.status === 'UNDER_REVIEW');
+          setPendingActions(pending.slice(0, 4).map(p => ({
+            id: p.id,
+            type: 'PLAN_REVIEW',
+            title: 'Monthly Plan Review',
+            name: p.meeting_name
+          })));
+        } else {
+          const pendingFilter = ['INVOICE_PENDING', 'ROOMING_PENDING', 'PAYMENT_PENDING', 'INVOICE_AUDIT', 'VENUE_PROPOSED'];
+          const pending = allEvents.filter(e => pendingFilter.includes(e.lifecycle_status));
+          setPendingActions(pending.slice(0, 4).map(e => ({
+            id: e.id,
+            type: 'EVENT_ACTION',
+            status: e.lifecycle_status,
+            name: e.event_name
+          })));
+        }
 
         const upcoming = allEvents
           .filter(e => e.start_date && new Date(e.start_date) >= new Date())
@@ -75,9 +92,9 @@ export function Dashboard() {
 
   const getStatusBadge = (status: string) => {
     if (['DRAFT', 'PLANNED'].includes(status)) return <Badge variant="default">{status}</Badge>;
-    if (['CLOSED', 'EXECUTED', 'ROOMING_FINALIZED'].includes(status)) return <Badge variant="success">{status}</Badge>;
-    if (['CANCELLED'].includes(status)) return <Badge variant="danger">{status}</Badge>;
-    if (['INVOICE_PENDING', 'PAYMENT_PENDING', 'ROOMING_PENDING', 'VENUE_PROPOSED'].includes(status)) return <Badge variant="warning">{status}</Badge>;
+    if (['CLOSED', 'EXECUTED', 'ROOMING_FINALIZED', 'APPROVED'].includes(status)) return <Badge variant="success">{status}</Badge>;
+    if (['CANCELLED', 'REJECTED'].includes(status)) return <Badge variant="danger">{status}</Badge>;
+    if (['INVOICE_PENDING', 'PAYMENT_PENDING', 'ROOMING_PENDING', 'VENUE_PROPOSED', 'SHARED', 'SUBMITTED', 'UNDER_REVIEW'].includes(status)) return <Badge variant="warning">{status}</Badge>;
     return <Badge variant="info">{status}</Badge>;
   };
 
@@ -91,7 +108,7 @@ export function Dashboard() {
         </h1>
         <p className="text-vms-gray-600 mt-2 text-lg">
           {isSalesHead 
-            ? 'Your overview of upcoming events and pending actions.'
+            ? 'Your overview of upcoming events and pending approvals.'
             : 'Your global overview of active venue operations and financial audits.'}
         </p>
       </div>
@@ -100,28 +117,28 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
         {isSalesHead ? (
           <>
-            <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-vms-gray-200 hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6 flex flex-col justify-between h-full">
-                <p className="text-sm font-bold text-vms-gray-500 uppercase tracking-widest mb-4">My Events</p>
-                <p className="text-6xl font-black text-vms-primary-dark">{salesStats.myEvents}</p>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-vms-gray-200 hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6 flex flex-col justify-between h-full">
-                <p className="text-sm font-bold text-vms-gray-500 uppercase tracking-widest mb-4">Upcoming Events</p>
-                <p className="text-6xl font-black text-vms-primary-dark">{upcomingEvents.length}</p>
-              </CardContent>
-            </Card>
             <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-vms-gray-200 hover:shadow-xl transition-all duration-300 bg-amber-50">
               <CardContent className="p-6 flex flex-col justify-between h-full">
-                <p className="text-sm font-bold text-amber-600 uppercase tracking-widest mb-4">Venue Reviews Pending</p>
-                <p className="text-6xl font-black text-amber-600">{salesStats.venuePending}</p>
+                <p className="text-sm font-bold text-amber-600 uppercase tracking-widest mb-4">Pending Approvals</p>
+                <p className="text-6xl font-black text-amber-600">{salesStats.pendingApproval}</p>
               </CardContent>
             </Card>
-            <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-vms-gray-200 hover:shadow-xl transition-all duration-300 bg-purple-50">
+            <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-vms-gray-200 hover:shadow-xl transition-all duration-300 bg-green-50">
               <CardContent className="p-6 flex flex-col justify-between h-full">
-                <p className="text-sm font-bold text-purple-600 uppercase tracking-widest mb-4">Rooming Pending</p>
-                <p className="text-6xl font-black text-purple-600">{salesStats.roomingPending}</p>
+                <p className="text-sm font-bold text-green-600 uppercase tracking-widest mb-4">Plans Approved</p>
+                <p className="text-6xl font-black text-green-600">{salesStats.approvedPlans}</p>
+              </CardContent>
+            </Card>
+            <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-vms-gray-200 hover:shadow-xl transition-all duration-300">
+              <CardContent className="p-6 flex flex-col justify-between h-full">
+                <p className="text-sm font-bold text-vms-primary-dark uppercase tracking-widest mb-4">Upcoming Meetings</p>
+                <p className="text-6xl font-black text-vms-primary-dark">{salesStats.upcomingMeetings}</p>
+              </CardContent>
+            </Card>
+            <Card className="rounded-2xl border-0 shadow-sm ring-1 ring-vms-gray-200 hover:shadow-xl transition-all duration-300">
+              <CardContent className="p-6 flex flex-col justify-between h-full">
+                <p className="text-sm font-bold text-vms-gray-500 uppercase tracking-widest mb-4">Active Events</p>
+                <p className="text-6xl font-black text-vms-primary-dark">{salesStats.activeEvents}</p>
               </CardContent>
             </Card>
           </>
@@ -166,14 +183,14 @@ export function Dashboard() {
               {/* My Upcoming Events for Sales Head */}
               <Card className="border-0 shadow-md">
                 <CardHeader className="bg-white border-b border-vms-gray-100 flex justify-between items-center py-5">
-                  <h3 className="font-bold text-vms-primary-dark text-lg">My Upcoming Events</h3>
+                  <h3 className="font-bold text-vms-primary-dark text-lg">Upcoming Meetings</h3>
                   <Button variant="ghost" size="sm" onClick={() => navigate('/events/registry')} className="text-vms-primary">
                     View all <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </CardHeader>
                 <div className="divide-y divide-vms-gray-100">
                   {upcomingEvents.length === 0 ? (
-                    <div className="p-8 text-center text-vms-gray-500">No upcoming scheduled events.</div>
+                    <div className="p-8 text-center text-vms-gray-500">No upcoming scheduled meetings.</div>
                   ) : (
                     upcomingEvents.map(event => (
                       <div key={event.id} className="p-5 hover:bg-vms-gray-50 transition-colors flex justify-between items-center">
@@ -187,7 +204,7 @@ export function Dashboard() {
                             </span>
                           </div>
                           <div>
-                            <Link to={`/events/${event.id}/summary`} className="font-bold text-vms-primary hover:text-vms-secondary transition-colors text-lg">
+                            <Link to={`/events/registry`} className="font-bold text-vms-primary hover:text-vms-secondary transition-colors text-lg">
                               {event.event_name}
                             </Link>
                             <div className="mt-1 flex items-center gap-2">
@@ -198,7 +215,7 @@ export function Dashboard() {
                             </div>
                           </div>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/events/${event.id}/summary`)}>View Event</Button>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/events/registry`)}>View Details</Button>
                       </div>
                     ))
                   )}
@@ -209,25 +226,25 @@ export function Dashboard() {
               <Card className="border-0 shadow-md ring-1 ring-vms-gray-200">
                 <CardHeader className="bg-white border-b border-vms-gray-100 flex justify-between items-center py-5">
                   <h3 className="font-bold text-vms-primary-dark text-lg flex items-center">
-                    <Bell className="w-5 h-5 mr-2 text-vms-secondary" /> Notifications & Alerts
+                    <Bell className="w-5 h-5 mr-2 text-amber-500" /> Pending Approvals
                   </h3>
                 </CardHeader>
                 <div className="divide-y divide-vms-gray-100 p-2">
                   {pendingActions.length === 0 ? (
-                    <div className="p-8 text-center text-vms-gray-500">No pending notifications.</div>
+                    <div className="p-8 text-center text-vms-gray-500">No pending plans to review.</div>
                   ) : (
-                    pendingActions.map(event => (
-                      <div key={event.id} className="p-4 flex items-start gap-4 hover:bg-vms-gray-50 rounded-lg m-2 transition-colors">
-                        <div className={`p-2 rounded-full mt-1 ${event.lifecycle_status === 'VENUE_PROPOSED' ? 'bg-amber-100 text-amber-600' : 'bg-purple-100 text-purple-600'}`}>
-                          {event.lifecycle_status === 'VENUE_PROPOSED' ? <MapPin className="w-5 h-5" /> : <Users className="w-5 h-5" />}
+                    pendingActions.map(action => (
+                      <div key={action.id} className="p-4 flex items-start gap-4 hover:bg-vms-gray-50 rounded-lg m-2 transition-colors">
+                        <div className={`p-2 rounded-full mt-1 bg-amber-100 text-amber-600`}>
+                          <FileCheck className="w-5 h-5" />
                         </div>
                         <div className="flex-1">
                           <p className="font-bold text-vms-primary-dark">
-                            {event.lifecycle_status === 'VENUE_PROPOSED' ? 'Venue Awaiting Review' : 'Rooming Action Required'}
+                            {action.title}
                           </p>
-                          <p className="text-sm text-vms-gray-600 mt-1">{event.event_name} requires your attention.</p>
+                          <p className="text-sm text-vms-gray-600 mt-1">{action.name} requires your review.</p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/events/${event.id}/summary`)}>Review</Button>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/planning`)}>Review Plan</Button>
                       </div>
                     ))
                   )}
@@ -318,29 +335,29 @@ export function Dashboard() {
             /* Action Center Widget for Sales Head */
             <Card className="border-0 shadow-md bg-white border-t-4 border-t-vms-secondary">
               <CardHeader className="pb-3">
-                <h3 className="text-xl font-bold text-vms-primary-dark">Action Center</h3>
-                <p className="text-vms-gray-500 text-sm">Quick access to your pending tasks</p>
+                <h3 className="text-xl font-bold text-vms-primary-dark">Quick Actions</h3>
+                <p className="text-vms-gray-500 text-sm">Approvals and monitoring</p>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start h-auto py-3 text-left" onClick={() => navigate('/events/registry')}>
+                <Button variant="outline" className="w-full justify-start h-auto py-3 text-left" onClick={() => navigate('/planning')}>
                   <div className="flex items-center w-full">
                     <div className="bg-amber-100 p-2 rounded mr-3 text-amber-600">
-                      <MapPin className="w-5 h-5" />
+                      <FileCheck className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-bold text-vms-primary-dark">Review Venue</div>
-                      <div className="text-xs text-vms-gray-500 font-normal">Approve or request alternatives</div>
+                      <div className="font-bold text-vms-primary-dark">Review Monthly Plans</div>
+                      <div className="text-xs text-vms-gray-500 font-normal">Approve or reject admin plans</div>
                     </div>
                   </div>
                 </Button>
                 <Button variant="outline" className="w-full justify-start h-auto py-3 text-left" onClick={() => navigate('/events/registry')}>
                   <div className="flex items-center w-full">
-                    <div className="bg-purple-100 p-2 rounded mr-3 text-purple-600">
-                      <Users className="w-5 h-5" />
+                    <div className="bg-blue-100 p-2 rounded mr-3 text-blue-600">
+                      <CalendarDays className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-bold text-vms-primary-dark">Submit Rooming</div>
-                      <div className="text-xs text-vms-gray-500 font-normal">Add participant details</div>
+                      <div className="font-bold text-vms-primary-dark">View Upcoming Meetings</div>
+                      <div className="text-xs text-vms-gray-500 font-normal">See planned events for this month</div>
                     </div>
                   </div>
                 </Button>
@@ -350,8 +367,8 @@ export function Dashboard() {
                       <CheckSquare className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-bold text-vms-primary-dark">Finalize Rooming</div>
-                      <div className="text-xs text-vms-gray-500 font-normal">Confirm final list</div>
+                      <div className="font-bold text-vms-primary-dark">View Event Status</div>
+                      <div className="text-xs text-vms-gray-500 font-normal">Monitor operations progress</div>
                     </div>
                   </div>
                 </Button>
