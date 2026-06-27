@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { CalendarDays, LayoutDashboard, FileSpreadsheet, CheckSquare } from 'lucide-react';
+import { CalendarDays, LayoutDashboard, FileSpreadsheet, CheckSquare, Building, CheckCircle, Play } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
@@ -14,12 +14,15 @@ export function PlanningLayout() {
 
   const tabs = isSalesHead ? [
     { id: '', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'reviews', label: 'My Monthly Plans', icon: CheckSquare },
+    { id: 'reviews', label: 'My Reviews', icon: CheckSquare },
   ] : [
     { id: '', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'annual', label: 'Annual Calendar', icon: CalendarDays },
-    { id: 'monthly', label: 'Monthly Plans', icon: FileSpreadsheet },
-    { id: 'reviews', label: 'Sales Head Reviews', icon: CheckSquare },
+    { id: 'cluster-approvals', label: 'Cluster Approvals', icon: CheckSquare },
+    { id: 'monthly', label: 'Monthly Planning', icon: FileSpreadsheet },
+    { id: 'venue-allocation', label: 'Venue Allocation', icon: Building },
+    { id: 'reviews', label: 'Sales Head Review', icon: CheckCircle },
+    { id: 'generate', label: 'Generate Events', icon: Play },
   ];
 
   return (

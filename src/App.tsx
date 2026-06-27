@@ -12,7 +12,6 @@ import { HotelsList } from "./features/masters/HotelsList";
 import { HallsList } from "./features/masters/HallsList";
 import { EventsLayout } from "./features/events/EventsLayout";
 import { EventsList } from "./features/events/EventsList";
-import { EventCreate } from "./features/events/EventCreate";
 import { EventWorkspaceLayout } from "./features/workspace/EventWorkspaceLayout";
 import { SummaryTab } from "./features/workspace/tabs/SummaryTab";
 import { VenueTab } from "./features/workspace/tabs/VenueTab";
@@ -30,6 +29,9 @@ import { AnnualCalendarView } from "./features/planning/AnnualCalendar";
 import { MonthlyPlansView } from "./features/planning/MonthlyPlans";
 import { MonthlyPlanReview } from "./features/planning/MonthlyPlanReview";
 import { SalesHeadReviewsView } from "./features/planning/SalesHeadReviews";
+import { ClusterApprovalsView } from "./features/planning/ClusterApprovals";
+import { VenueAllocationView } from "./features/planning/VenueAllocation";
+import { GenerateEventsView } from "./features/planning/GenerateEvents";
 
 import { UserManagement } from "./features/admin/UserManagement";
 import { CreateUser } from "./features/admin/CreateUser";
@@ -59,16 +61,16 @@ export default function App() {
             <Route path="planning" element={<PlanningLayout />}>
               <Route index element={<PlanningDashboard />} />
               <Route path="annual" element={<AnnualCalendarView />} />
+              <Route path="cluster-approvals" element={<ClusterApprovalsView />} />
               <Route path="monthly" element={<MonthlyPlansView />} />
+              <Route path="venue-allocation" element={<VenueAllocationView />} />
               <Route path="review/:id" element={<MonthlyPlanReview />} />
               <Route path="reviews" element={<SalesHeadReviewsView />} />
+              <Route path="generate" element={<GenerateEventsView />} />
             </Route>
             
             <Route path="events" element={<EventsLayout />}>
               <Route path="registry" element={<EventsList />} />
-              <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']} />}>
-                <Route path="create" element={<EventCreate />} />
-              </Route>
             </Route>
 
             {/* Event Workspace */}

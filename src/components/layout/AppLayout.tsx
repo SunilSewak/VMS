@@ -11,15 +11,13 @@ interface MenuItem {
 
 const MENU_ITEMS: Record<string, MenuItem> = {
   dashboard: { path: "/", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
-  planning: { path: "/planning", label: "Planning", icon: <Calendar className="w-4 h-4" /> },
-  events: { path: "/events/registry", label: "Events & Registry", icon: <CalendarDays className="w-4 h-4" /> },
-  my_events: { path: "/events/registry", label: "My Events", icon: <CalendarDays className="w-4 h-4" /> },
+  planning: { path: "/planning", label: "Planning Workspace", icon: <Calendar className="w-4 h-4" /> },
+  events: { path: "/events/registry", label: "Event Operations", icon: <CalendarDays className="w-4 h-4" /> },
+  my_events: { path: "/events/registry", label: "My Operations", icon: <CalendarDays className="w-4 h-4" /> },
   master_data: { path: "/masters/cities", label: "Master Data", icon: <Building2 className="w-4 h-4" /> },
-  finance: { path: "/finance", label: "Finance Hub", icon: <DollarSign className="w-4 h-4" /> },
-  analytics: { path: "/analytics", label: "Analytics", icon: <BarChart3 className="w-4 h-4" /> },
+  finance: { path: "/finance", label: "Finance", icon: <DollarSign className="w-4 h-4" /> },
   administration: { path: "/admin", label: "Administration", icon: <Settings className="w-4 h-4" /> },
-  venue_explorer: { path: "/", label: "Venue Explorer", icon: <MapPin className="w-4 h-4" /> },
-  bookings: { path: "/", label: "Bookings", icon: <FileText className="w-4 h-4" /> },
+  analytics: { path: "/analytics", label: "Analytics", icon: <BarChart3 className="w-4 h-4" /> },
   reports: { path: "/analytics", label: "Reports", icon: <BarChart3 className="w-4 h-4" /> },
 };
 

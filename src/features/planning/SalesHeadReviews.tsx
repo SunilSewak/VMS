@@ -1,144 +1,103 @@
 import { useState, useEffect } from 'react';
-import { useAuthStore } from '@/store/authStore';
-import { planningRepository } from './repositories/planningRepository';
-import { MonthlyPlan } from '@/types/planning';
-import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Check, X, MessageSquare, CalendarDays, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { CheckCircle, XCircle, AlertCircle, Users, MapPin, CalendarDays, Clock, Building, UserCheck } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 
 export function SalesHeadReviewsView() {
   const { user } = useAuthStore();
-  const [plans, setPlans] = useState<MonthlyPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [reviewingPlanId, setReviewingPlanId] = useState<string | null>(null);
-  const [remarks, setRemarks] = useState('');
+  const isSalesHead = user?.role === 'SALES_HEAD';
 
-  const loadData = async () => {
-    setLoading(true);
-    // Ideally filter by division, but for demo we load all that are shared+
-    const data = await planningRepository.getMonthlyPlans();
-    // Sales head only sees plans that have been shared with them
-    const visiblePlans = data.filter(p => ['SHARED', 'ACCEPTED', 'CHANGE_REQUESTED', 'APPROVED'].includes(p.status));
-    setPlans(visiblePlans);
-    setLoading(false);
-  };
+  const [loading, setLoading] = useState(true);
+  
+  // Mock Data for Approval Dashboard
+  const [reviews, setReviews] = useState([
+    { id: '1', month: 'April', trainingType: 'CBM', durationDays: 3, pax: 45, city: 'Mumbai', hotel: 'Taj Lands End', hall: 'Grand Ballroom', status: 'PENDING_REVIEW', remarks: '', cluster: 'Cardiac' },
+    { id: '2', month: 'August', trainingType: 'Leadership Workshop', durationDays: 2, pax: 20, city: 'Delhi', hotel: 'The Leela Palace', hall: 'Grand Sapphire', status: 'APPROVED', remarks: 'Focus on strategy', cluster: 'Derma' }
+  ]);
 
   useEffect(() => {
-    loadData();
+    setTimeout(() => setLoading(false), 300);
   }, []);
 
-  const handleSubmitReview = async (planId: string, decision: 'ACCEPTED' | 'CHANGE_REQUESTED') => {
-    if (!user) return;
-    try {
-      await planningRepository.submitReview({
-        monthly_plan_id: planId,
-        reviewer_id: user.id,
-        decision,
-        remarks: remarks || undefined
-      });
-      setReviewingPlanId(null);
-      setRemarks('');
-      loadData();
-    } catch (e) {
-      console.error(e);
-    }
+  const handleAction = (id: string, newStatus: string) => {
+    setReviews(reviews.map(r => r.id === id ? { ...r, status: newStatus } : r));
   };
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'SHARED') return <Badge className="bg-amber-100 text-amber-800 shadow-none border-amber-200">Awaiting Review</Badge>;
-    if (status === 'ACCEPTED' || status === 'APPROVED') return <Badge className="bg-green-100 text-green-800 shadow-none border-green-200">Accepted</Badge>;
-    if (status === 'CHANGE_REQUESTED') return <Badge className="bg-red-100 text-red-800 shadow-none border-red-200">Changes Requested</Badge>;
-    return <Badge>{status}</Badge>;
-  };
-
-  if (loading) return <div className="p-8">Loading Reviews...</div>;
+  if (loading) return <div className="p-8">Loading Approval Dashboard...</div>;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-vms-primary-dark">My Monthly Plans</h2>
-        <p className="text-sm text-vms-gray-500 font-medium">Review and approve operational event plans.</p>
+    <div className="p-6 h-full flex flex-col">
+      <div className="mb-8">
+        <h2 className="text-2xl font-black text-vms-primary-dark">{isSalesHead ? 'My Approvals' : 'Sales Head Review Status'}</h2>
+        <p className="text-vms-gray-500 text-sm mt-1">
+          {isSalesHead ? 'Review and approve finalized operational plans before Event Generation.' : 'Monitor the approval status of operational plans.'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {plans.length === 0 ? (
-          <div className="col-span-full p-8 text-center text-vms-gray-500 bg-vms-gray-50 rounded-lg border border-vms-gray-200">
-            No plans require your review at this time.
-          </div>
-        ) : plans.map(plan => (
-          <div key={plan.id} className="border border-vms-gray-200 rounded-xl bg-white overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
-            <div className="p-5 border-b border-vms-gray-100 flex-1">
-              <div className="flex justify-between items-start mb-3">
-                <Badge variant="default" className="bg-vms-primary-light text-vms-primary border-0">
-                  {plan.division?.cluster?.cluster_name ? `${plan.division.cluster.cluster_name} - ` : ''}{plan.division?.division_name}
-                </Badge>
-                {getStatusBadge(plan.status)}
+        {reviews.map(plan => (
+          <Card key={plan.id} className="border border-vms-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="p-0 border-b border-vms-gray-100">
+              <div className="p-4 bg-vms-gray-50 flex justify-between items-start rounded-t-xl">
+                <div>
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 uppercase tracking-wider text-[10px] mb-2 border-0">
+                    {plan.month} • {plan.cluster}
+                  </Badge>
+                  <h3 className="text-lg font-black text-vms-primary-dark leading-tight">{plan.trainingType}</h3>
+                </div>
+                {plan.status === 'PENDING_REVIEW' && <Badge className="bg-amber-50 text-amber-600 border border-amber-200 shadow-none"><Clock className="w-3 h-3 mr-1"/> Pending</Badge>}
+                {plan.status === 'APPROVED' && <Badge className="bg-green-50 text-green-600 border border-green-200 shadow-none"><CheckCircle className="w-3 h-3 mr-1"/> Approved</Badge>}
+                {plan.status === 'REJECTED' && <Badge className="bg-red-50 text-red-600 border border-red-200 shadow-none"><XCircle className="w-3 h-3 mr-1"/> Rejected</Badge>}
               </div>
-              
-              <h3 className="text-xl font-black text-vms-primary-dark leading-tight mb-4">{plan.meeting_name}</h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center text-sm">
-                  <MapPin className="w-4 h-4 mr-3 text-vms-gray-400" />
-                  <span className="font-bold text-vms-gray-800">{plan.city?.city_name || 'TBD'}</span>
-                </div>
-                <div className="flex items-center text-sm">
-                  <CalendarDays className="w-4 h-4 mr-3 text-vms-gray-400" />
-                  <span className="font-bold text-vms-gray-800">
-                    {plan.proposed_start_date ? new Date(plan.proposed_start_date).toLocaleDateString() : 'Dates TBD'}
-                  </span>
-                </div>
-                <div className="flex items-center text-sm">
-                  <div className="w-4 h-4 mr-3 flex items-center justify-center bg-vms-gray-100 rounded text-[10px] font-black text-vms-gray-500">P</div>
-                  <span className="font-bold text-vms-gray-800">{plan.expected_pax} Expected PAX</span>
-                </div>
-              </div>
-            </div>
+            </CardHeader>
+            <CardContent className="p-5 flex flex-col h-full justify-between">
+              <div>
+                <div className="space-y-4 mb-6">
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-vms-gray-50 p-2 rounded border border-vms-gray-100">
+                      <div className="text-[10px] uppercase font-bold text-vms-gray-400 mb-1 flex items-center"><Users className="w-3 h-3 mr-1"/> PAX</div>
+                      <div className="font-bold text-vms-primary-dark text-sm">{plan.pax} Attendees</div>
+                    </div>
+                    <div className="bg-vms-gray-50 p-2 rounded border border-vms-gray-100">
+                      <div className="text-[10px] uppercase font-bold text-vms-gray-400 mb-1 flex items-center"><CalendarDays className="w-3 h-3 mr-1"/> Duration</div>
+                      <div className="font-bold text-vms-primary-dark text-sm">{plan.durationDays} Days</div>
+                    </div>
+                  </div>
 
-            {plan.status === 'SHARED' && reviewingPlanId !== plan.id && (
-              <div className="p-4 bg-vms-gray-50 flex gap-2">
-                <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleSubmitReview(plan.id, 'ACCEPTED')}>
-                  <Check className="w-4 h-4 mr-2" /> Accept
-                </Button>
-                <Button className="flex-1" variant="outline" onClick={() => setReviewingPlanId(plan.id)}>
-                  <MessageSquare className="w-4 h-4 mr-2" /> Request Change
-                </Button>
-              </div>
-            )}
+                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <div className="text-[10px] uppercase font-bold text-blue-400 mb-2 flex items-center"><Building className="w-3 h-3 mr-1"/> Venue Assigned</div>
+                    <div className="font-bold text-blue-900 text-sm mb-1">{plan.hotel}</div>
+                    <div className="text-xs text-blue-700 flex items-center justify-between">
+                      <span>{plan.hall}</span>
+                      <span className="flex items-center"><MapPin className="w-3 h-3 mr-1"/> {plan.city}</span>
+                    </div>
+                  </div>
 
-            {reviewingPlanId === plan.id && (
-              <div className="p-4 bg-amber-50 border-t border-amber-100">
-                <label className="block text-xs font-bold text-amber-800 uppercase mb-2">Change Request Remarks</label>
-                <textarea 
-                  className="w-full p-3 border border-amber-200 rounded-lg text-sm mb-3 focus:ring-amber-500 focus:border-amber-500" 
-                  rows={3} 
-                  placeholder="e.g. Please change dates to next week, or prefer another city."
-                  value={remarks}
-                  onChange={e => setRemarks(e.target.value)}
-                />
-                <div className="flex gap-2">
-                  <Button variant="secondary" className="bg-amber-600 hover:bg-amber-700 text-white flex-1" onClick={() => handleSubmitReview(plan.id, 'CHANGE_REQUESTED')}>
-                    Submit Request
+                </div>
+              </div>
+
+              {isSalesHead && plan.status === 'PENDING_REVIEW' ? (
+                <div className="grid grid-cols-2 gap-2 mt-2 pt-4 border-t border-vms-gray-100">
+                  <Button className="bg-vms-primary hover:bg-vms-primary-dark text-white w-full h-10 text-sm font-bold shadow-sm" onClick={() => handleAction(plan.id, 'APPROVED')}>
+                    <CheckCircle className="w-4 h-4 mr-1.5" /> Approve Plan
                   </Button>
-                  <Button variant="outline" onClick={() => { setReviewingPlanId(null); setRemarks(''); }} className="bg-white">
-                    Cancel
+                  <Button variant="outline" className="w-full h-10 text-sm text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleAction(plan.id, 'REJECTED')}>
+                    <XCircle className="w-4 h-4 mr-1.5" /> Reject
                   </Button>
                 </div>
-              </div>
-            )}
-            
-            {['ACCEPTED', 'APPROVED'].includes(plan.status) && (
-              <div className="p-4 bg-green-50 text-green-800 text-sm font-bold text-center border-t border-green-100 flex items-center justify-center">
-                <Check className="w-4 h-4 mr-2" /> You accepted this plan
-              </div>
-            )}
-
-            {plan.status === 'CHANGE_REQUESTED' && (
-              <div className="p-4 bg-red-50 text-red-800 text-sm font-bold text-center border-t border-red-100 flex items-center justify-center">
-                <X className="w-4 h-4 mr-2" /> You requested changes
-              </div>
-            )}
-          </div>
+              ) : plan.status === 'APPROVED' ? (
+                <div className="mt-2 pt-4 border-t border-vms-gray-100">
+                  <div className="bg-green-50 rounded-lg p-3 border border-green-100 flex items-center text-green-700 text-xs font-bold">
+                    <UserCheck className="w-4 h-4 mr-2" />
+                    Approved by Sales Head. Ready for Event Generation.
+                  </div>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

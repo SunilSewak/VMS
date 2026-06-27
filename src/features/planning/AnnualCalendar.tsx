@@ -1,378 +1,238 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { planningRepository } from './repositories/planningRepository';
-import { AnnualCalendar } from '@/types/planning';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Plus, Edit2, CheckCircle, Send, PlusCircle } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { Plus, Edit2, CheckCircle, Clock, Users } from 'lucide-react';
 import { MultiSelect } from '@/components/ui/MultiSelect';
+import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+
+// Mock Data for UI Architecture Phase
+const MOCK_TEAMS = [
+  { id: 'T1', label: 'Sales Officer (SO)' },
+  { id: 'T2', label: 'District Manager (DM)' },
+  { id: 'T3', label: 'Regional Sales Manager (RSM)' },
+  { id: 'T4', label: 'Zonal Sales Manager (ZSM)' },
+  { id: 'T5', label: 'Cluster Head (CH)' }
+];
+
+const MOCK_TRAINING_TYPES = [
+  { id: 'TR1', label: 'CBM' },
+  { id: 'TR2', label: 'G2G' },
+  { id: 'TR3', label: 'Leadership Workshop' },
+  { id: 'TR4', label: 'Product Launch' }
+];
+
+const MONTHS = [
+  'April', 'May', 'June', 'July', 'August', 'September', 
+  'October', 'November', 'December', 'January', 'February', 'March'
+];
 
 export function AnnualCalendarView() {
   const { user } = useAuthStore();
   const isSalesHead = user?.role === 'SALES_HEAD';
-  const [calendars, setCalendars] = useState<AnnualCalendar[]>([]);
-  const [loading, setLoading] = useState(true);
   
-  // Masters for the form
-  const [clusters, setClusters] = useState<any[]>([]);
-  const [divisions, setDivisions] = useState<any[]>([]);
-  const [meetingTypes, setMeetingTypes] = useState<any[]>([]);
-  const [cities, setCities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('April');
+  
+  // Form State
   const [formData, setFormData] = useState({
-    cluster_ids: [] as string[],
-    division_ids: [] as string[],
-    meeting_type_ids: [] as string[],
-    preferred_city_ids: [] as string[],
-    months: [] as number[],
-    expected_pax: 50,
-    meeting_name: '',
-    fiscal_year: '2026-27'
+    financialYear: '2026-27',
+    month: 'April',
+    trainingTypeId: '',
+    applicableTeamIds: [] as string[],
+    durationDays: 1,
+    remarks: ''
   });
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  const loadData = async () => {
-    setLoading(true);
-    const data = await planningRepository.getAnnualCalendars();
-    setCalendars(data);
-    setLoading(false);
-  };
+  // Mock State for Plans
+  const [plans, setPlans] = useState([
+    { id: '1', month: 'April', trainingType: 'CBM', durationDays: 3, teams: ['DM', 'DSM', 'RSM'], status: 'DRAFT', remarks: 'Q1 Kickoff' },
+    { id: '2', month: 'August', trainingType: 'Leadership Workshop', durationDays: 2, teams: ['CH', 'ZSM'], status: 'PUBLISHED', remarks: 'Focus on strategy' },
+    { id: '3', month: 'January', trainingType: 'G2G', durationDays: 1, teams: ['SO'], status: 'DRAFT', remarks: '' }
+  ]);
 
   useEffect(() => {
-    loadData();
-    // Load masters
-    supabase.from('clusters').select('*').then(({ data }) => data && setClusters(data));
-    supabase.from('divisions').select('*').then(({ data }) => data && setDivisions(data));
-    supabase.from('meeting_types').select('*').then(({ data }) => data && setMeetingTypes(data));
-    supabase.from('cities').select('*').then(({ data }) => data && setCities(data));
+    setTimeout(() => setLoading(false), 300);
   }, []);
 
-  const handleCreateOrUpdate = async () => {
-    if (formData.division_ids.length === 0 || formData.meeting_type_ids.length === 0 || formData.preferred_city_ids.length === 0 || formData.months.length === 0) return;
-    try {
-      if (editingId) {
-        // Edit mode: currently we only edit single values or we need to replace all.
-        // For simplicity, let's say edit only edits the specific record if it was generated as a single, 
-        // but the prompt says "Annual Calendar displays grouped plans". 
-        // If we grouped plans by meeting_name, editing should probably update/recreate the group.
-        // For now, to keep existing behavior, if editingId is set, maybe it's just one record.
-        // But let's assume editing replaces the whole group if we delete old and insert new.
-        // For now, we will just delete the old ones with the same meeting name and recreate them.
-        
-        // Find existing to delete
-        const existingCal = calendars.find(c => c.id === editingId);
-        if (existingCal) {
-           await supabase.from('annual_calendars').delete().eq('meeting_name', existingCal.meeting_name).eq('fiscal_year', existingCal.fiscal_year);
-        }
-      } 
-      
-      // Cartesian product logic
-      const newPlans: Partial<AnnualCalendar>[] = [];
-      for (const divId of formData.division_ids) {
-        for (const mtId of formData.meeting_type_ids) {
-          for (const cityId of formData.preferred_city_ids) {
-            for (const month of formData.months) {
-              newPlans.push({
-                division_id: divId,
-                meeting_type_id: mtId,
-                preferred_city_id: cityId,
-                month: month,
-                expected_pax: formData.expected_pax,
-                meeting_name: formData.meeting_name,
-                fiscal_year: formData.fiscal_year,
-                status: 'DRAFT'
-              });
-            }
-          }
-        }
-      }
-      
-      await planningRepository.createAnnualCalendars(newPlans);
-
-      setIsCreating(false);
-      setEditingId(null);
-      loadData();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleEdit = (group: any) => {
-    setFormData({
-      cluster_ids: group.cluster_ids,
-      division_ids: group.division_ids,
-      meeting_type_ids: group.meeting_type_ids,
-      preferred_city_ids: group.city_ids,
-      months: group.months,
-      expected_pax: group.expected_pax,
-      meeting_name: group.meeting_name,
-      fiscal_year: group.fiscal_year,
-    });
-    setEditingId(group.id); // arbitrary ID from the group
-    setIsCreating(true);
-  };
-
-  const handlePublish = async (meetingName: string) => {
-    try {
-      const groupCalendars = calendars.filter(c => c.meeting_name === meetingName);
-      for (const cal of groupCalendars) {
-        await planningRepository.updateAnnualCalendar(cal.id, { status: 'PUBLISHED' });
-      }
-      loadData();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleGenerateMonthly = async (meetingName: string) => {
-    try {
-      const groupCalendars = calendars.filter(c => c.meeting_name === meetingName);
-      const newMonthlyPlans = groupCalendars.map(calendar => ({
-        annual_calendar_id: calendar.id,
-        division_id: calendar.division_id,
-        meeting_name: calendar.meeting_name,
-        meeting_type_id: calendar.meeting_type_id,
-        city_id: calendar.preferred_city_id,
-        planned_month: calendar.month,
-        expected_pax: calendar.expected_pax,
-        status: 'DRAFT' as any,
-      }));
-      await planningRepository.createMonthlyPlans(newMonthlyPlans);
-      alert('Monthly Plans generated successfully!');
-    } catch (e) {
-      console.error(e);
-      alert('Error generating monthly plans');
-    }
-  };
-
-  // Group calendars by meeting_name
-  const groupedCalendars = useMemo(() => {
-    const groups: Record<string, any> = {};
-    calendars.forEach(cal => {
-      const key = cal.meeting_name;
-      if (!groups[key]) {
-        groups[key] = {
-          id: cal.id, // pick one id for keying
-          meeting_name: key,
-          fiscal_year: cal.fiscal_year,
-          expected_pax: cal.expected_pax,
-          status: cal.status, // assume group has same status
-          cluster_ids: new Set<string>(),
-          cluster_names: new Set<string>(),
-          division_ids: new Set<string>(),
-          division_names: new Set<string>(),
-          meeting_type_ids: new Set<string>(),
-          meeting_type_names: new Set<string>(),
-          city_ids: new Set<string>(),
-          city_names: new Set<string>(),
-          months: new Set<number>(),
-        };
-      }
-      
-      const g = groups[key];
-      if (cal.division?.cluster_id) {
-        g.cluster_ids.add(cal.division.cluster_id);
-        g.cluster_names.add(cal.division.cluster?.cluster_name || '');
-      }
-      g.division_ids.add(cal.division_id);
-      g.division_names.add(cal.division?.division_name || '');
-      g.meeting_type_ids.add(cal.meeting_type_id);
-      g.meeting_type_names.add(cal.meeting_type?.meeting_type_name || '');
-      g.city_ids.add(cal.preferred_city_id);
-      g.city_names.add(cal.city?.city_name || '');
-      g.months.add(cal.month);
-    });
+  const handleCreate = () => {
+    if (!formData.trainingTypeId || formData.applicableTeamIds.length === 0) return;
     
-    return Object.values(groups).map(g => ({
-      ...g,
-      cluster_ids: Array.from(g.cluster_ids),
-      cluster_names: Array.from(g.cluster_names).filter(Boolean),
-      division_ids: Array.from(g.division_ids),
-      division_names: Array.from(g.division_names).filter(Boolean),
-      meeting_type_ids: Array.from(g.meeting_type_ids),
-      meeting_type_names: Array.from(g.meeting_type_names).filter(Boolean),
-      city_ids: Array.from(g.city_ids),
-      city_names: Array.from(g.city_names).filter(Boolean),
-      months: Array.from(g.months).sort((a: any, b: any) => a - b),
-    }));
-  }, [calendars]);
+    const trainingName = MOCK_TRAINING_TYPES.find(t => t.id === formData.trainingTypeId)?.label || 'Unknown';
+    const teamNames = formData.applicableTeamIds.map(id => MOCK_TEAMS.find(t => t.id === id)?.label.split(' ')[0] || '');
+    
+    setPlans([...plans, {
+      id: Date.now().toString(),
+      month: formData.month,
+      trainingType: trainingName,
+      durationDays: formData.durationDays,
+      teams: teamNames,
+      status: 'DRAFT',
+      remarks: formData.remarks
+    }]);
+    
+    setIsCreating(false);
+  };
 
-  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
-    id: i + 1,
-    label: new Date(2026, i).toLocaleString('default', { month: 'long' })
-  }));
+  const handlePublish = (id: string) => {
+    setPlans(plans.map(p => p.id === id ? { ...p, status: 'PUBLISHED' } : p));
+  };
 
   if (loading) return <div className="p-8">Loading Annual Calendar...</div>;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-vms-primary-dark">Annual Calendar (2026-27)</h2>
-        {!isSalesHead && (
-          <Button onClick={() => {
-            setFormData({
-              cluster_ids: [],
-              division_ids: [],
-              meeting_type_ids: [],
-              preferred_city_ids: [],
-              months: [],
-              expected_pax: 50,
-              meeting_name: '',
-              fiscal_year: '2026-27'
-            });
-            setEditingId(null);
-            setIsCreating(true);
-          }}><Plus className="w-4 h-4 mr-2" /> Add Plan</Button>
-        )}
+    <div className="p-6 h-full flex flex-col">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-2xl font-black text-vms-primary-dark">Training Requirement Blueprint</h2>
+          <p className="text-vms-gray-500 text-sm mt-1">Plan required trainings for Financial Year 2026-27</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <select className="border border-vms-gray-200 rounded-lg p-2 text-sm font-bold bg-white text-vms-primary-dark shadow-sm">
+            <option>FY 2026-27</option>
+            <option>FY 2027-28</option>
+          </select>
+        </div>
       </div>
 
+      {/* Creation Form */}
       {isCreating && (
-        <div className="bg-vms-gray-50 p-4 rounded-lg mb-6 border border-vms-gray-200">
-          <h3 className="font-bold text-vms-primary-dark mb-4">{editingId ? 'Edit Annual Plan' : 'New Annual Plan'}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="block text-xs font-bold text-vms-gray-500 uppercase mb-1">Meeting Name</label>
-              <input type="text" className="w-full p-2 border rounded" value={formData.meeting_name} onChange={e => setFormData({...formData, meeting_name: e.target.value})} placeholder="e.g. Sales Kickoff" />
+        <Card className="mb-8 border-0 shadow-lg ring-1 ring-vms-gray-200 bg-white animate-in slide-in-from-top-4">
+          <CardHeader className="bg-vms-gray-50 border-b border-vms-gray-100 py-4">
+            <h3 className="font-bold text-vms-primary-dark text-lg">Add Training to {selectedMonth}</h3>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              <div>
+                <label className="block text-xs font-bold text-vms-gray-500 uppercase mb-2">Training Type</label>
+                <select 
+                  className="w-full p-2.5 border border-vms-gray-200 rounded-lg text-sm bg-white"
+                  value={formData.trainingTypeId}
+                  onChange={e => setFormData({...formData, trainingTypeId: e.target.value})}
+                >
+                  <option value="">Select Training...</option>
+                  {MOCK_TRAINING_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                </select>
+              </div>
+              
+              <div className="lg:col-span-2">
+                <MultiSelect 
+                  label="Applicable Teams"
+                  options={MOCK_TEAMS}
+                  selectedIds={formData.applicableTeamIds}
+                  onChange={ids => setFormData({ ...formData, applicableTeamIds: ids as string[] })}
+                  placeholder="Select all teams required to attend..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-vms-gray-500 uppercase mb-2">Duration (Days)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  className="w-full p-2.5 border border-vms-gray-200 rounded-lg text-sm" 
+                  value={formData.durationDays} 
+                  onChange={e => setFormData({...formData, durationDays: parseInt(e.target.value)})} 
+                />
+              </div>
+              
+              <div className="lg:col-span-4">
+                <label className="block text-xs font-bold text-vms-gray-500 uppercase mb-2">Remarks / Special Notes</label>
+                <input 
+                  type="text" 
+                  className="w-full p-2.5 border border-vms-gray-200 rounded-lg text-sm" 
+                  placeholder="Optional context for this training requirement..."
+                  value={formData.remarks} 
+                  onChange={e => setFormData({...formData, remarks: e.target.value})} 
+                />
+              </div>
             </div>
-            <div>
-              <MultiSelect 
-                label="Cluster"
-                options={clusters.map(c => ({ id: c.id, label: c.cluster_name }))}
-                selectedIds={formData.cluster_ids}
-                onChange={ids => setFormData({ ...formData, cluster_ids: ids as string[], division_ids: [] })}
-                placeholder="Select Clusters"
-              />
+            <div className="flex gap-3">
+              <Button onClick={handleCreate} className="bg-vms-primary">Save Training Plan</Button>
+              <Button variant="outline" onClick={() => setIsCreating(false)}>Cancel</Button>
             </div>
-            <div>
-              <MultiSelect 
-                label="Division"
-                options={divisions.filter(d => formData.cluster_ids.length === 0 || formData.cluster_ids.includes(d.cluster_id)).map(d => ({ id: d.id, label: d.division_name }))}
-                selectedIds={formData.division_ids}
-                onChange={ids => setFormData({ ...formData, division_ids: ids as string[] })}
-                placeholder="Select Divisions"
-              />
-            </div>
-            <div>
-              <MultiSelect 
-                label="Meeting Type"
-                options={meetingTypes.map(m => ({ id: m.id, label: m.meeting_type_name }))}
-                selectedIds={formData.meeting_type_ids}
-                onChange={ids => setFormData({ ...formData, meeting_type_ids: ids as string[] })}
-                placeholder="Select Types"
-              />
-            </div>
-            <div>
-              <MultiSelect 
-                label="Preferred City"
-                options={cities.map(c => ({ id: c.id, label: c.city_name }))}
-                selectedIds={formData.preferred_city_ids}
-                onChange={ids => setFormData({ ...formData, preferred_city_ids: ids as string[] })}
-                placeholder="Select Cities"
-              />
-            </div>
-            <div>
-              <MultiSelect 
-                label="Expected Month"
-                options={monthOptions}
-                selectedIds={formData.months}
-                onChange={ids => setFormData({ ...formData, months: ids as number[] })}
-                placeholder="Select Months"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-vms-gray-500 uppercase mb-1">Expected PAX (Per Event)</label>
-              <input type="number" className="w-full p-2 border rounded" value={formData.expected_pax} onChange={e => setFormData({...formData, expected_pax: parseInt(e.target.value)})} />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={handleCreateOrUpdate}>{editingId ? 'Update Plan' : 'Save Plan'}</Button>
-            <Button variant="outline" onClick={() => { setIsCreating(false); setEditingId(null); }}>Cancel</Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-vms-gray-200">
-              <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">Meeting Name</th>
-              <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">Cluster</th>
-              <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">Division</th>
-              <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">Type</th>
-              <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">City</th>
-              <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">Month</th>
-              <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">PAX</th>
-              <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500">Status</th>
-              {!isSalesHead && (
-                <th className="py-3 px-4 font-bold text-xs uppercase text-vms-gray-500 text-right">Actions</th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {groupedCalendars.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="py-8 text-center text-vms-gray-500">No annual plans defined.</td>
-              </tr>
-            ) : groupedCalendars.map(group => (
-              <tr key={group.meeting_name} className="border-b border-vms-gray-100 hover:bg-vms-gray-50 transition-colors">
-                <td className="py-3 px-4 font-bold text-vms-primary-dark">{group.meeting_name}</td>
-                <td className="py-3 px-4 text-sm">
-                  <div className="flex flex-wrap gap-1">
-                    {group.cluster_names.map((n: string) => <Badge key={n} variant="secondary" className="text-[10px] py-0">{n}</Badge>)}
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-sm">
-                  <div className="flex flex-wrap gap-1">
-                    {group.division_names.map((n: string) => <Badge key={n} variant="outline" className="text-[10px] py-0">{n}</Badge>)}
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-sm">
-                  <div className="flex flex-wrap gap-1">
-                    {group.meeting_type_names.map((n: string) => <Badge key={n} variant="secondary" className="text-[10px] py-0 bg-blue-50 text-blue-700">{n}</Badge>)}
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-sm">
-                  <div className="flex flex-wrap gap-1">
-                    {group.city_names.map((n: string) => <Badge key={n} variant="secondary" className="text-[10px] py-0 bg-purple-50 text-purple-700">{n}</Badge>)}
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-sm">
-                  <div className="flex flex-wrap gap-1">
-                    {group.months.map((m: number) => <Badge key={m} variant="secondary" className="text-[10px] py-0 bg-amber-50 text-amber-700">{new Date(2026, m - 1).toLocaleString('default', { month: 'short' })}</Badge>)}
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-sm font-bold">{group.expected_pax}</td>
-                <td className="py-3 px-4">
-                  {group.status === 'PUBLISHED' 
-                    ? <Badge className="bg-green-100 text-green-800 border-green-200 shadow-none"><CheckCircle className="w-3 h-3 mr-1"/> Published</Badge>
-                    : <Badge className="bg-gray-100 text-gray-800 border-gray-200 shadow-none">Draft</Badge>
-                  }
-                </td>
-                {!isSalesHead && (
-                  <td className="py-3 px-4 text-right">
-                    {group.status === 'DRAFT' && (
-                      <>
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(group)} className="text-xs py-1 h-7 mr-2 text-vms-gray-600 hover:text-vms-primary">
-                          <Edit2 className="w-3 h-3 mr-1" /> Edit
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handlePublish(group.meeting_name)} className="text-xs py-1 h-7">
-                          <Send className="w-3 h-3 mr-1" /> Publish
-                        </Button>
-                      </>
-                    )}
-                    {group.status === 'PUBLISHED' && (
-                      <Button variant="secondary" size="sm" onClick={() => handleGenerateMonthly(group.meeting_name)} className="text-xs py-1 h-7 bg-vms-primary text-white ml-2">
-                        <PlusCircle className="w-3 h-3 mr-1" /> Create Monthly
-                      </Button>
-                    )}
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Month Planner Board */}
+      <div className="flex-1 overflow-x-auto pb-4">
+        <div className="flex gap-6 min-w-max h-full">
+          {MONTHS.map(month => {
+            const monthPlans = plans.filter(p => p.month === month);
+            
+            return (
+              <div key={month} className="w-80 flex flex-col bg-vms-gray-50/50 rounded-xl border border-vms-gray-200 overflow-hidden flex-shrink-0">
+                <div className="p-4 bg-white border-b border-vms-gray-200 flex justify-between items-center sticky top-0">
+                  <h3 className="font-black text-vms-primary-dark tracking-wide uppercase">{month}</h3>
+                  <Badge variant="secondary" className="bg-vms-gray-100">{monthPlans.length}</Badge>
+                </div>
+                
+                <div className="p-3 flex-1 overflow-y-auto space-y-3">
+                  {monthPlans.map(plan => (
+                    <div key={plan.id} className="bg-white p-4 rounded-lg shadow-sm border border-vms-gray-200 hover:shadow-md transition-shadow group">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-vms-primary-dark leading-tight">{plan.trainingType}</h4>
+                        {plan.status === 'PUBLISHED' ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <Clock className="w-4 h-4 text-amber-500" />
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-xs text-vms-gray-600 font-medium">
+                          <Clock className="w-3.5 h-3.5 mr-1.5" /> {plan.durationDays} Day{plan.durationDays > 1 ? 's' : ''}
+                        </div>
+                        <div className="flex items-start text-xs text-vms-gray-600 font-medium">
+                          <Users className="w-3.5 h-3.5 mr-1.5 mt-0.5" /> 
+                          <div className="flex flex-wrap gap-1">
+                            {plan.teams.map(t => <span key={t} className="bg-vms-gray-100 px-1.5 py-0.5 rounded text-[10px]">{t}</span>)}
+                          </div>
+                        </div>
+                        {plan.remarks && (
+                          <div className="text-[10px] text-vms-gray-400 italic border-l-2 border-vms-gray-200 pl-2 mt-2">
+                            "{plan.remarks}"
+                          </div>
+                        )}
+                      </div>
+                      
+                      {!isSalesHead && plan.status === 'DRAFT' && (
+                        <div className="pt-3 border-t border-vms-gray-100 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="sm" variant="outline" className="flex-1 text-xs h-7" onClick={() => handlePublish(plan.id)}>
+                            Submit
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {plan.status === 'PUBLISHED' && (
+                        <div className="pt-3 border-t border-vms-gray-100">
+                          <Badge className="bg-green-50 text-green-700 border-0 w-full justify-center shadow-none text-[10px]">
+                            Sent to Cluster Approval
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {!isSalesHead && (
+                    <button 
+                      onClick={() => {
+                        setSelectedMonth(month);
+                        setFormData({ ...formData, month });
+                        setIsCreating(true);
+                      }}
+                      className="w-full py-3 border-2 border-dashed border-vms-gray-200 rounded-lg text-vms-gray-400 font-bold text-sm hover:border-vms-primary hover:text-vms-primary transition-colors flex items-center justify-center"
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Add Training
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

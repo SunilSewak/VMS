@@ -128,18 +128,21 @@ export function EventsList() {
           <Button variant="outline" className="w-full sm:w-auto bg-white">
             <Filter className="w-4 h-4 mr-2" /> Filters
           </Button>
-          {!isSalesHead && (
-            <Button onClick={() => navigate('/events/create')} className="w-full sm:w-auto shadow-md">
-              <Plus className="w-4 h-4 mr-2" /> Create Event
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Active Filter Badges */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <Badge variant="default" className="bg-white hover:bg-vms-gray-50 cursor-pointer">Status: All Active</Badge>
-        <Badge variant="default" className="bg-white hover:bg-vms-gray-50 cursor-pointer">Date Range: Upcoming</Badge>
+      {/* Event Tabs */}
+      <div className="flex border-b border-vms-gray-200 mb-6">
+        {['Active', 'Upcoming', 'Completed', 'Cancelled', 'Archived'].map(tab => (
+          <button
+            key={tab}
+            className={`px-6 py-3 font-bold text-sm border-b-2 flex items-center transition-colors ${
+              tab === 'Active' ? 'border-vms-primary text-vms-primary' : 'border-transparent text-vms-gray-500 hover:text-vms-primary hover:border-vms-primary/30'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
       {/* Event Cards */}
@@ -150,15 +153,10 @@ export function EventsList() {
               <div className="w-20 h-20 bg-vms-primary-light rounded-full flex items-center justify-center mb-6">
                 <Briefcase className="w-10 h-10 text-vms-primary" />
               </div>
-              <h3 className="text-2xl font-black text-vms-primary-dark mb-2">No Events Yet</h3>
+              <h3 className="text-2xl font-black text-vms-primary-dark mb-2">No Events Found</h3>
               <p className="text-vms-gray-500 max-w-md mb-8">
-                Create your first event to begin venue discovery, rooming management, invoice auditing, and SAP closure workflows.
+                Events are generated automatically from the Planning Module. Approve and generate a monthly plan to see it here.
               </p>
-              {!isSalesHead && (
-                <Button size="lg" onClick={() => navigate('/events/create')} className="shadow-md">
-                  <Plus className="w-5 h-5 mr-2" /> Create Event
-                </Button>
-              )}
             </CardContent>
           </Card>
         ) : (

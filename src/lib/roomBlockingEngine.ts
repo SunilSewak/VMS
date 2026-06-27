@@ -1,54 +1,60 @@
-import { supabase } from "@/lib/supabase";
+// Mock Room Blocking Engine for Architecture Phase
 
-export interface HierarchyCounts {
-  so_count: number;
-  dm_count: number;
-  rsm_count: number;
-  dsm_count: number;
-  ch_count: number;
-  ibh_count: number;
-  nsm_count: number;
+export interface RoomRequirement {
+  roomType: 'Single' | 'Double' | 'Triple';
+  count: number;
 }
 
-export interface CalculatedBlocks {
-  single_rooms: number;
-  double_rooms: number;
-  triple_rooms: number;
-  suites: number;
+export interface RoomingConfig {
+  designation: string;
+  roomType: 'Single' | 'Double' | 'Triple';
+  occupancy: number; // 1, 2, or 3
 }
 
-export async function calculateRoomBlocks(hotelId: string, counts: HierarchyCounts): Promise<CalculatedBlocks> {
-  const blocks = { single_rooms: 0, double_rooms: 0, triple_rooms: 0, suites: 0 };
+// Simulated Master Data configuration
+const MASTER_ROOMING_RULES: RoomingConfig[] = [
+  { designation: 'SO', roomType: 'Triple', occupancy: 3 },
+  { designation: 'DM', roomType: 'Double', occupancy: 2 },
+  { designation: 'RSM', roomType: 'Single', occupancy: 1 },
+  { designation: 'ZSM', roomType: 'Single', occupancy: 1 },
+  { designation: 'CH', roomType: 'Single', occupancy: 1 }
+];
+
+export const roomBlockingEngine = {
+  /**
+   * Calculates room requirements based on designation counts
+   */
+  calculateRequirements: (designationCounts: Record<string, number>): RoomRequirement[] => {
+    let singleRooms = 0;
+    let doubleRooms = 0;
+    let tripleRooms = 0;
+
+    Object.entries(designationCounts).forEach(([designation, count]) => {
+      if (count <= 0) return;
+
+      const rule = MASTER_ROOMING_RULES.find(r => r.designation === designation);
+      
+      // Default to Double if no rule found
+      if (!rule) {
+        doubleRooms += Math.ceil(count / 2);
+        return;
+      }
+
+      if (rule.roomType === 'Single') {
+        singleRooms += count;
+      } else if (rule.roomType === 'Double') {
+        doubleRooms += Math.ceil(count / 2);
+      } else if (rule.roomType === 'Triple') {
+        tripleRooms += Math.ceil(count / 3);
+      }
+    });
+
+    return [
+      { roomType: 'Single', count: singleRooms },
+      { roomType: 'Double', count: doubleRooms },
+      { roomType: 'Triple', count: tripleRooms },
+    ].filter(r => r.count > 0);
+  },
   
-  // 1. Fetch Global Default Rules
-  const { data: defaultRules } = await supabase.from('default_occupancy_rules').select('*');
-  
-  // 2. Fetch Hotel Specific Rules
-  const { data: hotelRules } = await supabase.from('hotel_occupancy_rules').select('*').eq('hotel_id', hotelId);
-
-  // Helper to get rule
-  const getOccupancyType = (hierarchyLevel: string) => {
-    const override = hotelRules?.find(r => r.hierarchy_level === hierarchyLevel);
-    if (override) return override.occupancy_type;
-    const def = defaultRules?.find(r => r.hierarchy_level === hierarchyLevel);
-    return def ? def.occupancy_type : 'Single'; // Fallback to Single if missing
-  };
-
-  const processLevel = (count: number, type: string) => {
-    if (!count) return;
-    if (type === 'Suite') blocks.suites += count;
-    else if (type === 'Triple') blocks.triple_rooms += Math.ceil(count / 3);
-    else if (type === 'Double') blocks.double_rooms += Math.ceil(count / 2);
-    else blocks.single_rooms += count; // Single
-  };
-
-  processLevel(counts.so_count, getOccupancyType('SO'));
-  processLevel(counts.dm_count, getOccupancyType('DM'));
-  processLevel(counts.rsm_count, getOccupancyType('RSM'));
-  processLevel(counts.dsm_count, getOccupancyType('DSM'));
-  processLevel(counts.ch_count, getOccupancyType('CH'));
-  processLevel(counts.ibh_count, getOccupancyType('IBH'));
-  processLevel(counts.nsm_count, getOccupancyType('NSM'));
-
-  return blocks;
-}
+  getAvailableDesignations: () => MASTER_ROOMING_RULES.map(r => r.designation)
+};
